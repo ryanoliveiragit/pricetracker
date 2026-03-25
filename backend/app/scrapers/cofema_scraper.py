@@ -122,6 +122,10 @@ class CofemaScraper(BaseScraper):
 
         offers, missing_price_ids = self._parse_grid_html(html)
 
+        if not offers:
+            logger.info("Cofema: nenhum produto encontrado para '%s'", query)
+            return []
+
         # Buscar preços via GetStock para produtos sem preço
         if missing_price_ids and self._logged_in:
             logger.info("Cofema: buscando preços via GetStock para %d produtos", len(missing_price_ids))
@@ -132,9 +136,25 @@ class CofemaScraper(BaseScraper):
                     offer.price = prices[offer.sku]
                     offer.availability = "em_estoque" if offer.price > 0 else "indisponivel"
 
-        result = [o for o in offers if o.price > 0]
-        logger.info("Cofema: %d ofertas com preço", len(result))
-        return result
+        # Fallback: buscar preço na página de detalhe para os que ainda estão sem preço
+        still_missing = [o for o in offers if o.price == 0]
+        if still_missing:
+            logger.info("Cofema: buscando preço na página de detalhe para %d produtos", len(still_missing))
+            for offer in still_missing[:10]:  # limita para não demorar demais
+                try:
+                    time.sleep(0.5)
+                    rd = self.session.get(offer.product_url, timeout=10)
+                    if rd.ok:
+                        price = self._extract_price_from_detail(rd.text)
+                        if price > 0:
+                            offer.price = price
+                            offer.availability = "em_estoque"
+                except Exception:
+                    pass
+
+        logger.info("Cofema: %d produtos encontrados (%d com preço)",
+                    len(offers), sum(1 for o in offers if o.price > 0))
+        return offers
 
     def _fetch_grid(self, query: str, token: str, gd: dict) -> str:
         encoded = urllib.parse.quote(query)
@@ -300,6 +320,37 @@ class CofemaScraper(BaseScraper):
                 continue
 
         return offers, missing
+
+    @staticmethod
+    def _extract_price_from_detail(html: str) -> float:
+        soup = BeautifulSoup(html, "html.parser")
+        # Radio inputs na página de detalhe
+        for radio in soup.select("input[type=radio].radio-value[value], .box-values input[type=radio][value]"):
+            try:
+                p = float(radio.get("value", "0"))
+                if p > 0:
+                    return p
+            except ValueError:
+                continue
+        # data-itempreco em botão
+        btn = soup.select_one("button[data-itempreco]")
+        if btn:
+            try:
+                p = float(btn.get("data-itempreco", "0"))
+                if p > 0:
+                    return p
+            except ValueError:
+                pass
+        # Regex em texto da página
+        prices = []
+        for m in re.findall(r"R\$\s*([\d.]+,\d{2})", soup.get_text()):
+            try:
+                p = float(m.replace(".", "").replace(",", "."))
+                if 0.01 < p < 1_000_000:
+                    prices.append(p)
+            except ValueError:
+                continue
+        return min(prices) if prices else 0.0
 
     @staticmethod
     def _sku_from_url(url: str) -> Optional[str]:
