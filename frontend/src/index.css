@@ -1,0 +1,371 @@
+@import './styles/light-mode.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Inter", "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Modern neutral palette */
+  --neutral-50: 250 250 250;
+  --neutral-100: 245 245 245;
+  --neutral-200: 229 229 229;
+  --neutral-300: 212 212 212;
+  --neutral-400: 163 163 163;
+  --neutral-500: 115 115 115;
+  --neutral-600: 82 82 82;
+  --neutral-700: 64 64 64;
+  --neutral-800: 38 38 38;
+  --neutral-900: 23 23 23;
+  --neutral-950: 10 10 10;
+
+  /* Green accent (Fynix-style) */
+  --purple-50: 236 253 245;
+  --purple-100: 209 250 229;
+  --purple-200: 167 243 208;
+  --purple-300: 110 231 183;
+  --purple-400: 52 211 153;
+  --purple-500: 16 185 129;
+  --purple-600: 5 150 105;
+  --purple-700: 4 120 87;
+  --purple-800: 6 95 70;
+  --purple-900: 4 78 56;
+
+  /* Blue theme */
+  --blue-500: 59 130 246;
+  --blue-600: 37 99 235;
+
+  /* Green theme */
+  --green-500: 16 185 129;
+  --green-600: 5 150 105;
+
+  /* Orange theme */
+  --orange-500: 249 115 22;
+  --orange-600: 234 88 12;
+
+  /* Red theme */
+  --red-500: 239 68 68;
+  --red-600: 220 38 38;
+
+  /* Semantic colors */
+  --success: 16 185 129;
+  --warning: 245 158 11;
+  --error: 239 68 68;
+  --info: 59 130 246;
+
+  /* Dynamic primary color (default green) */
+  --primary-50: var(--purple-50);
+  --primary-500: var(--purple-500);
+  --primary-600: var(--purple-600);
+}
+
+/* Light mode (default) */
+.light {
+  color-scheme: light;
+
+  --bg-primary: 255 255 255;
+  --bg-secondary: 248 250 252;
+  --bg-tertiary: 241 245 249;
+  --text-primary: 15 23 42;
+  --text-secondary: 71 85 105;
+  --text-tertiary: 100 116 139;
+  --border-color: 226 232 240;
+  --border-hover: 203 213 225;
+}
+
+.light body {
+  background: #f8fafc;
+  color: rgb(15, 23, 42);
+}
+
+/* Dark mode */
+.dark {
+  color-scheme: dark;
+
+  --bg-primary: 10 10 10;
+  --bg-secondary: 23 23 23;
+  --bg-tertiary: 38 38 38;
+  --text-primary: 245 245 245;
+  --text-secondary: 212 212 212;
+  --text-tertiary: 163 163 163;
+  --border-color: 38 38 38;
+  --border-hover: 64 64 64;
+}
+
+.dark body {
+  background: rgb(10, 10, 10);
+  color: rgb(245, 245, 245);
+}
+
+/* Theme color overrides */
+[data-theme-color="purple"] {
+  --primary-50: 250 245 255;
+  --primary-500: 168 85 247;
+  --primary-600: 147 51 234;
+}
+
+[data-theme-color="blue"] {
+  --primary-50: 239 246 255;
+  --primary-500: 59 130 246;
+  --primary-600: 37 99 235;
+}
+
+[data-theme-color="green"] {
+  --primary-50: 236 253 245;
+  --primary-500: 16 185 129;
+  --primary-600: 5 150 105;
+}
+
+[data-theme-color="orange"] {
+  --primary-50: 255 247 237;
+  --primary-500: 249 115 22;
+  --primary-600: 234 88 12;
+}
+
+[data-theme-color="red"] {
+  --primary-50: 254 242 242;
+  --primary-500: 239 68 68;
+  --primary-600: 220 38 38;
+}
+
+/* Dynamic class overrides using CSS variables */
+.text-purple-400 {
+  color: rgb(var(--primary-500)) !important;
+}
+
+.text-purple-600 {
+  color: rgb(var(--primary-600)) !important;
+}
+
+.dark .dark\:text-purple-400 {
+  color: rgb(var(--primary-500)) !important;
+}
+
+.bg-purple-50 {
+  background-color: rgb(var(--primary-50)) !important;
+}
+
+.bg-purple-500 {
+  background-color: rgb(var(--primary-500)) !important;
+}
+
+.bg-purple-500\/5 {
+  background-color: rgb(var(--primary-500) / 0.05) !important;
+}
+
+.bg-purple-500\/10 {
+  background-color: rgb(var(--primary-500) / 0.1) !important;
+}
+
+.bg-purple-500\/15 {
+  background-color: rgb(var(--primary-500) / 0.15) !important;
+}
+
+.dark .dark\:bg-purple-500\/10 {
+  background-color: rgb(var(--primary-500) / 0.1) !important;
+}
+
+.border-purple-500 {
+  border-color: rgb(var(--primary-500)) !important;
+}
+
+.border-purple-500\/50 {
+  border-color: rgb(var(--primary-500) / 0.5) !important;
+}
+
+.border-purple-500\/20 {
+  border-color: rgb(var(--primary-500) / 0.2) !important;
+}
+
+.dark .dark\:border-purple-500 {
+  border-color: rgb(var(--primary-500)) !important;
+}
+
+.hover\:border-purple-500:hover {
+  border-color: rgb(var(--primary-500)) !important;
+}
+
+.hover\:border-purple-500\/50:hover {
+  border-color: rgb(var(--primary-500) / 0.5) !important;
+}
+
+.hover\:text-purple-400:hover {
+  color: rgb(var(--primary-500)) !important;
+}
+
+.hover\:text-purple-300:hover {
+  color: rgb(var(--primary-500)) !important;
+}
+
+.hover\:bg-purple-500\/10:hover {
+  background-color: rgb(var(--primary-500) / 0.1) !important;
+}
+
+.focus\:border-purple-500:focus {
+  border-color: rgb(var(--primary-500)) !important;
+}
+
+.focus\:ring-purple-500\/20:focus {
+  --tw-ring-color: rgb(var(--primary-500) / 0.2) !important;
+}
+
+.ring-purple-500\/20 {
+  --tw-ring-color: rgb(var(--primary-500) / 0.2) !important;
+}
+
+.from-purple-500 {
+  --tw-gradient-from: rgb(var(--primary-500)) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(var(--primary-500) / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.from-purple-600 {
+  --tw-gradient-from: rgb(var(--primary-600)) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(var(--primary-600) / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.to-purple-600 {
+  --tw-gradient-to: rgb(var(--primary-600)) var(--tw-gradient-to-position) !important;
+}
+
+.to-purple-700 {
+  --tw-gradient-to: rgb(var(--primary-600)) var(--tw-gradient-to-position) !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark * {
+  scrollbar-color: rgb(var(--neutral-700)) rgb(var(--neutral-900));
+}
+
+.dark *::-webkit-scrollbar-track {
+  background: rgb(var(--neutral-900));
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background: rgb(var(--neutral-700));
+}
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 160 84% 39%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 160 84% 39%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    font-family: "Inter", "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+}
+
+/* ── Improved card & table utilities ──────────────────────────────────────── */
+
+@layer components {
+  /* Standard card */
+  .card {
+    @apply rounded-2xl bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 shadow-[0_1px_3px_0_rgb(0_0_0/0.04)] transition-shadow;
+  }
+
+  .card:hover {
+    @apply shadow-[0_4px_12px_0_rgb(0_0_0/0.06)];
+  }
+
+  /* Table improvements */
+  table {
+    @apply w-full text-sm;
+  }
+
+  table thead th {
+    @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-500 bg-slate-50/80 dark:bg-neutral-800/50 first:rounded-tl-xl last:rounded-tr-xl;
+  }
+
+  table tbody td {
+    @apply px-4 py-3.5 text-slate-700 dark:text-neutral-300 border-t border-slate-50 dark:border-neutral-800/50;
+  }
+
+  table tbody tr {
+    @apply transition-colors hover:bg-slate-50/50 dark:hover:bg-neutral-800/30;
+  }
+}

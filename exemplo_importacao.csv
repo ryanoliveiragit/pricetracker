@@ -1,0 +1,27 @@
+sep=;
+name;category;brand;unit;sku;notes
+Cadeado Pado 20mm;Segurança;Pado;Unidade;62251;Cadeado latão com 2 chaves
+Cadeado Papaiz 25mm;Segurança;Papaiz;Unidade;25MM;Cadeado Color Line
+Fechadura Stam 40mm;Segurança;Stam;Unidade;FE40;Fechadura externa cromada
+Cimento CP-II 50kg;Cimento;Votorantim;Saco 50kg;;Uso geral
+Cimento CP-V ARI 40kg;Cimento;InterCement;Saco 40kg;;Alta resistência inicial
+Argamassa AC-II 20kg;Argamassa;Quartzolit;Saco 20kg;ACII-20;Para pisos e azulejos
+Argamassa AC-III 20kg;Argamassa;Votomassa;Saco 20kg;ACIII-20;Para fachadas
+Tijolo Cerâmico 6 Furos;Alvenaria;Cerâmica SP;Milheiro;;Tijolo padrão
+Bloco de Concreto 14x19x39;Alvenaria;Tatu;Unidade;BC14;Estrutural
+Areia Média Lavada;Agregados;Areia Fina;m³;;Para reboco
+Brita 1;Agregados;Pedreira Central;m³;;Para concreto
+Vergalhão CA-50 10mm;Ferragens;Gerdau;Barra 12m;CA50-10;Aço estrutural
+Vergalhão CA-50 8mm;Ferragens;Gerdau;Barra 12m;CA50-8;Aço para estribos
+Arame Recozido 18;Ferragens;Belgo;kg;AR18;Para amarração
+Tinta Acrílica Branca 18L;Tintas;Suvinil;Lata 18L;;Paredes internas/externas
+Tinta Acrílica Branca 3.6L;Tintas;Coral;Lata 3.6L;;Rendimento 50m²
+Massa Corrida PVA 25kg;Tintas;Suvinil;Balde 25kg;;Para paredes internas
+Piso Cerâmico 60x60cm;Revestimentos;Portobello;m²;PC60;Antiderrapante
+Azulejo Branco 30x60cm;Revestimentos;Eliane;m²;AZ30;Brilhante
+Tubo PVC 100mm 6m;Hidráulica;Tigre;Barra 6m;T100;Esgoto
+Tubo PVC 25mm 3m;Hidráulica;Amanco;Barra 3m;T25;Água fria
+Fio Flexível 2.5mm 100m;Elétrica;Prysmian;Rolo 100m;FF25;750V
+Disjuntor 20A Mono;Elétrica;Schneider;Unidade;DJ20;Din curva C
+Rejunte Flexível 1kg;Revestimentos;Quartzolit;kg;RF1;Cinza
+Manta Asfáltica 3mm 10m;Impermeabilização;Viapol;Rolo 10m;MA3;Alumínio

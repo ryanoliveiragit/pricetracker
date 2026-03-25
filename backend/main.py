@@ -1,0 +1,68 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import logging
+from app.config import settings
+from app.api.routes import search, auth, suppliers, products
+
+# Configurar logging
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup / shutdown events."""
+    from app.database import create_tables
+    from app.services.seed import seed_defaults
+    await create_tables()
+    await seed_defaults()
+    logger.info("🚀 ConstruPrice API pronta")
+    yield
+    logger.info("👋 ConstruPrice API encerrando")
+
+
+# Criar aplicação FastAPI
+app = FastAPI(
+    title="ConstruPrice API",
+    description="API de comparação de preços de materiais de construção com web scraping",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Registrar rotas
+app.include_router(search.router, prefix="/api", tags=["search"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(suppliers.router, prefix="/api", tags=["suppliers"])
+app.include_router(products.router, prefix="/api", tags=["products"])
+
+@app.get("/")
+async def root():
+    """Endpoint raiz"""
+    return {
+        "message": "ConstruPrice API - Sistema de Comparação de Preços",
+        "version": "1.0.0",
+        "docs": "/docs"
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=True
+    )

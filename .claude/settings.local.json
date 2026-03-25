@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /b /a:d)",
+      "Bash(python main.py)",
+      "Bash(pip install pydantic-settings)",
+      "Bash(npm run dev)",
+      "Bash(pip install 'pydantic[email]')",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(python -c \"import bs4, requests; print\\(''OK''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(curl -s -X POST http://localhost:8000/api/search -H \"Content-Type: application/json\" -d \"{\"\"items\"\": [\"\"cadeado\"\"], \"\"stores\"\": [{\"\"store_name\"\": \"\"Estoque Megaleste\"\", \"\"username\"\": \"\"458953\"\", \"\"password\"\": \"\"0109\"\", \"\"is_active\"\": true}]}\")",
+      "Bash(taskkill /F /IM python.exe 2)",
+      "Bash(/dev/null taskkill:*)",
+      "Bash(/dev/null sleep:*)",
+      "Bash(python -m pytest backend/tests/ -k \"cofema\" -v -s)",
+      "Bash(python test_cofema_debug.py)",
+      "Bash(python save_html_debug.py)",
+      "Bash(timeout 120 python test_cofema_first5.py)",
+      "Bash(timeout 120 python test_cofema_credentials.py)",
+      "Bash(for i:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/rodolfo linhares/Documents/pricetracker/backend/**)",
+      "Bash(done)",
+      "Bash(npm install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

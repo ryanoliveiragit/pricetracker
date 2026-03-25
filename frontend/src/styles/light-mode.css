@@ -1,0 +1,216 @@
+/* Light Mode Professional UI Overrides */
+
+.light {
+  /* Background layers */
+  --bg-base: 255 255 255;
+  --bg-surface: 248 250 252;
+  --bg-elevated: 241 245 249;
+  --bg-hover: 241 245 249;
+
+  /* Text colors */
+  --text-primary: 15 23 42;
+  --text-secondary: 71 85 105;
+  --text-tertiary: 100 116 139;
+  --text-muted: 148 163 184;
+
+  /* Border colors */
+  --border-primary: 226 232 240;
+  --border-secondary: 203 213 225;
+  --border-hover: 148 163 184;
+}
+
+/* Override dark-coded classes for light mode */
+.light .bg-neutral-950 {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light .bg-neutral-950\/50 {
+  background-color: rgb(255, 255, 255) !important;
+}
+
+.light .bg-neutral-950\/40 {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light .bg-neutral-950\/30 {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light .bg-neutral-900 {
+  background-color: rgb(255, 255, 255) !important;
+}
+
+.light .bg-neutral-900\/50 {
+  background-color: rgb(255, 255, 255) !important;
+}
+
+.light .bg-neutral-900\/40 {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light .bg-neutral-900\/60 {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light .bg-neutral-800 {
+  background-color: rgb(241, 245, 249) !important;
+}
+
+.light .bg-neutral-800\/80 {
+  background-color: rgb(241, 245, 249) !important;
+}
+
+.light .text-neutral-100 {
+  color: rgb(15, 23, 42) !important;
+}
+
+.light .text-neutral-200 {
+  color: rgb(30, 41, 59) !important;
+}
+
+.light .text-neutral-300 {
+  color: rgb(51, 65, 85) !important;
+}
+
+.light .text-neutral-400 {
+  color: rgb(100, 116, 139) !important;
+}
+
+.light .text-neutral-500 {
+  color: rgb(100, 116, 139) !important;
+}
+
+.light .text-neutral-600 {
+  color: rgb(148, 163, 184) !important;
+}
+
+.light .text-neutral-700 {
+  color: rgb(148, 163, 184) !important;
+}
+
+.light .border-neutral-800 {
+  border-color: rgb(226, 232, 240) !important;
+}
+
+.light .border-neutral-800\/60 {
+  border-color: rgb(226, 232, 240) !important;
+}
+
+.light .border-neutral-700 {
+  border-color: rgb(203, 213, 225) !important;
+}
+
+.light .divide-neutral-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(241, 245, 249) !important;
+}
+
+/* Card and surface styles */
+.light .backdrop-blur-sm {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Shadows for light mode */
+.light .shadow-glow-sm {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+.light .shadow-glow {
+  box-shadow: 0 4px 6px rgb(0 0 0 / 0.07);
+}
+
+/* Hover states */
+.light .hover\:bg-neutral-800:hover {
+  background-color: rgb(241, 245, 249) !important;
+}
+
+.light .hover\:bg-neutral-800\/50:hover {
+  background-color: rgb(241, 245, 249) !important;
+}
+
+.light .hover\:bg-neutral-900:hover {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light .hover\:bg-neutral-900\/40:hover {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light .hover\:text-neutral-100:hover {
+  color: rgb(15, 23, 42) !important;
+}
+
+.light .hover\:text-neutral-200:hover {
+  color: rgb(30, 41, 59) !important;
+}
+
+.light .hover\:border-neutral-700:hover {
+  border-color: rgb(203, 213, 225) !important;
+}
+
+/* Input styles */
+.light input,
+.light textarea,
+.light select {
+  background-color: rgb(255, 255, 255) !important;
+  color: rgb(15, 23, 42) !important;
+  border-color: rgb(226, 232, 240) !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: rgb(148, 163, 184) !important;
+}
+
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: rgb(var(--primary-500)) !important;
+  background-color: rgb(255, 255, 255) !important;
+}
+
+/* Scrollbar light mode */
+.light *::-webkit-scrollbar-track {
+  background: rgb(248, 250, 252);
+}
+
+.light *::-webkit-scrollbar-thumb {
+  background: rgb(203, 213, 225);
+}
+
+.light *::-webkit-scrollbar-thumb:hover {
+  background: rgb(148, 163, 184);
+}
+
+/* Table styles */
+.light table thead {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+.light table tbody tr:hover {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+/* Fix buttons in light mode - only style bare buttons, not colored ones */
+.light .bg-neutral-950\/50 {
+  background-color: rgb(255, 255, 255) !important;
+}
+
+/* Gradient overrides for light mode - ensure white text stays */
+.light .bg-gradient-to-r .text-white,
+.light [class*="from-"] .text-white {
+  color: rgb(255, 255, 255) !important;
+}
+
+/* Black/70 overlay stays dark */
+.light .bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.light .bg-black\/20 {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Fix red/destructive button text */
+.light .hover\:bg-red-500\/10:hover {
+  background-color: rgb(254 242 242) !important;
+}

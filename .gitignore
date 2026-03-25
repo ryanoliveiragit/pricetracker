@@ -1,0 +1,67 @@
+# ─── Python / Backend ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+venv/
+env/
+.venv/
+.env
+.env.*
+!.env.example
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ─── Node / Frontend ─────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+
+# Next.js
+.next/
+out/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# ─── Database / Data files ───────────────────────────────────────────
+db.json
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── OS ──────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ─── IDE ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+
+# ─── Media / Misc ────────────────────────────────────────────────────
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.html
+coverage/
+.nyc_output/
