@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     """Startup / shutdown events."""
     from app.database import create_tables
     from app.services.seed import seed_defaults
@@ -35,10 +35,12 @@ app = FastAPI(
 )
 
 # Configurar CORS
+# Auth uses JWT via Authorization header (not cookies), so allow_credentials=False
+# is safe and required when allow_origins=["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -48,6 +50,14 @@ app.include_router(search.router, prefix="/api", tags=["search"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(suppliers.router, prefix="/api", tags=["suppliers"])
 app.include_router(products.router, prefix="/api", tags=["products"])
+
+@app.post("/api/admin/reseed-suppliers")
+async def reseed_suppliers():
+    """Force recreate all suppliers with default credentials. Use when DB has wrong/empty creds."""
+    from app.services.seed import force_reseed_suppliers
+    count = await force_reseed_suppliers()
+    return {"status": "ok", "suppliers_recreated": count}
+
 
 @app.get("/")
 async def root():

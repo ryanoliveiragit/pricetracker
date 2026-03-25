@@ -1,6 +1,6 @@
 """
 Seed default data into PostgreSQL if tables are empty.
-Runs once on startup — skips if data already exists.
+Also patches existing suppliers whose credentials are empty on every startup.
 """
 import logging
 from sqlalchemy import select, func
@@ -8,6 +8,9 @@ from app.database import async_session
 from app.models.db_models import ProductDB, SupplierDB
 
 logger = logging.getLogger(__name__)
+
+# Map supplier name → index in DEFAULT_SUPPLIERS for fast lookup
+_SUPPLIER_CREDS_BY_NAME: dict = {}  # populated after DEFAULT_SUPPLIERS is defined
 
 DEFAULT_PRODUCTS = [
     {
@@ -132,9 +135,11 @@ DEFAULT_SUPPLIERS = [
 
 
 async def seed_defaults():
-    """Insert default products and suppliers if tables are empty."""
+    """Insert default products and suppliers if tables are empty.
+    Also patches credentials for existing suppliers that have empty username/password.
+    """
     async with async_session() as session:
-        # Products
+        # ── Products ──────────────────────────────────────────────────────────
         count = await session.scalar(select(func.count()).select_from(ProductDB))
         if count == 0:
             for p in DEFAULT_PRODUCTS:
@@ -144,7 +149,7 @@ async def seed_defaults():
         else:
             logger.info(f"📦 {count} produtos já existem no banco")
 
-        # Suppliers
+        # ── Suppliers ─────────────────────────────────────────────────────────
         count = await session.scalar(select(func.count()).select_from(SupplierDB))
         if count == 0:
             for s in DEFAULT_SUPPLIERS:
@@ -153,3 +158,43 @@ async def seed_defaults():
             logger.info(f"🌱 {len(DEFAULT_SUPPLIERS)} fornecedores padrão inseridos")
         else:
             logger.info(f"🏪 {count} fornecedores já existem no banco")
+
+            # Patch: atualiza credenciais de fornecedores existentes que estejam vazias
+            creds_map = {s["name"]: s for s in DEFAULT_SUPPLIERS if s.get("username")}
+            result = await session.execute(select(SupplierDB))
+            patched = 0
+            for supplier in result.scalars().all():
+                default = creds_map.get(supplier.name)
+                if not default:
+                    continue
+                changed = False
+                if not supplier.username and default.get("username"):
+                    supplier.username = default["username"]
+                    changed = True
+                if not supplier.password and default.get("password"):
+                    supplier.password = default["password"]
+                    changed = True
+                if not supplier.url and default.get("url"):
+                    supplier.url = default["url"]
+                    changed = True
+                if changed:
+                    patched += 1
+                    logger.info(f"🔧 Credenciais atualizadas para: {supplier.name}")
+            if patched:
+                await session.commit()
+                logger.info(f"✅ {patched} fornecedor(es) com credenciais corrigidas")
+
+
+async def force_reseed_suppliers():
+    """Drop and recreate all suppliers with default data. Use via admin endpoint."""
+    async with async_session() as session:
+        result = await session.execute(select(SupplierDB))
+        for s in result.scalars().all():
+            await session.delete(s)
+        await session.commit()
+
+        for s in DEFAULT_SUPPLIERS:
+            session.add(SupplierDB(**s))
+        await session.commit()
+        logger.info(f"🔄 Reseed forçado: {len(DEFAULT_SUPPLIERS)} fornecedores recriados")
+    return len(DEFAULT_SUPPLIERS)
