@@ -99,7 +99,7 @@ DEFAULT_SUPPLIERS = [
         "username": "82858182",
         "password": "123456",
         "is_active": True,
-        "region": "sp",
+        "region": "Nacional",
         "notes": "Rede nacional de materiais de construção",
     },
     {
@@ -139,35 +139,47 @@ async def seed_defaults():
             await session.commit()
             logger.info(f"🌱 {len(DEFAULT_SUPPLIERS)} fornecedores padrão inseridos")
         else:
-            logger.info(f"🏪 {count} fornecedores já existem no banco")
+            logger.info(f"🏪 {count} fornecedores no banco — sincronizando com DEFAULT_SUPPLIERS")
 
-            # Patch: sync URL, credentials, and is_active from DEFAULT_SUPPLIERS
+            default_names = {s["name"] for s in DEFAULT_SUPPLIERS}
             creds_map = {s["name"]: s for s in DEFAULT_SUPPLIERS}
             result = await session.execute(select(SupplierDB))
-            patched = 0
-            for supplier in result.scalars().all():
-                default = creds_map.get(supplier.name)
-                if not default:
+            all_suppliers = result.scalars().all()
+            changed_count = 0
+
+            for supplier in all_suppliers:
+                # Remover fornecedores que não estão mais na lista padrão
+                if supplier.name not in default_names:
+                    logger.info(f"🗑️  Removendo fornecedor obsoleto: {supplier.name}")
+                    await session.delete(supplier)
+                    changed_count += 1
                     continue
+
+                # Sincronizar campos com os valores padrão
+                default = creds_map[supplier.name]
                 changed = False
-                if default.get("username") and supplier.username != default["username"]:
-                    supplier.username = default["username"]
-                    changed = True
-                if default.get("password") and supplier.password != default["password"]:
-                    supplier.password = default["password"]
-                    changed = True
-                if default.get("url") and supplier.url != default["url"]:
-                    supplier.url = default["url"]
-                    changed = True
+                for field, key in [("username", "username"), ("password", "password"), ("url", "url")]:
+                    if default.get(key) and getattr(supplier, field) != default[key]:
+                        setattr(supplier, field, default[key])
+                        changed = True
                 if default.get("is_active") is not None and supplier.is_active != default["is_active"]:
                     supplier.is_active = default["is_active"]
                     changed = True
                 if changed:
-                    patched += 1
+                    changed_count += 1
                     logger.info(f"🔧 Fornecedor atualizado: {supplier.name}")
-            if patched:
+
+            # Inserir fornecedores que ainda não existem no banco
+            existing_names = {s.name for s in all_suppliers}
+            for default in DEFAULT_SUPPLIERS:
+                if default["name"] not in existing_names:
+                    session.add(SupplierDB(**default))
+                    changed_count += 1
+                    logger.info(f"➕ Novo fornecedor inserido: {default['name']}")
+
+            if changed_count:
                 await session.commit()
-                logger.info(f"✅ {patched} fornecedor(es) atualizados")
+                logger.info(f"✅ Fornecedores sincronizados ({changed_count} alterações)")
 
 
 async def force_reseed_suppliers():
