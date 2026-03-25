@@ -105,31 +105,13 @@ DEFAULT_SUPPLIERS = [
     {
         "id": "3",
         "name": "Estoque Atacadista",
-        "url": "https://hnk.estoqueatacadista.com.br",
+        "url": "https://sjc.estoqueatacadista.com.br",
         "requires_login": True,
-        "username": "",
-        "password": "",
-        "is_active": False,
+        "username": "bomretiro_materiais@hotmail.com",
+        "password": "123456",
+        "is_active": True,
         "region": "sp",
-        "notes": "Preencha usuário e senha para ativar",
-    },
-    {
-        "id": "4",
-        "name": "Constrular",
-        "url": "https://constrular.com.br",
-        "requires_login": False,
-        "is_active": True,
-        "region": "Sul",
-        "notes": "Especializada em acabamentos",
-    },
-    {
-        "id": "5",
-        "name": "Leroy Merlin",
-        "url": "https://leroymerlin.com.br",
-        "requires_login": False,
-        "is_active": True,
-        "region": "Nacional",
-        "notes": "Grande variedade de produtos",
+        "notes": "Atacado de materiais de construção",
     },
 ]
 
@@ -159,8 +141,8 @@ async def seed_defaults():
         else:
             logger.info(f"🏪 {count} fornecedores já existem no banco")
 
-            # Patch: atualiza credenciais de fornecedores existentes que estejam vazias
-            creds_map = {s["name"]: s for s in DEFAULT_SUPPLIERS if s.get("username")}
+            # Patch: sync URL, credentials, and is_active from DEFAULT_SUPPLIERS
+            creds_map = {s["name"]: s for s in DEFAULT_SUPPLIERS}
             result = await session.execute(select(SupplierDB))
             patched = 0
             for supplier in result.scalars().all():
@@ -168,21 +150,24 @@ async def seed_defaults():
                 if not default:
                     continue
                 changed = False
-                if not supplier.username and default.get("username"):
+                if default.get("username") and supplier.username != default["username"]:
                     supplier.username = default["username"]
                     changed = True
-                if not supplier.password and default.get("password"):
+                if default.get("password") and supplier.password != default["password"]:
                     supplier.password = default["password"]
                     changed = True
-                if not supplier.url and default.get("url"):
+                if default.get("url") and supplier.url != default["url"]:
                     supplier.url = default["url"]
+                    changed = True
+                if default.get("is_active") is not None and supplier.is_active != default["is_active"]:
+                    supplier.is_active = default["is_active"]
                     changed = True
                 if changed:
                     patched += 1
-                    logger.info(f"🔧 Credenciais atualizadas para: {supplier.name}")
+                    logger.info(f"🔧 Fornecedor atualizado: {supplier.name}")
             if patched:
                 await session.commit()
-                logger.info(f"✅ {patched} fornecedor(es) com credenciais corrigidas")
+                logger.info(f"✅ {patched} fornecedor(es) atualizados")
 
 
 async def force_reseed_suppliers():
