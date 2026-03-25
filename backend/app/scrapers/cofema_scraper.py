@@ -8,12 +8,11 @@ from app.models.product import ProductOffer
 logger = logging.getLogger(__name__)
 BASE_URL = "https://www.cofema.com.br"
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
     "Accept-Language": "pt-BR,pt;q=0.9",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 MAX_PRODUCTS = 40
-DETAIL_TIMEOUT = 10
 
 
 class CofemaScraper(BaseScraper):
@@ -37,29 +36,38 @@ class CofemaScraper(BaseScraper):
 
     def _do_login(self, username: str, password: str) -> bool:
         try:
+            # GET homepage para obter cookies (token vem do cookie, não do HTML)
             r = self.session.get(f"{BASE_URL}/Home", timeout=15)
             r.raise_for_status()
-            r2 = self.session.post(
+            token = self.session.cookies.get("__RequestVerificationToken", "")
+
+            # Simula abertura do modal de login
+            self.session.post(
                 f"{BASE_URL}/Home/GetLogonPage",
-                headers={**self.session.headers, "X-Requested-With": "XMLHttpRequest"},
+                headers={**self.session.headers, "X-Requested-With": "XMLHttpRequest", "Referer": f"{BASE_URL}/Home"},
                 timeout=10,
             )
-            token = ""
-            if r2.ok:
-                s = BeautifulSoup(r2.text, "html.parser")
-                inp = s.find("input", {"name": "__RequestVerificationToken"})
-                if inp:
-                    token = inp.get("value", "")
-            if not token:
-                s = BeautifulSoup(r.text, "html.parser")
-                inp = s.find("input", {"name": "__RequestVerificationToken"})
-                if inp:
-                    token = inp.get("value", "")
+
             logger.info("Cofema login token=%s", "ok" if token else "missing")
+
+            # Campos corretos: User, Password, RememberMe, ReturnUrl
             r3 = self.session.post(
                 f"{BASE_URL}/Home/Logon",
-                data={"login": username, "senha": password, "__RequestVerificationToken": token},
-                headers={**self.session.headers, "X-Requested-With": "XMLHttpRequest", "Referer": f"{BASE_URL}/Home"},
+                data={
+                    "User": username,
+                    "Password": password,
+                    "RememberMe": "true",
+                    "ReturnUrl": "",
+                    "__RequestVerificationToken": token,
+                },
+                headers={
+                    **self.session.headers,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE_URL}/Home",
+                    "Origin": BASE_URL,
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                },
                 timeout=15,
             )
             if r3.ok:
@@ -69,13 +77,9 @@ class CofemaScraper(BaseScraper):
                         self._logged_in = True
                         logger.info("Cofema login OK")
                         return True
+                    logger.warning("Cofema login falhou: %s", data.get("message", ""))
                 except Exception:
                     pass
-                rc = self.session.get(f"{BASE_URL}/Home", timeout=10)
-                if "/Home/Sair" in rc.text or "Clientes" in rc.text:
-                    self._logged_in = True
-                    logger.info("Cofema login OK (page check)")
-                    return True
             logger.warning("Cofema login nao confirmado (%s)", r3.status_code)
             return False
         except Exception as e:
@@ -90,156 +94,154 @@ class CofemaScraper(BaseScraper):
         except Exception as e:
             logger.error("Cofema search page error: %s", e)
             return []
+
         soup = BeautifulSoup(r.text, "html.parser")
-        token = ""
         inp = soup.find("input", {"name": "__RequestVerificationToken"})
-        if inp:
-            token = inp.get("value", "")
-        grid_html = self._fetch_grid(query, token)
-        if not grid_html:
+        page_token = inp.get("value", "") if inp else self.session.cookies.get("__RequestVerificationToken", "")
+
+        # Extrair data-attrs do elemento grid para montar o POST correto
+        grid_el = soup.find(attrs={"data-grid": True})
+        grid_data = {}
+        if grid_el:
+            for attr, val in grid_el.attrs.items():
+                if attr.startswith("data-"):
+                    key = attr[5:]  # remove "data-"
+                    grid_data[key] = val
+
+        html = self._fetch_grid(query, page_token, grid_data)
+        if not html:
             logger.warning("Cofema: grid vazio")
             return []
-        cards = self._parse_cards(grid_html)
-        logger.info("Cofema: %d cards encontrados", len(cards))
-        offers: List[ProductOffer] = []
-        for i, card in enumerate(cards[:MAX_PRODUCTS]):
-            offer = self._enrich_with_detail(card, i + 1)
-            if offer and offer.price > 0:
-                offers.append(offer)
-        logger.info("Cofema: %d ofertas com preco", len(offers))
+
+        offers = self._parse_grid_html(html)
+        logger.info("Cofema: %d ofertas", len(offers))
         return offers
 
-    def _fetch_grid(self, query: str, token: str) -> str:
+    def _fetch_grid(self, query: str, token: str, grid_data: dict) -> str:
+        encoded = urllib.parse.quote(query)
         try:
+            payload = {
+                "getPage": "1",
+                "rows": grid_data.get("rows", "24"),
+                "grid": grid_data.get("grid", "GridItens"),
+                "header": grid_data.get("header", "false"),
+                "showInfo": grid_data.get("showinfo", "true"),
+                "paramFilter": query,
+                "layout": grid_data.get("layout", "VitrineProdutos"),
+                "id": grid_data.get("id", "0"),
+                "order": grid_data.get("order", ""),
+                "parentId": grid_data.get("param-parentid", "0"),
+                "filtercolumn": grid_data.get("filtercolumn", "busca"),
+                "filter": query,
+                "paramParentid": grid_data.get("param-parentid", "0"),
+                "paramMarcaid": grid_data.get("param-marcaid", "0"),
+                "paramIsrelampago": grid_data.get("param-isrelampago", ""),
+                "paramTabela": grid_data.get("param-tabela", ""),
+                "__RequestVerificationToken": token,
+            }
             r = self.session.post(
                 f"{BASE_URL}/Item/GridItens",
-                data={"filtro": query, "pagina": 1, "quantidade": MAX_PRODUCTS,
-                      "ordenacao": "0", "__RequestVerificationToken": token},
-                headers={**self.session.headers, "X-Requested-With": "XMLHttpRequest",
-                          "Referer": f"{BASE_URL}/Produto/Listar/Busca/?q={urllib.parse.quote(query)}"},
+                data=payload,
+                headers={
+                    **self.session.headers,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE_URL}/Produto/Listar/Busca/?q={encoded}",
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                },
                 timeout=20,
             )
             if r.ok:
-                return r.text
+                try:
+                    return r.json().get("data", "")
+                except Exception:
+                    return r.text
         except Exception as e:
             logger.error("Cofema GridItens error: %s", e)
         return ""
 
-    def _parse_cards(self, html: str) -> List[dict]:
+    def _parse_grid_html(self, html: str) -> List[ProductOffer]:
         soup = BeautifulSoup(html, "html.parser")
-        cards = []
-        items = soup.select("div.cat-prod.main-data-add")
-        if not items:
-            seen: set = set()
+        offers: List[ProductOffer] = []
+        seen: set = set()
+
+        cards = soup.select("div.main-data-add")
+        if not cards:
+            # fallback: links diretos
+            cards_data = []
             for link in soup.select('a[href*="/Item/Detalhes/"]'):
                 href = link.get("href", "")
-                if href in seen:
+                if not href or href in seen:
                     continue
                 seen.add(href)
-                name = link.get_text(strip=True) or self._name_from_url(href)
-                if href and len(name) >= 3:
-                    cards.append({
-                        "name": name,
-                        "url": href if href.startswith("http") else f"{BASE_URL}{href}",
-                        "sku": self._sku_from_url(href),
-                        "image_url": None,
-                    })
-            return cards
-        for item in items:
+                name = link.get_text(strip=True)
+                if len(name) >= 3:
+                    cards_data.append({"name": name, "url": f"{BASE_URL}{href}", "sku": self._sku_from_url(href), "price": 0.0, "image_url": None})
+            for c in cards_data[:MAX_PRODUCTS]:
+                offers.append(ProductOffer(
+                    store=self.store_name, product_name=c["name"], price=c["price"],
+                    product_url=c["url"], add_to_cart_url=c["url"],
+                    availability="em_estoque", sku=c["sku"], image_url=None,
+                ))
+            return offers
+
+        for card in cards[:MAX_PRODUCTS]:
             try:
-                link = item.select_one('a[href*="/Item/Detalhes/"], a.item-title')
-                if not link:
+                name_tag = card.select_one("a.item-title")
+                if not name_tag:
                     continue
-                href = link.get("href", "")
-                name = link.get_text(strip=True) or self._name_from_url(href)
+                name = name_tag.get_text(strip=True)
                 if len(name) < 3:
                     continue
+                href = name_tag.get("href", "")
                 url = href if href.startswith("http") else f"{BASE_URL}{href}"
-                sku = None
-                for sel in ["button[data-itemref]", "[data-itemref]"]:
-                    el = item.select_one(sel)
-                    if el:
-                        sku = el.get("data-itemref") or self._sku_from_url(href)
-                        break
-                if not sku:
-                    sku = self._sku_from_url(href)
-                image_url = None
-                img = item.select_one("img")
-                if img:
-                    src = img.get("src") or img.get("data-src", "")
-                    if src and src.startswith("http"):
-                        image_url = src
-                cards.append({"name": name, "url": url, "sku": sku, "image_url": image_url})
-            except Exception:
-                continue
-        return cards
+                sku = name_tag.get("data-itemid") or self._sku_from_url(href)
 
-    def _enrich_with_detail(self, card: dict, idx: int) -> Optional[ProductOffer]:
-        try:
-            r = self.session.get(card["url"], timeout=DETAIL_TIMEOUT)
-            if not r.ok:
-                return None
-            soup = BeautifulSoup(r.text, "html.parser")
-            price = self._extract_price(soup)
-            image_url = card.get("image_url")
-            if not image_url:
-                for sel in ["img.w-100", 'img[src*="cdn"]', 'img[src*="produto"]', "img.img-fluid"]:
-                    img = soup.select_one(sel)
-                    if img:
-                        src = img.get("src") or img.get("data-src", "")
-                        if src and src.startswith("http"):
-                            image_url = src
+                if url in seen:
+                    continue
+                seen.add(url)
+
+                # Imagem
+                img = card.select_one("img.item-photo")
+                image_url = img.get("src") if img else None
+
+                # Preço: radio inputs têm valor em format "317.900" = R$ 317,90
+                price = 0.0
+                for radio in card.select("input[type=radio][value]"):
+                    try:
+                        p = float(radio.get("value", "0"))
+                        if p > 0:
+                            price = p
                             break
-            name = card["name"]
-            if len(name) < 3:
-                h = soup.select_one("h1, h2, .product-title, .item-title")
-                if h:
-                    name = h.get_text(strip=True)
-            logger.debug("  [%d] %s R$ %.2f", idx, name[:40], price)
-            return ProductOffer(
-                store=self.store_name,
-                product_name=name,
-                price=price,
-                product_url=card["url"],
-                add_to_cart_url=card["url"],
-                availability="em_estoque" if price > 0 else "indisponivel",
-                sku=card.get("sku"),
-                image_url=image_url,
-                description=None,
-                brand=None,
-            )
-        except Exception as e:
-            logger.debug("  [%d] detail error: %s", idx, e)
-            return None
+                    except ValueError:
+                        continue
 
-    def _extract_price(self, soup: BeautifulSoup) -> float:
-        btn = soup.select_one("button[data-itempreco]")
-        if btn:
-            try:
-                return float(str(btn.get("data-itempreco", "")).replace(",", "."))
-            except ValueError:
-                pass
-        for inp in soup.select("input.radio-value[type=radio]"):
-            try:
-                p = float(str(inp.get("value", "")).replace(",", "."))
-                if p > 0:
-                    return p
-            except ValueError:
-                continue
-        prices = []
-        for m in re.findall(r"R\$\s*([\d.,]+)", soup.get_text()):
-            try:
-                p = float(m.replace(".", "").replace(",", "."))
-                if 0.01 < p < 1_000_000:
-                    prices.append(p)
-            except ValueError:
-                continue
-        return min(prices) if prices else 0.0
+                # Fallback: data-itempreco no botão
+                if price == 0:
+                    btn = card.select_one("button[data-itempreco]")
+                    if btn:
+                        try:
+                            price = float(btn.get("data-itempreco", "0"))
+                        except ValueError:
+                            pass
 
-    @staticmethod
-    def _name_from_url(url: str) -> str:
-        m = re.search(r"/Item/Detalhes/\d+[-/](.+?)(?:\?|$)", url)
-        return m.group(1).replace("-", " ").title() if m else ""
+                logger.debug("  %s R$ %.2f", name[:40], price)
+                offers.append(ProductOffer(
+                    store=self.store_name,
+                    product_name=name,
+                    price=price,
+                    product_url=url,
+                    add_to_cart_url=url,
+                    availability="em_estoque" if price > 0 else "indisponivel",
+                    sku=sku,
+                    image_url=image_url,
+                    description=None,
+                    brand=None,
+                ))
+            except Exception as e:
+                logger.debug("Card error: %s", e)
+                continue
+
+        return offers
 
     @staticmethod
     def _sku_from_url(url: str) -> Optional[str]:
