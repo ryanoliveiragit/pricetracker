@@ -2,10 +2,10 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import AppLayout from "./layouts/AppLayout";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Results from "./pages/Results";
-import SearchProducts from "./pages/SearchProducts";
+import Home from "./views/Home";
+import Login from "./views/Login";
+import Results from "./views/Results";
+import SearchProducts from "./views/SearchProducts";
 
 export default function App() {
   return (

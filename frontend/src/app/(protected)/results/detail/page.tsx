@@ -1,4 +1,4 @@
-import OfferDetail from "../../../../pages/OfferDetail";
+import OfferDetail from "../../../../views/OfferDetail";
 
 export default function OfferDetailPage() {
   return <OfferDetail />;

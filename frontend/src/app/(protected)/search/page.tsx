@@ -1,4 +1,4 @@
-import ModernSearch from "../../../pages/ModernSearch";
+import ModernSearch from "../../../views/ModernSearch";
 
 export default function SearchProductsPage() {
   return <ModernSearch />;
