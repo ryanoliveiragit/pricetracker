@@ -1,5 +1,5 @@
 from typing import List, Optional
-import logging, re, urllib.parse
+import logging, re, urllib.parse, json, time
 import requests
 from bs4 import BeautifulSoup
 from app.scrapers.base_scraper import BaseScraper
@@ -13,6 +13,7 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 MAX_PRODUCTS = 40
+MAX_LOGIN_RETRIES = 3
 
 
 class CofemaScraper(BaseScraper):
@@ -35,60 +36,71 @@ class CofemaScraper(BaseScraper):
             return []
 
     def _do_login(self, username: str, password: str) -> bool:
-        try:
-            # GET homepage para obter cookies (token vem do cookie, não do HTML)
-            r = self.session.get(f"{BASE_URL}/Home", timeout=15)
-            r.raise_for_status()
-            token = self.session.cookies.get("__RequestVerificationToken", "")
+        for attempt in range(1, MAX_LOGIN_RETRIES + 1):
+            try:
+                r = self.session.get(f"{BASE_URL}/Home", timeout=15)
+                if r.status_code == 429:
+                    wait = attempt * 10
+                    logger.warning("Cofema: rate limit no GET /Home (tentativa %d/%d) — aguardando %ds", attempt, MAX_LOGIN_RETRIES, wait)
+                    time.sleep(wait)
+                    continue
+                r.raise_for_status()
 
-            # Simula abertura do modal de login
-            self.session.post(
-                f"{BASE_URL}/Home/GetLogonPage",
-                headers={**self.session.headers, "X-Requested-With": "XMLHttpRequest", "Referer": f"{BASE_URL}/Home"},
-                timeout=10,
-            )
+                # Token vem do cookie, não do HTML
+                token = self.session.cookies.get("__RequestVerificationToken", "")
+                time.sleep(1)
 
-            logger.info("Cofema login token=%s", "ok" if token else "missing")
+                self.session.post(
+                    f"{BASE_URL}/Home/GetLogonPage",
+                    headers={**self.session.headers, "X-Requested-With": "XMLHttpRequest", "Referer": f"{BASE_URL}/Home"},
+                    timeout=10,
+                )
+                time.sleep(0.5)
 
-            # Campos corretos: User, Password, RememberMe, ReturnUrl
-            r3 = self.session.post(
-                f"{BASE_URL}/Home/Logon",
-                data={
-                    "User": username,
-                    "Password": password,
-                    "RememberMe": "true",
-                    "ReturnUrl": "",
-                    "__RequestVerificationToken": token,
-                },
-                headers={
-                    **self.session.headers,
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": f"{BASE_URL}/Home",
-                    "Origin": BASE_URL,
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                    "Accept": "application/json, text/javascript, */*; q=0.01",
-                },
-                timeout=15,
-            )
-            if r3.ok:
-                try:
+                r3 = self.session.post(
+                    f"{BASE_URL}/Home/Logon",
+                    data={"User": username, "Password": password, "RememberMe": "true", "ReturnUrl": "", "__RequestVerificationToken": token},
+                    headers={
+                        **self.session.headers,
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Referer": f"{BASE_URL}/Home",
+                        "Origin": BASE_URL,
+                        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                        "Accept": "application/json, text/javascript, */*; q=0.01",
+                    },
+                    timeout=15,
+                )
+
+                if r3.status_code == 429:
+                    wait = attempt * 15
+                    logger.warning("Cofema: rate limit no Logon (tentativa %d/%d) — aguardando %ds", attempt, MAX_LOGIN_RETRIES, wait)
+                    time.sleep(wait)
+                    # Resetar sessão para nova tentativa
+                    self.session = requests.Session()
+                    self.session.headers.update(HEADERS)
+                    continue
+
+                if r3.ok and r3.text:
                     data = r3.json()
                     if data.get("success") or data.get("Success"):
                         self._logged_in = True
-                        logger.info("Cofema login OK")
+                        logger.info("Cofema login OK (tentativa %d)", attempt)
                         return True
                     logger.warning("Cofema login falhou: %s", data.get("message", ""))
-                except Exception:
-                    pass
-            logger.warning("Cofema login nao confirmado (%s)", r3.status_code)
-            return False
-        except Exception as e:
-            logger.error("Cofema login error: %s", e)
-            return False
+                    return False
+
+            except Exception as e:
+                logger.error("Cofema login error (tentativa %d): %s", attempt, e)
+                if attempt < MAX_LOGIN_RETRIES:
+                    time.sleep(attempt * 5)
+
+        logger.error("Cofema login: todas as tentativas falharam")
+        return False
 
     def _search(self, query: str) -> List[ProductOffer]:
         encoded = urllib.parse.quote(query)
         try:
+            time.sleep(1)
             r = self.session.get(f"{BASE_URL}/Produto/Listar/Busca/?q={encoded}", timeout=15)
             r.raise_for_status()
         except Exception as e:
@@ -99,49 +111,55 @@ class CofemaScraper(BaseScraper):
         inp = soup.find("input", {"name": "__RequestVerificationToken"})
         page_token = inp.get("value", "") if inp else self.session.cookies.get("__RequestVerificationToken", "")
 
-        # Extrair data-attrs do elemento grid para montar o POST correto
         grid_el = soup.find(attrs={"data-grid": True})
-        grid_data = {}
-        if grid_el:
-            for attr, val in grid_el.attrs.items():
-                if attr.startswith("data-"):
-                    key = attr[5:]  # remove "data-"
-                    grid_data[key] = val
+        gd = {k[5:]: v for k, v in grid_el.attrs.items() if k.startswith("data-")} if grid_el else {}
 
-        html = self._fetch_grid(query, page_token, grid_data)
+        time.sleep(1)
+        html = self._fetch_grid(query, page_token, gd)
         if not html:
             logger.warning("Cofema: grid vazio")
             return []
 
-        offers = self._parse_grid_html(html)
-        logger.info("Cofema: %d ofertas", len(offers))
-        return offers
+        offers, missing_price_ids = self._parse_grid_html(html)
 
-    def _fetch_grid(self, query: str, token: str, grid_data: dict) -> str:
+        # Buscar preços via GetStock para produtos sem preço
+        if missing_price_ids and self._logged_in:
+            logger.info("Cofema: buscando preços via GetStock para %d produtos", len(missing_price_ids))
+            time.sleep(1)
+            prices = self._fetch_stock_prices(list(missing_price_ids.keys()), page_token)
+            for offer in offers:
+                if offer.price == 0 and offer.sku in prices:
+                    offer.price = prices[offer.sku]
+                    offer.availability = "em_estoque" if offer.price > 0 else "indisponivel"
+
+        result = [o for o in offers if o.price > 0]
+        logger.info("Cofema: %d ofertas com preço", len(result))
+        return result
+
+    def _fetch_grid(self, query: str, token: str, gd: dict) -> str:
         encoded = urllib.parse.quote(query)
         try:
-            payload = {
-                "getPage": "1",
-                "rows": grid_data.get("rows", "24"),
-                "grid": grid_data.get("grid", "GridItens"),
-                "header": grid_data.get("header", "false"),
-                "showInfo": grid_data.get("showinfo", "true"),
-                "paramFilter": query,
-                "layout": grid_data.get("layout", "VitrineProdutos"),
-                "id": grid_data.get("id", "0"),
-                "order": grid_data.get("order", ""),
-                "parentId": grid_data.get("param-parentid", "0"),
-                "filtercolumn": grid_data.get("filtercolumn", "busca"),
-                "filter": query,
-                "paramParentid": grid_data.get("param-parentid", "0"),
-                "paramMarcaid": grid_data.get("param-marcaid", "0"),
-                "paramIsrelampago": grid_data.get("param-isrelampago", ""),
-                "paramTabela": grid_data.get("param-tabela", ""),
-                "__RequestVerificationToken": token,
-            }
             r = self.session.post(
                 f"{BASE_URL}/Item/GridItens",
-                data=payload,
+                data={
+                    "getPage": "1",
+                    "rows": gd.get("rows", "24"),
+                    "grid": gd.get("grid", "GridItens"),
+                    "header": gd.get("header", "false"),
+                    "showInfo": gd.get("showinfo", "true"),
+                    "paramFilter": query,
+                    "layout": gd.get("layout", "VitrineProdutos"),
+                    "id": gd.get("id", "0"),
+                    "order": gd.get("order", ""),
+                    "parentId": gd.get("param-parentid", "0"),
+                    "filtercolumn": gd.get("filtercolumn", "busca"),
+                    "filter": query,
+                    "paramParentid": gd.get("param-parentid", "0"),
+                    "paramMarcaid": gd.get("param-marcaid", "0"),
+                    "paramIsrelampago": gd.get("param-isrelampago", ""),
+                    "paramTabela": gd.get("param-tabela", ""),
+                    "__RequestVerificationToken": token,
+                },
                 headers={
                     **self.session.headers,
                     "X-Requested-With": "XMLHttpRequest",
@@ -159,30 +177,68 @@ class CofemaScraper(BaseScraper):
             logger.error("Cofema GridItens error: %s", e)
         return ""
 
-    def _parse_grid_html(self, html: str) -> List[ProductOffer]:
+    def _fetch_stock_prices(self, item_ids: List[str], token: str) -> dict:
+        """Busca preços via /Item/GetStock. Retorna dict {sku: price}."""
+        try:
+            r = self.session.post(
+                f"{BASE_URL}/Item/GetStock",
+                data={"list": json.dumps([int(i) for i in item_ids]), "__RequestVerificationToken": token},
+                headers={
+                    **self.session.headers,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE_URL}/Produto/Listar/Busca/",
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                },
+                timeout=20,
+            )
+            if not r.ok or not r.text:
+                return {}
+            data = r.json()
+            if not data.get("success"):
+                logger.warning("Cofema GetStock falhou: %s", data.get("message", ""))
+                return {}
+
+            soup = BeautifulSoup(data.get("data", ""), "html.parser")
+            prices = {}
+            for item_el in soup.select("[data-item]"):
+                sku = item_el.get("data-item")
+                if not sku:
+                    continue
+                # Preço em radio inputs: valor como "317.900" = R$317,90
+                for radio in item_el.select("input[type=radio][value]"):
+                    try:
+                        p = float(radio.get("value", "0"))
+                        if p > 0:
+                            prices[sku] = p
+                            break
+                    except ValueError:
+                        continue
+                # Fallback: data-itempreco no botão
+                if sku not in prices:
+                    btn = item_el.select_one("button[data-itempreco]")
+                    if btn:
+                        try:
+                            p = float(btn.get("data-itempreco", "0"))
+                            if p > 0:
+                                prices[sku] = p
+                        except ValueError:
+                            pass
+            logger.info("Cofema GetStock: %d preços recebidos", len(prices))
+            return prices
+        except Exception as e:
+            logger.error("Cofema GetStock error: %s", e)
+            return {}
+
+    def _parse_grid_html(self, html: str):
+        """Retorna (offers, missing_price_ids) onde missing é {sku: True} para offers sem preço."""
         soup = BeautifulSoup(html, "html.parser")
         offers: List[ProductOffer] = []
+        missing: dict = {}
         seen: set = set()
 
         cards = soup.select("div.main-data-add")
         if not cards:
-            # fallback: links diretos
-            cards_data = []
-            for link in soup.select('a[href*="/Item/Detalhes/"]'):
-                href = link.get("href", "")
-                if not href or href in seen:
-                    continue
-                seen.add(href)
-                name = link.get_text(strip=True)
-                if len(name) >= 3:
-                    cards_data.append({"name": name, "url": f"{BASE_URL}{href}", "sku": self._sku_from_url(href), "price": 0.0, "image_url": None})
-            for c in cards_data[:MAX_PRODUCTS]:
-                offers.append(ProductOffer(
-                    store=self.store_name, product_name=c["name"], price=c["price"],
-                    product_url=c["url"], add_to_cart_url=c["url"],
-                    availability="em_estoque", sku=c["sku"], image_url=None,
-                ))
-            return offers
+            return offers, missing
 
         for card in cards[:MAX_PRODUCTS]:
             try:
@@ -200,11 +256,10 @@ class CofemaScraper(BaseScraper):
                     continue
                 seen.add(url)
 
-                # Imagem
                 img = card.select_one("img.item-photo")
                 image_url = img.get("src") if img else None
 
-                # Preço: radio inputs têm valor em format "317.900" = R$ 317,90
+                # Preço: radio inputs têm valor "317.900" = R$317,90
                 price = 0.0
                 for radio in card.select("input[type=radio][value]"):
                     try:
@@ -215,7 +270,6 @@ class CofemaScraper(BaseScraper):
                     except ValueError:
                         continue
 
-                # Fallback: data-itempreco no botão
                 if price == 0:
                     btn = card.select_one("button[data-itempreco]")
                     if btn:
@@ -224,8 +278,7 @@ class CofemaScraper(BaseScraper):
                         except ValueError:
                             pass
 
-                logger.debug("  %s R$ %.2f", name[:40], price)
-                offers.append(ProductOffer(
+                offer = ProductOffer(
                     store=self.store_name,
                     product_name=name,
                     price=price,
@@ -236,12 +289,17 @@ class CofemaScraper(BaseScraper):
                     image_url=image_url,
                     description=None,
                     brand=None,
-                ))
+                )
+                offers.append(offer)
+
+                if price == 0 and sku:
+                    missing[sku] = True
+
             except Exception as e:
                 logger.debug("Card error: %s", e)
                 continue
 
-        return offers
+        return offers, missing
 
     @staticmethod
     def _sku_from_url(url: str) -> Optional[str]:
