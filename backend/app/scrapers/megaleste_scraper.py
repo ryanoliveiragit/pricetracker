@@ -200,16 +200,12 @@ class MegalesteScraper(BaseScraper):
                     if m:
                         sku = m.group(1)
 
-                # URL do produto — prioriza link direto ao produto, evita links de modal/quick-view
-                link_tag = div.select_one("a[href*='/produto/']:not(.btn-modal)") \
-                    or div.select_one("a[href*='/produto/']") \
-                    or div.select_one("a.show-lupa")
-                if link_tag and link_tag.get("href"):
-                    product_url = link_tag["href"].replace(":443", "").split("?")[0]
-                    if not product_url.startswith("http"):
-                        product_url = BASE_URL + product_url
+                # URL do produto — /c/produto/{id} é endpoint AJAX de modal (retorna JSON),
+                # não é uma página navegável. Usar busca com o nome como URL de referência.
+                if product_name:
+                    product_url = f"{BASE_URL}/c/busca?q={urllib.parse.quote(product_name)}"
                 elif product_id:
-                    product_url = f"{BASE_URL}/c/produto/{product_id}"
+                    product_url = f"{BASE_URL}/c/busca?q={product_id}"
                 else:
                     product_url = BASE_URL
 

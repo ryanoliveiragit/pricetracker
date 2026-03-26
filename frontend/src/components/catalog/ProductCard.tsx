@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, BookmarkPlus, Bookmark } from "lucide-react";
+import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, BookmarkPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { Offer } from "@/types/search";
@@ -171,32 +171,44 @@ export function ProductCard({ offer, index = 0, onImageClick }: ProductCardProps
           </div>
         </div>
 
-        {/* Action icons */}
-        <div className="flex items-center justify-end gap-0.5">
-          <button onClick={() => setAnalysisOpen(true)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 dark:text-neutral-600 transition hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-500 dark:hover:text-neutral-400"
-            title="Analisar preço">
-            <BarChart2 className="h-3.5 w-3.5" />
-          </button>
-          {matchedProduct && (
-            <button onClick={handleUpdateProduct}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 dark:text-neutral-600 transition hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-500 dark:hover:text-neutral-400"
-              title={`Atualizar "${matchedProduct.name}"`}>
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-          )}
-          <button onClick={handleRegisterProduct} disabled={registered}
-            className={cn("flex h-7 w-7 items-center justify-center rounded-lg transition",
-              registered ? "text-emerald-500 dark:text-emerald-400" : "text-slate-300 dark:text-neutral-600 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-500 dark:hover:text-neutral-400"
+        {/* Actions */}
+        <div className="flex items-center justify-between gap-1.5">
+          {/* Salvar no catálogo — botão com texto */}
+          <button
+            onClick={registered ? undefined : handleRegisterProduct}
+            disabled={registered}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all",
+              registered
+                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 cursor-default"
+                : "border border-dashed border-slate-200 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
             )}
-            title={registered ? "Cadastrado" : "Cadastrar no catálogo"}>
-            {registered ? <Bookmark className="h-3.5 w-3.5 fill-current" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
+          >
+            {registered
+              ? <><Check className="h-3 w-3" /> Salvo no catálogo</>
+              : <><BookmarkPlus className="h-3 w-3" /> Salvar produto</>}
           </button>
-          <a href={offer.productUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 dark:text-neutral-600 transition hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-500 dark:hover:text-neutral-400"
-            title="Ver no site">
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+
+          {/* Ações secundárias */}
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => setAnalysisOpen(true)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 dark:text-neutral-600 transition hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-500 dark:hover:text-neutral-400"
+              title="Analisar preço">
+              <BarChart2 className="h-3.5 w-3.5" />
+            </button>
+            {matchedProduct && (
+              <button onClick={handleUpdateProduct}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 dark:text-neutral-600 transition hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-500 dark:hover:text-neutral-400"
+                title={`Atualizar "${matchedProduct.name}"`}>
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <a href={offer.productUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 dark:text-neutral-600 transition hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-500 dark:hover:text-neutral-400"
+              title="Ver no site">
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
         </div>
 
         {/* Cart */}
