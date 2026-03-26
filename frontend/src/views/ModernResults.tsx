@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3, AlertCircle,
   Search, SlidersHorizontal, Tag,
-  ArrowUpDown, ChevronLeft, ChevronRight, RefreshCw, Clock,
-  X, Star, Store as StoreIcon, Grid3X3, List,
+  ChevronLeft, ChevronRight, RefreshCw, Clock,
+  X, Star, Store as StoreIcon, Grid3X3, List, Package, Layers,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -87,6 +87,8 @@ export default function ModernResults() {
   const [priceMax, setPriceMax] = useState(99999);
   const [activeSuppliers, setActiveSuppliers] = useState<Set<string>>(new Set());
   const [activeBrands, setActiveBrands] = useState<Set<string>>(new Set());
+  const [activeQueries, setActiveQueries] = useState<Set<string>>(new Set());
+  const [activeUnits, setActiveUnits] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -125,9 +127,26 @@ export default function ModernResults() {
 
   const allBrands = useMemo(() => {
     const s = new Set<string>();
-    allOffers.forEach((o) => {
-      if (o.brand) s.add(o.brand);
-    });
+    allOffers.forEach((o) => { if (o.brand) s.add(o.brand); });
+    return Array.from(s).sort();
+  }, [allOffers]);
+
+  function extractUnit(name: string): string | null {
+    const n = name.toLowerCase();
+    if (/\d+\s*kg/.test(n)) return "KG";
+    if (/\d+\s*(litro|lt\b|l\b)/.test(n)) return "L";
+    if (/\d+\s*ml/.test(n)) return "ML";
+    if (/\d+\s*m²/.test(n)) return "M²";
+    if (/\d+\s*m\b/.test(n)) return "M";
+    if (/\b(cx|caixa)\b/.test(n)) return "CX";
+    if (/\b(sc|saco)\b/.test(n)) return "SC";
+    if (/\b(pc|peça|peca)\b/.test(n)) return "PC";
+    return null;
+  }
+
+  const allUnits = useMemo(() => {
+    const s = new Set<string>();
+    allOffers.forEach((o) => { const u = extractUnit(o.productName); if (u) s.add(u); });
     return Array.from(s).sort();
   }, [allOffers]);
 
@@ -149,6 +168,8 @@ export default function ModernResults() {
       if (o.price > 0 && (o.price < priceMin || o.price > priceMax)) return false;
       if (activeSuppliers.size > 0 && !activeSuppliers.has(o.store)) return false;
       if (activeBrands.size > 0 && !(o.brand && activeBrands.has(o.brand))) return false;
+      if (activeQueries.size > 0 && !activeQueries.has(o.rawQuery)) return false;
+      if (activeUnits.size > 0 && !activeUnits.has(extractUnit(o.productName) ?? "")) return false;
       return true;
     });
   }, [allOffers, cardSearch, onlyInStock, priceMin, priceMax, activeSuppliers, activeBrands]);
@@ -177,7 +198,7 @@ export default function ModernResults() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  useEffect(() => { setPage(1); }, [cardSearch, onlyInStock, onlyBestPrice, priceMin, priceMax, activeSuppliers, activeBrands, sortBy]);
+  useEffect(() => { setPage(1); }, [cardSearch, onlyInStock, onlyBestPrice, priceMin, priceMax, activeSuppliers, activeBrands, activeQueries, activeUnits, sortBy]);
 
   function toggleSupplier(name: string) {
     setActiveSuppliers((prev) => {
@@ -195,25 +216,34 @@ export default function ModernResults() {
     });
   }
 
+  function toggleQuery(name: string) {
+    setActiveQueries((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+  }
+  function toggleUnit(u: string) {
+    setActiveUnits((prev) => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n; });
+  }
+
   function clearFilters() {
     setCardSearch("");
     setOnlyInStock(false);
     setOnlyBestPrice(false);
     setActiveSuppliers(new Set());
     setActiveBrands(new Set());
+    setActiveQueries(new Set());
+    setActiveUnits(new Set());
     setPriceMin(priceStats.min);
     setPriceMax(priceStats.max);
   }
 
   const hasActiveFilters =
-    !!cardSearch || onlyInStock || onlyBestPrice || activeSuppliers.size > 0 || activeBrands.size > 0;
+    !!cardSearch || onlyInStock || onlyBestPrice ||
+    activeSuppliers.size > 0 || activeBrands.size > 0 ||
+    activeQueries.size > 0 || activeUnits.size > 0;
 
   const activeFilterCount = [
-    !!cardSearch,
-    onlyInStock,
-    onlyBestPrice,
-    activeSuppliers.size > 0,
-    activeBrands.size > 0,
+    !!cardSearch, onlyInStock, onlyBestPrice,
+    activeSuppliers.size > 0, activeBrands.size > 0,
+    activeQueries.size > 0, activeUnits.size > 0,
     priceMin !== priceStats.min || priceMax !== priceStats.max,
   ].filter(Boolean).length;
 
@@ -330,6 +360,58 @@ export default function ModernResults() {
           <span>{formatBRL(priceMax)}</span>
         </div>
       </div>
+
+      {/* Produtos buscados */}
+      {items.length > 1 && (
+        <div>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
+            <Layers className="inline h-3 w-3 mr-1" />
+            Produtos ({items.length})
+          </p>
+          <div className="space-y-0.5">
+            {items.map((q) => {
+              const count = allOffers.filter((o) => o.rawQuery === q).length;
+              return (
+                <label key={q} className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={activeQueries.has(q)} onChange={() => toggleQuery(q)}
+                      className="h-3.5 w-3.5 rounded accent-emerald-500" />
+                    <span className="truncate text-xs text-slate-600 dark:text-neutral-300">{q}</span>
+                  </div>
+                  <span className="flex-shrink-0 ml-1 text-[10px] text-slate-400 dark:text-neutral-500">{count}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Unidade/Tamanho */}
+      {allUnits.length > 1 && (
+        <div>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
+            <Package className="inline h-3 w-3 mr-1" />
+            Embalagem
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {allUnits.map((u) => {
+              const count = allOffers.filter((o) => extractUnit(o.productName) === u).length;
+              return (
+                <button key={u} onClick={() => toggleUnit(u)}
+                  className={cn(
+                    "rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors border",
+                    activeUnits.has(u)
+                      ? "bg-emerald-500 border-emerald-500 text-white"
+                      : "border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 hover:border-emerald-300 hover:text-emerald-600"
+                  )}
+                >
+                  {u} <span className="opacity-60">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Brands */}
       {allBrands.length > 0 && (
@@ -476,6 +558,18 @@ export default function ModernResults() {
               <button onClick={() => setOnlyInStock(false)} className="ml-0.5"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
+          {Array.from(activeQueries).map((q) => (
+            <span key={q} className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-400">
+              <Layers className="h-2.5 w-2.5" />{q}
+              <button onClick={() => toggleQuery(q)} className="ml-0.5"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          ))}
+          {Array.from(activeUnits).map((u) => (
+            <span key={u} className="inline-flex items-center gap-1 rounded-full bg-orange-50 dark:bg-orange-500/10 px-2.5 py-1 text-[11px] font-medium text-orange-700 dark:text-orange-400">
+              <Package className="h-2.5 w-2.5" />{u}
+              <button onClick={() => toggleUnit(u)} className="ml-0.5"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          ))}
           {Array.from(activeBrands).map((b) => (
             <span key={b} className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-700 dark:text-violet-400">
               {b}

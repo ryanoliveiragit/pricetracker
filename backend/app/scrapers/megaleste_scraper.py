@@ -200,10 +200,12 @@ class MegalesteScraper(BaseScraper):
                     if m:
                         sku = m.group(1)
 
-                # URL do produto
-                link_tag = div.select_one("a.btn-modal.show-lupa, a.show-lupa, a[href*='/produto/']")
+                # URL do produto — prioriza link direto ao produto, evita links de modal/quick-view
+                link_tag = div.select_one("a[href*='/produto/']:not(.btn-modal)") \
+                    or div.select_one("a[href*='/produto/']") \
+                    or div.select_one("a.show-lupa")
                 if link_tag and link_tag.get("href"):
-                    product_url = link_tag["href"].replace(":443", "")
+                    product_url = link_tag["href"].replace(":443", "").split("?")[0]
                     if not product_url.startswith("http"):
                         product_url = BASE_URL + product_url
                 elif product_id:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, Store as StoreIcon } from "lucide-react";
+import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, Store as StoreIcon, BookmarkPlus, Bookmark } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { Offer } from "@/types/search";
@@ -29,13 +29,14 @@ function availabilityBadge(status: string) {
 }
 
 export function ProductCard({ offer, index = 0, onImageClick }: ProductCardProps) {
-  const { products, updateProduct } = useProductCatalog();
+  const { products, updateProduct, createProduct } = useProductCatalog();
   const addItem = useCartStore((s) => s.addItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
   const items = useCartStore((s) => s.items);
   const [justAdded, setJustAdded] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   const itemId = `${offer.store}-${offer.sku ?? offer.productName}`;
   const cartItem = items.find((i) => i.id === itemId);
@@ -65,6 +66,37 @@ export function ProductCard({ offer, index = 0, onImageClick }: ProductCardProps
     const nameNorm = offer.productName.toLowerCase().replace(/^✓\s*/, "");
     return nameNorm.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(nameNorm.split(" ").slice(0, 3).join(" "));
   });
+
+  function inferUnit(name: string): string {
+    const n = name.toLowerCase();
+    if (/\d+\s*kg/.test(n)) return "KG";
+    if (/\d+\s*(l|lt|litro)/.test(n)) return "L";
+    if (/\d+\s*ml/.test(n)) return "ML";
+    if (/\d+\s*m²/.test(n)) return "M²";
+    if (/\d+\s*m/.test(n)) return "M";
+    if (/\b(cx|caixa)\b/.test(n)) return "CX";
+    if (/\b(sc|saco)\b/.test(n)) return "SC";
+    if (/\b(pc|peça|peca)\b/.test(n)) return "PC";
+    return "UN";
+  }
+
+  async function handleRegisterProduct() {
+    try {
+      await createProduct({
+        name: offer.productName,
+        category: "",
+        brand: offer.brand ?? "",
+        unit: inferUnit(offer.productName),
+        sku: offer.sku ?? "",
+        logo: offer.imageUrl?.startsWith("http") ? offer.imageUrl : "",
+        notes: "",
+      });
+      setRegistered(true);
+      toast.success("Produto cadastrado no catálogo!");
+    } catch {
+      toast.error("Erro ao cadastrar produto");
+    }
+  }
 
   async function handleUpdateProduct() {
     if (!matchedProduct) {
@@ -189,6 +221,19 @@ export function ProductCard({ offer, index = 0, onImageClick }: ProductCardProps
                 <RefreshCw className="h-3 w-3" />
               </button>
             )}
+            <button
+              onClick={handleRegisterProduct}
+              disabled={registered}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-lg transition",
+                registered
+                  ? "text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10"
+                  : "text-slate-400 dark:text-neutral-500 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-emerald-600 dark:hover:text-emerald-400"
+              )}
+              title={registered ? "Cadastrado no catálogo" : "Cadastrar no catálogo"}
+            >
+              {registered ? <Bookmark className="h-3.5 w-3.5 fill-current" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
+            </button>
             <a
               href={offer.productUrl}
               target="_blank"
