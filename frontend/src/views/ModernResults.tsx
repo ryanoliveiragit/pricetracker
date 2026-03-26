@@ -172,7 +172,7 @@ export default function ModernResults() {
       if (activeUnits.size > 0 && !activeUnits.has(extractUnit(o.productName) ?? "")) return false;
       return true;
     });
-  }, [allOffers, cardSearch, onlyInStock, priceMin, priceMax, activeSuppliers, activeBrands]);
+  }, [allOffers, cardSearch, onlyInStock, priceMin, priceMax, activeSuppliers, activeBrands, activeQuery, activeUnits]);
 
   // Calculate best price WITHIN the currently visible (pre-filtered) results
   const lowestPriceInFiltered = useMemo(() => {
