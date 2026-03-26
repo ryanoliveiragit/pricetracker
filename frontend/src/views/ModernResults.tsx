@@ -87,7 +87,7 @@ export default function ModernResults() {
   const [priceMax, setPriceMax] = useState(99999);
   const [activeSuppliers, setActiveSuppliers] = useState<Set<string>>(new Set());
   const [activeBrands, setActiveBrands] = useState<Set<string>>(new Set());
-  const [activeQueries, setActiveQueries] = useState<Set<string>>(new Set());
+  const [activeQuery, setActiveQuery] = useState<string | null>(null);
   const [activeUnits, setActiveUnits] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -168,7 +168,7 @@ export default function ModernResults() {
       if (o.price > 0 && (o.price < priceMin || o.price > priceMax)) return false;
       if (activeSuppliers.size > 0 && !activeSuppliers.has(o.store)) return false;
       if (activeBrands.size > 0 && !(o.brand && activeBrands.has(o.brand))) return false;
-      if (activeQueries.size > 0 && !activeQueries.has(o.rawQuery)) return false;
+      if (activeQuery !== null && o.rawQuery !== activeQuery) return false;
       if (activeUnits.size > 0 && !activeUnits.has(extractUnit(o.productName) ?? "")) return false;
       return true;
     });
@@ -198,7 +198,7 @@ export default function ModernResults() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  useEffect(() => { setPage(1); }, [cardSearch, onlyInStock, onlyBestPrice, priceMin, priceMax, activeSuppliers, activeBrands, activeQueries, activeUnits, sortBy]);
+  useEffect(() => { setPage(1); }, [cardSearch, onlyInStock, onlyBestPrice, priceMin, priceMax, activeSuppliers, activeBrands, activeQuery, activeUnits, sortBy]);
 
   function toggleSupplier(name: string) {
     setActiveSuppliers((prev) => {
@@ -216,8 +216,8 @@ export default function ModernResults() {
     });
   }
 
-  function toggleQuery(name: string) {
-    setActiveQueries((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+  function selectQuery(name: string) {
+    setActiveQuery((prev) => prev === name ? null : name);
   }
   function toggleUnit(u: string) {
     setActiveUnits((prev) => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n; });
@@ -229,7 +229,7 @@ export default function ModernResults() {
     setOnlyBestPrice(false);
     setActiveSuppliers(new Set());
     setActiveBrands(new Set());
-    setActiveQueries(new Set());
+    setActiveQuery(null);
     setActiveUnits(new Set());
     setPriceMin(priceStats.min);
     setPriceMax(priceStats.max);
@@ -238,12 +238,12 @@ export default function ModernResults() {
   const hasActiveFilters =
     !!cardSearch || onlyInStock || onlyBestPrice ||
     activeSuppliers.size > 0 || activeBrands.size > 0 ||
-    activeQueries.size > 0 || activeUnits.size > 0;
+    activeQuery !== null || activeUnits.size > 0;
 
   const activeFilterCount = [
     !!cardSearch, onlyInStock, onlyBestPrice,
     activeSuppliers.size > 0, activeBrands.size > 0,
-    activeQueries.size > 0, activeUnits.size > 0,
+    activeQuery !== null, activeUnits.size > 0,
     priceMin !== priceStats.min || priceMax !== priceStats.max,
   ].filter(Boolean).length;
 
@@ -366,20 +366,38 @@ export default function ModernResults() {
         <div>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
             <Layers className="inline h-3 w-3 mr-1" />
-            Produtos ({items.length})
+            Produto
           </p>
-          <div className="space-y-0.5">
+          <div className="space-y-1">
+            <button
+              onClick={() => setActiveQuery(null)}
+              className={cn(
+                "w-full flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium transition-colors",
+                activeQuery === null
+                  ? "bg-slate-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
+                  : "text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
+              )}
+            >
+              <span>Todos</span>
+              <span className="text-[10px] opacity-60">{allOffers.length}</span>
+            </button>
             {items.map((q) => {
               const count = allOffers.filter((o) => o.rawQuery === q).length;
+              const isActive = activeQuery === q;
               return (
-                <label key={q} className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={activeQueries.has(q)} onChange={() => toggleQuery(q)}
-                      className="h-3.5 w-3.5 rounded accent-emerald-500" />
-                    <span className="truncate text-xs text-slate-600 dark:text-neutral-300">{q}</span>
-                  </div>
-                  <span className="flex-shrink-0 ml-1 text-[10px] text-slate-400 dark:text-neutral-500">{count}</span>
-                </label>
+                <button
+                  key={q}
+                  onClick={() => selectQuery(q)}
+                  className={cn(
+                    "w-full flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium transition-colors text-left",
+                    isActive
+                      ? "bg-emerald-500 text-white"
+                      : "text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800"
+                  )}
+                >
+                  <span className="truncate">{q}</span>
+                  <span className={cn("flex-shrink-0 ml-2 text-[10px]", isActive ? "opacity-70" : "text-slate-400 dark:text-neutral-500")}>{count}</span>
+                </button>
               );
             })}
           </div>
@@ -558,12 +576,12 @@ export default function ModernResults() {
               <button onClick={() => setOnlyInStock(false)} className="ml-0.5"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
-          {Array.from(activeQueries).map((q) => (
-            <span key={q} className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-400">
-              <Layers className="h-2.5 w-2.5" />{q}
-              <button onClick={() => toggleQuery(q)} className="ml-0.5"><X className="h-2.5 w-2.5" /></button>
+          {activeQuery !== null && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 dark:bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-white dark:text-neutral-900">
+              <Layers className="h-2.5 w-2.5" />{activeQuery}
+              <button onClick={() => setActiveQuery(null)} className="ml-0.5"><X className="h-2.5 w-2.5" /></button>
             </span>
-          ))}
+          )}
           {Array.from(activeUnits).map((u) => (
             <span key={u} className="inline-flex items-center gap-1 rounded-full bg-orange-50 dark:bg-orange-500/10 px-2.5 py-1 text-[11px] font-medium text-orange-700 dark:text-orange-400">
               <Package className="h-2.5 w-2.5" />{u}
