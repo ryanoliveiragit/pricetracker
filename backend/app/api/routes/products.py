@@ -100,96 +100,71 @@ async def update_variants(product_id: str, data: dict, db: AsyncSession = Depend
     return _to_camel_dict(p)
 
 
+async def _ai_suggest(name: str) -> list[str]:
+    """Chama Perplexity API para sugerir variantes de um produto."""
+    import os, re, json
+    import httpx
+
+    api_key = os.getenv("PERPLEXITY_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="PERPLEXITY_API_KEY não configurada")
+
+    prompt = (
+        f"Você é um especialista em materiais de construção brasileiro.\n"
+        f"Produto: \"{name}\"\n"
+        f"Gere uma lista de sinônimos, nomes alternativos e variações como este produto pode ser chamado "
+        f"em diferentes lojas ou regiões do Brasil (ex: nomes populares, abreviações, termos técnicos).\n"
+        f"Retorne APENAS um array JSON com strings, sem explicações. Máximo 8 itens. Exemplo:\n"
+        f'["nome alternativo 1", "nome alternativo 2"]'
+    )
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "sonar",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+            },
+        )
+        response.raise_for_status()
+        text = response.json()["choices"][0]["message"]["content"].strip()
+
+    match = re.search(r'\[.*?\]', text, re.DOTALL)
+    if not match:
+        raise ValueError(f"AI não retornou JSON válido: {text[:200]}")
+    suggestions = [s.strip().lower() for s in json.loads(match.group()) if s.strip()]
+    return [s for s in suggestions if s != name.lower()][:8]
+
+
 @router.post("/products/{product_id}/generate-variants")
 async def generate_variants(product_id: str, db: AsyncSession = Depends(get_db)):
-    """Gera variantes/sinônimos para o produto usando Gemini."""
-    import os
+    """Gera variantes/sinônimos para o produto usando IA."""
     p = await db.get(ProductDB, product_id)
     if not p:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
-
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="GEMINI_API_KEY não configurada")
-
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-
-        prompt = (
-            f"Você é um especialista em materiais de construção brasileiro.\n"
-            f"Produto: \"{p.name}\"\n"
-            f"Gere uma lista de sinônimos, nomes alternativos e variações como este produto pode ser chamado "
-            f"em diferentes lojas ou regiões do Brasil (ex: nomes populares, abreviações, termos técnicos).\n"
-            f"Retorne APENAS um array JSON com strings, sem explicações. Máximo 8 itens. Exemplo:\n"
-            f'["nome alternativo 1", "nome alternativo 2"]'
-        )
-
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-
-        # Extrair JSON da resposta
-        import re
-        match = re.search(r'\[.*?\]', text, re.DOTALL)
-        if not match:
-            raise ValueError("Gemini não retornou JSON válido")
-
-        suggestions = [s.strip().lower() for s in __import__('json').loads(match.group()) if s.strip()]
-        # Remover o próprio nome do produto das sugestões
-        name_lower = p.name.lower()
-        suggestions = [s for s in suggestions if s != name_lower][:8]
-
-        return {"suggestions": suggestions}
-
+        return {"suggestions": await _ai_suggest(p.name)}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Gemini error: {e}")
+        logger.error(f"AI suggest error: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao gerar variantes: {str(e)}")
 
 
 @router.post("/products/suggest-variants")
 async def suggest_variants_by_name(data: dict):
     """Sugere variantes para um produto pelo nome (sem necessidade de ID)."""
-    import os, re, json
     name = (data.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name é obrigatório")
-
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="GEMINI_API_KEY não configurada")
-
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-
-        prompt = (
-            f"Você é um especialista em materiais de construção brasileiro.\n"
-            f"Produto: \"{name}\"\n"
-            f"Gere uma lista de sinônimos, nomes alternativos e variações como este produto pode ser chamado "
-            f"em diferentes lojas ou regiões do Brasil (ex: nomes populares, abreviações, termos técnicos).\n"
-            f"Retorne APENAS um array JSON com strings, sem explicações. Máximo 8 itens. Exemplo:\n"
-            f'["nome alternativo 1", "nome alternativo 2"]'
-        )
-
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-
-        match = re.search(r'\[.*?\]', text, re.DOTALL)
-        if not match:
-            raise ValueError("Gemini não retornou JSON válido")
-
-        suggestions = [s.strip().lower() for s in json.loads(match.group()) if s.strip()]
-        suggestions = [s for s in suggestions if s != name.lower()][:8]
-        return {"suggestions": suggestions}
-
+        return {"suggestions": await _ai_suggest(name)}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Gemini error: {e}")
+        logger.error(f"AI suggest error: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao gerar variantes: {str(e)}")
 
 
