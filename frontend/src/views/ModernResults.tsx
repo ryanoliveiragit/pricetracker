@@ -837,6 +837,7 @@ export default function ModernResults() {
                       offer={{ ...offer, isBestPrice: isBest }}
                       index={i}
                       onImageClick={openModal}
+                      searchQuery={offer.rawQuery}
                     />
                   );
                 })}

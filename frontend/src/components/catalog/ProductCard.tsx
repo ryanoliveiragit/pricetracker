@@ -14,6 +14,7 @@ interface ProductCardProps {
   offer: Offer;
   index?: number;
   onImageClick: (images: string[], index: number, name: string) => void;
+  searchQuery?: string;
 }
 
 function formatBRL(value: number) {
@@ -28,7 +29,7 @@ function availabilityConfig(status: string) {
   return { label: "Indisponível", dot: "bg-red-400", text: "text-red-400 dark:text-red-400" };
 }
 
-export function ProductCard({ offer, index = 0, onImageClick }: ProductCardProps) {
+export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: ProductCardProps) {
   const { products, updateProduct, createProduct } = useProductCatalog();
   const addItem = useCartStore((s) => s.addItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -60,24 +61,14 @@ export function ProductCard({ offer, index = 0, onImageClick }: ProductCardProps
     return nameNorm.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(nameNorm.split(" ").slice(0, 3).join(" "));
   });
 
-  function inferUnit(name: string): string {
-    const n = name.toLowerCase();
-    if (/\d+\s*kg/.test(n)) return "KG";
-    if (/\d+\s*(l|lt|litro)/.test(n)) return "L";
-    if (/\d+\s*ml/.test(n)) return "ML";
-    if (/\d+\s*m²/.test(n)) return "M²";
-    if (/\d+\s*m/.test(n)) return "M";
-    if (/\b(cx|caixa)\b/.test(n)) return "CX";
-    if (/\b(sc|saco)\b/.test(n)) return "SC";
-    if (/\b(pc|peça|peca)\b/.test(n)) return "PC";
-    return "UN";
-  }
-
   async function handleRegisterProduct() {
+    const productName = searchQuery?.trim()
+      ? searchQuery.trim().charAt(0).toUpperCase() + searchQuery.trim().slice(1).toLowerCase()
+      : offer.productName;
     try {
       await createProduct({
-        name: offer.productName, category: "", brand: offer.brand ?? "",
-        unit: inferUnit(offer.productName), sku: offer.sku ?? "",
+        name: productName, category: "", brand: "",
+        unit: "", sku: offer.sku ?? "",
         logo: offer.imageUrl?.startsWith("http") ? offer.imageUrl : "", notes: "",
       });
       setRegistered(true);
