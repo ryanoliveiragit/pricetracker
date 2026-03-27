@@ -10,6 +10,7 @@ from app.models.product import (
     ProductSearchBySupplierRequest, ProductSearchBySupplierResponse
 )
 from app.utils.text_normalizer import normalize_text
+from app.services.synonyms import get_synonyms
 from app.scrapers.base_scraper import BaseScraper
 from app.scrapers.megaleste_scraper import MegalesteScraper
 from app.scrapers.cofema_scraper import CofemaScraper
@@ -172,7 +173,24 @@ async def search_products(request: SearchRequest):
             logger.info(f"Buscando: {item} (normalizado: {normalized_query})")
 
             t_item = time.time()
-            offers = await search_all_stores(normalized_query, force_refresh=request.force_refresh)
+
+            # Expandir query com sinônimos e buscar todas as variantes
+            synonym_queries = get_synonyms(normalized_query)
+            logger.info(f"Sinônimos para '{normalized_query}': {synonym_queries}")
+
+            all_offers: List[ProductOffer] = []
+            seen: set[str] = set()
+
+            for sq in synonym_queries:
+                sq_normalized = normalize_text(sq)
+                sq_offers = await search_all_stores(sq_normalized, force_refresh=request.force_refresh)
+                for offer in sq_offers:
+                    key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
+                    if key not in seen:
+                        seen.add(key)
+                        all_offers.append(offer)
+
+            offers = all_offers
             item_ms = int((time.time() - t_item) * 1000)
 
             # Marcar melhor preço
