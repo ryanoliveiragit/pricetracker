@@ -110,12 +110,16 @@ async def _ai_suggest(name: str) -> list[str]:
         raise HTTPException(status_code=503, detail="GROQ_API_KEY não configurada")
 
     prompt = (
-        f"Você é um especialista em materiais de construção brasileiro.\n"
-        f"Produto: \"{name}\"\n"
-        f"Gere uma lista de sinônimos, nomes alternativos e variações como este produto pode ser chamado "
-        f"em diferentes lojas ou regiões do Brasil (ex: nomes populares, abreviações, termos técnicos).\n"
-        f"Retorne APENAS um array JSON com strings, sem explicações. Máximo 8 itens. Exemplo:\n"
-        f'["nome alternativo 1", "nome alternativo 2"]'
+        f"Você é um especialista em materiais de construção e ferragens brasileiro.\n"
+        f"Produto: \"{name}\"\n\n"
+        f"Gere variantes de busca para este produto — ou seja, termos que um comprador usaria para "
+        f"pesquisar este produto em diferentes lojas ou sites brasileiros.\n"
+        f"Inclua: abreviações comuns, nomes populares, sinônimos regionais, termos técnicos, "
+        f"variações de grafia e formas curtas (ex: 'cadeado' → 'fechadura', 'trava', 'cadeado latão').\n"
+        f"Foque em termos que realmente aparecem em catálogos de lojas como Leroy Merlin, Telhanorte, "
+        f"Cofema, Megaleste.\n"
+        f"Retorne APENAS um array JSON com strings em minúsculas, sem explicações, máximo 10 itens.\n"
+        f'Exemplo: ["variante 1", "variante 2", "variante 3"]'
     )
 
     async with httpx.AsyncClient(timeout=30) as client:

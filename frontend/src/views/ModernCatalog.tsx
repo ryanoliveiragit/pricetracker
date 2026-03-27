@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package, Plus, Edit2, Trash2, X, AlertCircle,
-  Tag, Layers, Ruler, Store, FileText, Image as ImageIcon, Upload, Download,
+  Tag, Layers, FileText, Image as ImageIcon, Upload, Download,
   Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   LayoutGrid, Box, Sparkles, GitBranch,
 } from "lucide-react";
@@ -747,31 +747,17 @@ export default function ModernCatalog() {
                       </div>
                     </Field>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <Field label="Código / SKU" error={errors.sku?.message}>
-                        <div className="relative">
-                          <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <input
-                            type="text"
-                            {...register("sku")}
-                            className={`${inputCls(!!errors.sku)} pl-10 font-mono`}
-                            placeholder="Ex: 62251"
-                          />
-                        </div>
-                      </Field>
-
-                      <Field label="Marca *" error={errors.brand?.message}>
-                        <div className="relative">
-                          <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <input
-                            type="text"
-                            {...register("brand")}
-                            className={`${inputCls(!!errors.brand)} pl-10`}
-                            placeholder="Ex: Papaiz"
-                          />
-                        </div>
-                      </Field>
-                    </div>
+                    <Field label="Código / SKU" error={errors.sku?.message}>
+                      <div className="relative">
+                        <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          {...register("sku")}
+                          className={`${inputCls(!!errors.sku)} pl-10 font-mono`}
+                          placeholder="Ex: 62251 (opcional)"
+                        />
+                      </div>
+                    </Field>
                   </div>
 
                   {/* ── Section: Classificação ── */}
@@ -783,31 +769,17 @@ export default function ModernCatalog() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <Field label="Categoria *" error={errors.category?.message}>
-                        <div className="relative">
-                          <Layers className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <input
-                            type="text"
-                            {...register("category")}
-                            className={`${inputCls(!!errors.category)} pl-10`}
-                            placeholder="Ex: Segurança"
-                          />
-                        </div>
-                      </Field>
-
-                      <Field label="Unidade *" error={errors.unit?.message}>
-                        <div className="relative">
-                          <Ruler className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <input
-                            type="text"
-                            {...register("unit")}
-                            className={`${inputCls(!!errors.unit)} pl-10`}
-                            placeholder="Ex: Unidade"
-                          />
-                        </div>
-                      </Field>
-                    </div>
+                    <Field label="Categoria *" error={errors.category?.message}>
+                      <div className="relative">
+                        <Layers className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          {...register("category")}
+                          className={`${inputCls(!!errors.category)} pl-10`}
+                          placeholder="Ex: Segurança, Hidráulica, Elétrica..."
+                        />
+                      </div>
+                    </Field>
                   </div>
 
                   {/* ── Section: Imagem ── */}
