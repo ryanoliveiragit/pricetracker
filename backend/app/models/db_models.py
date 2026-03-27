@@ -19,6 +19,7 @@ class ProductDB(Base):
     sku: Mapped[str] = mapped_column(String(128), default="")
     logo: Mapped[str] = mapped_column(Text, default="")
     notes: Mapped[str] = mapped_column(Text, default="")
+    variants: Mapped[list] = mapped_column(JSON, default=list, nullable=False, server_default="[]")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

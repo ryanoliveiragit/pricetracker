@@ -7,6 +7,7 @@ export interface CatalogProduct {
   sku?: string;
   logo?: string;
   notes?: string;
+  variants?: string[];
   createdAt: string;
 }
 
@@ -18,4 +19,5 @@ export interface ProductInput {
   sku?: string;
   logo?: string;
   notes?: string;
+  variants?: string[];
 }

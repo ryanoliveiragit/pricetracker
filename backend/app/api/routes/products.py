@@ -26,6 +26,7 @@ def _to_camel_dict(p: ProductDB) -> dict:
         "sku": p.sku or "",
         "logo": p.logo or "",
         "notes": p.notes or "",
+        "variants": p.variants or [],
         "createdAt": p.created_at.isoformat() if p.created_at else "",
     }
 
@@ -82,6 +83,114 @@ async def update_product(product_id: str, data: CatalogProductUpdate, db: AsyncS
     await db.refresh(p)
     logger.info(f"Produto atualizado: {p.name}")
     return _to_camel_dict(p)
+
+
+@router.patch("/products/{product_id}/variants")
+async def update_variants(product_id: str, data: dict, db: AsyncSession = Depends(get_db)):
+    """Atualizar lista de variantes do produto."""
+    p = await db.get(ProductDB, product_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    variants = data.get("variants", [])
+    if not isinstance(variants, list):
+        raise HTTPException(status_code=400, detail="variants deve ser uma lista")
+    p.variants = [str(v).strip() for v in variants if str(v).strip()]
+    await db.commit()
+    await db.refresh(p)
+    return _to_camel_dict(p)
+
+
+@router.post("/products/{product_id}/generate-variants")
+async def generate_variants(product_id: str, db: AsyncSession = Depends(get_db)):
+    """Gera variantes/sinônimos para o produto usando Gemini."""
+    import os
+    p = await db.get(ProductDB, product_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY não configurada")
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        prompt = (
+            f"Você é um especialista em materiais de construção brasileiro.\n"
+            f"Produto: \"{p.name}\"\n"
+            f"Gere uma lista de sinônimos, nomes alternativos e variações como este produto pode ser chamado "
+            f"em diferentes lojas ou regiões do Brasil (ex: nomes populares, abreviações, termos técnicos).\n"
+            f"Retorne APENAS um array JSON com strings, sem explicações. Máximo 8 itens. Exemplo:\n"
+            f'["nome alternativo 1", "nome alternativo 2"]'
+        )
+
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        # Extrair JSON da resposta
+        import re
+        match = re.search(r'\[.*?\]', text, re.DOTALL)
+        if not match:
+            raise ValueError("Gemini não retornou JSON válido")
+
+        suggestions = [s.strip().lower() for s in __import__('json').loads(match.group()) if s.strip()]
+        # Remover o próprio nome do produto das sugestões
+        name_lower = p.name.lower()
+        suggestions = [s for s in suggestions if s != name_lower][:8]
+
+        return {"suggestions": suggestions}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Gemini error: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar variantes: {str(e)}")
+
+
+@router.post("/products/suggest-variants")
+async def suggest_variants_by_name(data: dict):
+    """Sugere variantes para um produto pelo nome (sem necessidade de ID)."""
+    import os, re, json
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name é obrigatório")
+
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY não configurada")
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        prompt = (
+            f"Você é um especialista em materiais de construção brasileiro.\n"
+            f"Produto: \"{name}\"\n"
+            f"Gere uma lista de sinônimos, nomes alternativos e variações como este produto pode ser chamado "
+            f"em diferentes lojas ou regiões do Brasil (ex: nomes populares, abreviações, termos técnicos).\n"
+            f"Retorne APENAS um array JSON com strings, sem explicações. Máximo 8 itens. Exemplo:\n"
+            f'["nome alternativo 1", "nome alternativo 2"]'
+        )
+
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        match = re.search(r'\[.*?\]', text, re.DOTALL)
+        if not match:
+            raise ValueError("Gemini não retornou JSON válido")
+
+        suggestions = [s.strip().lower() for s in json.loads(match.group()) if s.strip()]
+        suggestions = [s for s in suggestions if s != name.lower()][:8]
+        return {"suggestions": suggestions}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Gemini error: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar variantes: {str(e)}")
 
 
 @router.delete("/products/{product_id}", status_code=204)

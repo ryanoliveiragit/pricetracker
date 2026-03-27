@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -12,6 +12,7 @@ class CatalogProduct(BaseModel):
     unit: str
     logo: Optional[str] = ""
     notes: Optional[str] = ""
+    variants: List[str] = []
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
@@ -24,6 +25,7 @@ class CatalogProductCreate(BaseModel):
     sku: Optional[str] = ""
     logo: Optional[str] = ""
     notes: Optional[str] = ""
+    variants: List[str] = []
 
 
 class CatalogProductUpdate(BaseModel):
@@ -35,3 +37,4 @@ class CatalogProductUpdate(BaseModel):
     sku: Optional[str] = None
     logo: Optional[str] = None
     notes: Optional[str] = None
+    variants: Optional[List[str]] = None

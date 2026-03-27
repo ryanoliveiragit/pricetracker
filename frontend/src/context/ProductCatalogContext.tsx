@@ -27,6 +27,7 @@ function normalizeProduct(product: ProductInput & { id?: string | number; create
     sku: product.sku?.trim() || undefined,
     logo: product.logo?.trim() || undefined,
     notes: product.notes?.trim() || undefined,
+    variants: product.variants ?? [],
     createdAt: product.createdAt ?? new Date().toISOString()
   };
 }
@@ -70,7 +71,8 @@ export function ProductCatalogProvider({ children }: { children: ReactNode }) {
       unit: input.unit.trim(),
       sku: input.sku?.trim() || "",
       logo: input.logo?.trim() || "",
-      notes: input.notes?.trim() || ""
+      notes: input.notes?.trim() || "",
+      variants: input.variants ?? []
     };
 
     try {
@@ -92,7 +94,8 @@ export function ProductCatalogProvider({ children }: { children: ReactNode }) {
       unit: input.unit.trim(),
       sku: input.sku?.trim() || "",
       logo: input.logo?.trim() || "",
-      notes: input.notes?.trim() || ""
+      notes: input.notes?.trim() || "",
+      variants: input.variants ?? []
     };
 
     try {

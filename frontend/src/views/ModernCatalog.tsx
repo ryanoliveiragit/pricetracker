@@ -5,7 +5,7 @@ import {
   Package, Plus, Edit2, Trash2, X, AlertCircle,
   Tag, Layers, Ruler, Store, FileText, Image as ImageIcon, Upload, Download,
   Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  LayoutGrid, Box,
+  LayoutGrid, Box, Sparkles, GitBranch,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -72,6 +72,9 @@ export default function ModernCatalog() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [variants, setVariants] = useState<string[]>([]);
+  const [variantInput, setVariantInput] = useState("");
+  const [generatingVariants, setGeneratingVariants] = useState(false);
 
   const {
     register,
@@ -157,11 +160,14 @@ export default function ModernCatalog() {
   const hasActiveFilters = categoryFilter !== "all" || brandFilter !== "all" || searchQuery.length > 0;
 
   function onSubmit(data: ProductFormData) {
-    if (editingId) updateProduct(editingId, data);
-    else createProduct(data);
+    const payload = { ...data, variants };
+    if (editingId) updateProduct(editingId, payload);
+    else createProduct(payload);
     reset(EMPTY_FORM);
     setEditingId(null);
     setShowForm(false);
+    setVariants([]);
+    setVariantInput("");
   }
 
   function handleEdit(product: CatalogProduct) {
@@ -174,6 +180,8 @@ export default function ModernCatalog() {
       logo: product.logo ?? "",
       notes: product.notes ?? "",
     });
+    setVariants(product.variants ?? []);
+    setVariantInput("");
     setEditingId(product.id);
     setShowForm(true);
   }
@@ -182,6 +190,46 @@ export default function ModernCatalog() {
     reset(EMPTY_FORM);
     setEditingId(null);
     setShowForm(false);
+    setVariants([]);
+    setVariantInput("");
+  }
+
+  function addVariant() {
+    const v = variantInput.trim().toLowerCase();
+    if (v && !variants.includes(v)) setVariants((prev) => [...prev, v]);
+    setVariantInput("");
+  }
+
+  const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/api\/?$/, "");
+
+  async function handleGenerateVariants() {
+    const currentName = watch("name");
+    const name = currentName?.trim() ?? "";
+    if (!name) return;
+    setGeneratingVariants(true);
+    try {
+      const endpoint = editingId
+        ? `${API_BASE}/api/products/${editingId}/generate-variants`
+        : `${API_BASE}/api/products/suggest-variants`;
+      const body = editingId ? undefined : JSON.stringify({ name });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const suggestions: string[] = data.suggestions ?? [];
+      setVariants((prev) => {
+        const merged = [...prev];
+        for (const s of suggestions) if (!merged.includes(s)) merged.push(s);
+        return merged;
+      });
+    } catch {
+      // silently fail — user can add manually
+    } finally {
+      setGeneratingVariants(false);
+    }
   }
 
   function handleDelete(id: string) {
@@ -818,6 +866,74 @@ export default function ModernCatalog() {
                         />
                       </div>
                     </Field>
+                  </div>
+
+                  {/* ── Section: Variantes / Sinônimos ── */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1 w-5 rounded-full bg-violet-500" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Variantes / Sinônimos
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGenerateVariants}
+                        disabled={generatingVariants}
+                        className="flex items-center gap-1.5 rounded-lg border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 px-3 py-1.5 text-[11px] font-medium text-violet-600 dark:text-violet-400 transition hover:bg-violet-100 dark:hover:bg-violet-500/20 disabled:opacity-50"
+                      >
+                        <Sparkles className={`h-3 w-3 ${generatingVariants ? "animate-pulse" : ""}`} />
+                        {generatingVariants ? "Gerando..." : "Sugerir com IA"}
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-slate-400 dark:text-neutral-500">
+                      Nomes alternativos para este produto. Usados para expandir buscas automaticamente (ex: &quot;cola&quot; → &quot;adesivo&quot;, &quot;fixador&quot;).
+                    </p>
+
+                    {/* Chips */}
+                    {variants.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {variants.map((v) => (
+                          <span
+                            key={v}
+                            className="flex items-center gap-1 rounded-full border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-300"
+                          >
+                            <GitBranch className="h-2.5 w-2.5" />
+                            {v}
+                            <button
+                              type="button"
+                              onClick={() => setVariants((prev) => prev.filter((x) => x !== v))}
+                              className="ml-0.5 rounded-full text-violet-400 hover:text-violet-700 dark:hover:text-violet-200"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add input */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={variantInput}
+                        onChange={(e) => setVariantInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addVariant(); } }}
+                        className={`${inputCls()} flex-1`}
+                        placeholder="Adicionar sinônimo (Enter para confirmar)"
+                      />
+                      <button
+                        type="button"
+                        onClick={addVariant}
+                        disabled={!variantInput.trim()}
+                        className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-3 py-2 text-sm font-medium text-slate-600 dark:text-neutral-300 transition hover:bg-slate-100 dark:hover:bg-neutral-700 disabled:opacity-40"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add
+                      </button>
+                    </div>
                   </div>
                 </div>
 

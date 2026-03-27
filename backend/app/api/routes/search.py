@@ -12,6 +12,9 @@ from app.models.product import (
 from app.utils.text_normalizer import normalize_text
 from app.services.synonyms import get_synonyms
 from app.scrapers.base_scraper import BaseScraper
+from app.database import async_session
+from app.models.db_models import ProductDB
+from sqlalchemy import select
 from app.scrapers.megaleste_scraper import MegalesteScraper
 from app.scrapers.cofema_scraper import CofemaScraper
 from app.scrapers.estoque_atacadista_scraper import EstoqueAtacadistaScraper
@@ -29,6 +32,32 @@ router = APIRouter()
 # Configurações
 MAX_WORKERS = int(os.getenv("MAX_CONCURRENT_SCRAPERS", "5"))
 CACHE_TTL = int(os.getenv("SEARCH_CACHE_TTL", "1800"))  # 30 minutos padrão
+
+
+async def get_db_variants(query: str) -> List[str]:
+    """
+    Busca no banco se algum produto cadastrado tem o query como nome ou variante.
+    Retorna todas as variantes do produto encontrado, ou [query] se não houver.
+    """
+    q = query.strip().lower()
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(ProductDB))
+            for product in result.scalars().all():
+                # Checar nome do produto
+                if q in product.name.lower() or product.name.lower() in q:
+                    variants = product.variants or []
+                    all_terms = [product.name] + variants
+                    return [t for t in all_terms if t.strip()]
+                # Checar variantes
+                for variant in (product.variants or []):
+                    if q in variant.lower() or variant.lower() in q:
+                        variants = product.variants or []
+                        all_terms = [product.name] + variants
+                        return [t for t in all_terms if t.strip()]
+    except Exception as e:
+        logger.warning(f"Erro ao buscar variantes no DB: {e}")
+    return [query]
 
 
 def scrape_store(scraper_class, query: str, credentials: dict = None) -> tuple:
@@ -174,9 +203,14 @@ async def search_products(request: SearchRequest):
 
             t_item = time.time()
 
-            # Expandir query com sinônimos e buscar todas as variantes
-            synonym_queries = get_synonyms(normalized_query)
-            logger.info(f"Sinônimos para '{normalized_query}': {synonym_queries}")
+            # Expandir query: primeiro variantes do DB, fallback para sinônimos estáticos
+            db_terms = await get_db_variants(normalized_query)
+            if len(db_terms) > 1:
+                synonym_queries = db_terms
+                logger.info(f"Variantes do DB para '{normalized_query}': {synonym_queries}")
+            else:
+                synonym_queries = get_synonyms(normalized_query)
+                logger.info(f"Sinônimos estáticos para '{normalized_query}': {synonym_queries}")
 
             all_offers: List[ProductOffer] = []
             seen: set[str] = set()
