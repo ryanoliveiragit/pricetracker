@@ -2,8 +2,8 @@ export interface CatalogProduct {
   id: string;
   name: string;
   category: string;
-  brand: string;
-  unit: string;
+  brand?: string;
+  unit?: string;
   sku?: string;
   logo?: string;
   notes?: string;
@@ -14,8 +14,8 @@ export interface CatalogProduct {
 export interface ProductInput {
   name: string;
   category: string;
-  brand: string;
-  unit: string;
+  brand?: string;
+  unit?: string;
   sku?: string;
   logo?: string;
   notes?: string;

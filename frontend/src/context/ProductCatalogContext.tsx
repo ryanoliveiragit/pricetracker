@@ -67,8 +67,8 @@ export function ProductCatalogProvider({ children }: { children: ReactNode }) {
     const payload: ProductInput = {
       name: input.name.trim(),
       category: input.category.trim(),
-      brand: input.brand.trim(),
-      unit: input.unit.trim(),
+      brand: input.brand?.trim() || "",
+      unit: input.unit?.trim() || "",
       sku: input.sku?.trim() || "",
       logo: input.logo?.trim() || "",
       notes: input.notes?.trim() || "",
@@ -90,8 +90,8 @@ export function ProductCatalogProvider({ children }: { children: ReactNode }) {
     const payload: ProductInput = {
       name: input.name.trim(),
       category: input.category.trim(),
-      brand: input.brand.trim(),
-      unit: input.unit.trim(),
+      brand: input.brand?.trim() || "",
+      unit: input.unit?.trim() || "",
       sku: input.sku?.trim() || "",
       logo: input.logo?.trim() || "",
       notes: input.notes?.trim() || "",

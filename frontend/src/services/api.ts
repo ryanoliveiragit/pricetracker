@@ -18,10 +18,11 @@ export interface ApiProduct {
   id: string;
   name: string;
   category: string;
-  brand: string;
-  unit: string;
+  brand?: string;
+  unit?: string;
   logo?: string;
   notes?: string;
+  variants?: string[];
   createdAt: string;
 }
 

@@ -26,8 +26,6 @@ export type SupplierFormData = z.infer<typeof supplierSchema>;
 export const productSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   category: z.string().min(2, "Categoria deve ter no mínimo 2 caracteres"),
-  brand: z.string().optional().default(""),
-  unit: z.string().optional().default(""),
   sku: z.string().optional(),
   logo: z.string().optional(),
   notes: z.string().optional()

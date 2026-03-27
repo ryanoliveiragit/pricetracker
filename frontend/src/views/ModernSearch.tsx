@@ -19,7 +19,7 @@ export default function ModernSearch() {
       (p) =>
         p.name.toLowerCase().includes(query) ||
         p.category.toLowerCase().includes(query) ||
-        p.brand.toLowerCase().includes(query)
+        (p.brand ?? "").toLowerCase().includes(query)
     );
   }, [products, searchQuery]);
 

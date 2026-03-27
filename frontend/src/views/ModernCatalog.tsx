@@ -18,8 +18,6 @@ import ImageUploadCrop from "../components/ImageUploadCrop";
 const EMPTY_FORM: ProductFormData = {
   name: "",
   category: "",
-  brand: "",
-  unit: "",
   sku: "",
   logo: "",
   notes: "",
@@ -107,7 +105,6 @@ export default function ModernCatalog() {
       reset({
         ...EMPTY_FORM,
         name: data.name ?? "",
-        brand: data.brand ?? "",
         notes: data.notes ?? "",
         logo: data.imageUrl ?? "",
         sku: data.sku ?? "",
@@ -126,7 +123,7 @@ export default function ModernCatalog() {
 
   const availableBrands = useMemo(() => {
     const s = new Set<string>();
-    products.forEach((p) => s.add(p.brand));
+    products.forEach((p) => { if (p.brand) s.add(p.brand); });
     return Array.from(s).sort();
   }, [products]);
 
@@ -136,7 +133,7 @@ export default function ModernCatalog() {
         !searchQuery ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.brand ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.sku ?? "").toLowerCase().includes(searchQuery.toLowerCase());
       const catMatch = categoryFilter === "all" || p.category === categoryFilter;
       const brandMatch = brandFilter === "all" || p.brand === brandFilter;
@@ -174,8 +171,7 @@ export default function ModernCatalog() {
     reset({
       name: product.name,
       category: product.category,
-      brand: product.brand,
-      unit: product.unit,
+
       sku: product.sku ?? "",
       logo: product.logo ?? "",
       notes: product.notes ?? "",
