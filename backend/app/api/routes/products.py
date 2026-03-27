@@ -105,9 +105,9 @@ async def _ai_suggest(name: str) -> list[str]:
     import os, re, json
     import httpx
 
-    api_key = os.getenv("PERPLEXITY_API_KEY", "")
+    api_key = os.getenv("GROQ_API_KEY", "")
     if not api_key:
-        raise HTTPException(status_code=503, detail="PERPLEXITY_API_KEY não configurada")
+        raise HTTPException(status_code=503, detail="GROQ_API_KEY não configurada")
 
     prompt = (
         f"Você é um especialista em materiais de construção brasileiro.\n"
@@ -120,10 +120,10 @@ async def _ai_suggest(name: str) -> list[str]:
 
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.post(
-            "https://api.perplexity.ai/chat/completions",
+            "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": "sonar",
+                "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.3,
             },
