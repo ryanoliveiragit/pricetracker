@@ -44,17 +44,18 @@ async def get_db_variants(query: str) -> List[str]:
         async with async_session() as session:
             result = await session.execute(select(ProductDB))
             for product in result.scalars().all():
-                # Checar nome do produto
-                if q in product.name.lower() or product.name.lower() in q:
-                    variants = product.variants or []
-                    all_terms = [product.name] + variants
-                    return [t for t in all_terms if t.strip()]
-                # Checar variantes
-                for variant in (product.variants or []):
-                    if q in variant.lower() or variant.lower() in q:
-                        variants = product.variants or []
-                        all_terms = [product.name] + variants
-                        return [t for t in all_terms if t.strip()]
+                name_lower = product.name.strip().lower()
+                all_variants = [v.strip().lower() for v in (product.variants or []) if v.strip()]
+                all_terms = [name_lower] + all_variants
+                # Match exato primeiro
+                if q in all_terms:
+                    return [product.name] + (product.variants or [])
+                # Match parcial: query contém o nome ou vice-versa
+                if name_lower in q or q in name_lower:
+                    return [product.name] + (product.variants or [])
+                for variant in all_variants:
+                    if variant in q or q in variant:
+                        return [product.name] + (product.variants or [])
     except Exception as e:
         logger.warning(f"Erro ao buscar variantes no DB: {e}")
     return [query]
