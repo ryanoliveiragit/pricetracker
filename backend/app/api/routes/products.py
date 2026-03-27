@@ -112,14 +112,17 @@ async def _ai_suggest(name: str) -> list[str]:
     prompt = (
         f"Você é um especialista em materiais de construção e ferragens brasileiro.\n"
         f"Produto: \"{name}\"\n\n"
-        f"Gere variantes de busca para este produto — ou seja, termos que um comprador usaria para "
-        f"pesquisar este produto em diferentes lojas ou sites brasileiros.\n"
-        f"Inclua: abreviações comuns, nomes populares, sinônimos regionais, termos técnicos, "
-        f"variações de grafia e formas curtas (ex: 'cadeado' → 'fechadura', 'trava', 'cadeado latão').\n"
-        f"Foque em termos que realmente aparecem em catálogos de lojas como Leroy Merlin, Telhanorte, "
-        f"Cofema, Megaleste.\n"
-        f"Retorne APENAS um array JSON com strings em minúsculas, sem explicações, máximo 10 itens.\n"
-        f'Exemplo: ["variante 1", "variante 2", "variante 3"]'
+        f"Liste outros NOMES pelos quais este produto é conhecido — sinônimos reais, não variações do mesmo nome.\n"
+        f"Exemplos do que quero:\n"
+        f"  'cola' → ['adesivo', 'fixador', 'selante']\n"
+        f"  'parafuso' → ['fixador', 'prego', 'bucha']\n"
+        f"  'cadeado' → ['fechadura', 'trava', 'cadeado']\n\n"
+        f"NÃO inclua:\n"
+        f"  - O mesmo nome com adjetivo (ex: 'cola forte', 'cola especial', 'cola extra')\n"
+        f"  - Marcas específicas\n"
+        f"  - Especificações técnicas (ex: '50kg', '20mm')\n\n"
+        f"Retorne APENAS um array JSON com strings em minúsculas, sem explicações, máximo 8 itens.\n"
+        f'Exemplo: ["sinonimo1", "sinonimo2"]'
     )
 
     async with httpx.AsyncClient(timeout=30) as client:
