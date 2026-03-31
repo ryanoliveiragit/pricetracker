@@ -59,9 +59,13 @@ async def reseed_suppliers():
     return {"status": "ok", "suppliers_recreated": count}
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 async def root():
-    """Endpoint raiz"""
     return {
         "message": "ConstruPrice API - Sistema de Comparação de Preços",
         "version": "1.0.0",

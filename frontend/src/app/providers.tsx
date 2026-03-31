@@ -1,7 +1,7 @@
 "use client";
 
 import { NextUIProvider } from "@nextui-org/react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 import { AuthProvider } from "../context/AuthContext";
 import { ProductCatalogProvider } from "../context/ProductCatalogContext";
@@ -22,6 +22,14 @@ function ThemedToaster() {
   );
 }
 
+function ApiWarmup() {
+  useEffect(() => {
+    const base = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/api\/?$/, "");
+    if (base) fetch(`${base}/health`).catch(() => {});
+  }, []);
+  return null;
+}
+
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <NextUIProvider>
@@ -29,6 +37,7 @@ export default function Providers({ children }: { children: ReactNode }) {
         <AuthProvider>
           <ProductCatalogProvider>
             <SupplierProvider>
+              <ApiWarmup />
               {children}
               <ThemedToaster />
             </SupplierProvider>
