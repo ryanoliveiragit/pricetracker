@@ -17,15 +17,34 @@ interface ApiOffer {
   brand?: string;
 }
 
-interface StreamChunk {
+export type StoreStatus = "pending" | "searching" | "done" | "error";
+
+export interface StoreState {
+  name: string;
+  status: StoreStatus;
+  offerCount: number;
+  duration_ms?: number;
+}
+
+interface StreamStart {
+  event: "start";
+  pending_stores: string[];
+  done: false;
+}
+
+interface StreamStoreDone {
+  event: "store_done";
   store: string;
+  status: "done" | "error";
   offers: ApiOffer[];
   duration_ms: number;
+  pending_stores: string[];
   done: false;
   error?: string;
 }
 
-interface StreamDone {
+interface StreamEnd {
+  event: "end";
   done: true;
 }
 
@@ -50,7 +69,7 @@ function mapOffer(apiOffer: ApiOffer, allOffers: ApiOffer[]): Offer {
 
 export async function searchMaterialsStream(
   payload: SearchRequest,
-  onChunk: (partial: SearchResponse) => void
+  onChunk: (partial: SearchResponse, stores: StoreState[]) => void
 ): Promise<SearchResponse> {
   const response = await fetch(`${API_BASE_URL}/api/search/stream`, {
     method: "POST",
@@ -63,7 +82,7 @@ export async function searchMaterialsStream(
   }
 
   const allOffers: ApiOffer[] = [];
-  const stores = new Set<string>();
+  const storeStates = new Map<string, StoreState>();
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -81,19 +100,41 @@ export async function searchMaterialsStream(
       const raw = line.slice(6).trim();
       if (!raw) continue;
 
-      const parsed: StreamChunk | StreamDone = JSON.parse(raw);
-      if (parsed.done) continue;
+      const parsed: StreamStart | StreamStoreDone | StreamEnd = JSON.parse(raw);
 
-      allOffers.push(...parsed.offers);
-      stores.add(parsed.store);
+      if (parsed.event === "start") {
+        for (const name of parsed.pending_stores) {
+          storeStates.set(name, { name, status: "pending", offerCount: 0 });
+        }
+        // Marca a primeira como "searching"
+        const first = parsed.pending_stores[0];
+        if (first) storeStates.set(first, { ...storeStates.get(first)!, status: "searching" });
+        onChunk(buildResponse(payload.items, allOffers, []), [...storeStates.values()]);
+        continue;
+      }
 
-      // Emitir resultado parcial acumulado
-      const partial = buildResponse(payload.items, allOffers, [...stores]);
-      onChunk(partial);
+      if (parsed.event === "store_done") {
+        allOffers.push(...parsed.offers);
+        storeStates.set(parsed.store, {
+          name: parsed.store,
+          status: parsed.status,
+          offerCount: parsed.offers.length,
+          duration_ms: parsed.duration_ms,
+        });
+        // Próxima loja passa para "searching"
+        const next = parsed.pending_stores[0];
+        if (next && storeStates.get(next)?.status === "pending") {
+          storeStates.set(next, { ...storeStates.get(next)!, status: "searching" });
+        }
+        const stores = [...new Set(allOffers.map((o) => o.store))];
+        onChunk(buildResponse(payload.items, allOffers, stores), [...storeStates.values()]);
+        continue;
+      }
     }
   }
 
-  return buildResponse(payload.items, allOffers, [...stores]);
+  const stores = [...new Set(allOffers.map((o) => o.store))];
+  return buildResponse(payload.items, allOffers, stores);
 }
 
 function buildResponse(items: string[], allOffers: ApiOffer[], stores: string[]): SearchResponse {

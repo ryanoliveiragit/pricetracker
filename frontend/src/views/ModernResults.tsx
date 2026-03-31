@@ -36,7 +36,7 @@ export default function ModernResults() {
 
   const [items, setItems] = useState<string[]>(readItemsFromStorage);
 
-  const { loading, error, cacheAgeMinutes, sortBy, setSortBy, filteredItems, search } =
+  const { loading, error, cacheAgeMinutes, sortBy, setSortBy, filteredItems, search, storeStates } =
     useSearchResults();
 
   const [estimatedWait, setEstimatedWait] = useState<number | null>(null);
@@ -519,7 +519,7 @@ export default function ModernResults() {
                     </span>
                   )}
                 </p>
-                {loading && (
+                {loading && storeStates.some(s => s.status === "pending" || s.status === "searching") && (
                   <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                     buscando mais lojas...
@@ -777,17 +777,35 @@ export default function ModernResults() {
                 )}
               </div>
 
-              {Object.keys(scraperAvgs).length > 0 && (
+              {storeStates.length > 0 && (
                 <div className="mt-2 flex flex-wrap justify-center gap-2">
-                  {Object.entries(scraperAvgs).map(([key, avg]) => (
-                    <span
-                      key={key}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1.5 text-xs text-slate-500 dark:text-neutral-400"
-                    >
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                      {key}: ~{Math.round(avg)}s
-                    </span>
-                  ))}
+                  {storeStates.map((s) => {
+                    const isDone = s.status === "done";
+                    const isError = s.status === "error";
+                    const isSearching = s.status === "searching";
+                    return (
+                      <span
+                        key={s.name}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all ${
+                          isDone
+                            ? "border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                            : isError
+                            ? "border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
+                            : "border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-slate-500 dark:text-neutral-400"
+                        }`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${
+                          isDone ? "bg-emerald-500" : isError ? "bg-red-500" : isSearching ? "animate-pulse bg-amber-400" : "bg-slate-300 dark:bg-neutral-600"
+                        }`} />
+                        {s.name}
+                        {isDone && s.offerCount > 0 && <span className="font-semibold">{s.offerCount}</span>}
+                        {isDone && s.offerCount === 0 && <span className="opacity-60">0</span>}
+                        {isSearching && <span className="opacity-70">buscando...</span>}
+                        {isError && <span className="opacity-70">falhou</span>}
+                        {s.status === "pending" && <span className="opacity-50">aguardando</span>}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>

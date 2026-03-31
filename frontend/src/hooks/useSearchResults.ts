@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { searchMaterialsStream } from "../services/searchApi";
+import { searchMaterialsStream, type StoreState } from "../services/searchApi";
 import {
   getCachedSearch,
   setCachedSearch,
@@ -16,6 +16,7 @@ export function useSearchResults() {
   const [cacheAgeMinutes, setCacheAgeMinutes] = useState<number | null>(null);
   const [selectedStore, setSelectedStore] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("best_price");
+  const [storeStates, setStoreStates] = useState<StoreState[]>([]);
 
   const search = useCallback(
     async (items: string[], forceRefresh = false) => {
@@ -34,10 +35,12 @@ export function useSearchResults() {
       setLoading(true);
       setError(null);
       setCacheAgeMinutes(null);
+      setStoreStates([]);
 
       try {
-        const data = await searchMaterialsStream({ items }, (partial) => {
-          setResult(partial); // atualiza UI a cada fornecedor que retorna
+        const data = await searchMaterialsStream({ items }, (partial, stores) => {
+          setResult(partial);
+          setStoreStates(stores);
         });
         setResult(data);
         const totalOffers = data.items.reduce((sum, item) => sum + item.offers.length, 0);
@@ -88,5 +91,6 @@ export function useSearchResults() {
     setSortBy,
     filteredItems,
     search,
+    storeStates,
   };
 }

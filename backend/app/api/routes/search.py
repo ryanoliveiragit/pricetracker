@@ -247,11 +247,17 @@ async def search_stream(request: SearchRequest):
             all_queries.extend(terms)
 
         loop = asyncio.get_event_loop()
+        all_store_names = [s[2] for s in scrapers]
+
+        # Emite evento inicial informando quais lojas serão buscadas
+        yield f"data: {json.dumps({'event': 'start', 'pending_stores': all_store_names, 'done': False})}\n\n"
+
+        completed: list[str] = []
 
         for scraper_class, credentials, store_name in scrapers:
             t0 = time.time()
+            status = "searching"
             try:
-                # Coleta ofertas de todos os sinônimos para este fornecedor
                 store_offers: list[ProductOffer] = []
                 seen_keys: set[str] = set()
 
@@ -259,11 +265,10 @@ async def search_stream(request: SearchRequest):
                     sq_norm = normalize_text(sq)
                     scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
 
-                    # Checar cache
                     cached = await db_cache_get(scraper_key, sq_norm, ttl_seconds=CACHE_TTL)
                     if cached is not None:
-                        for item in cached:
-                            offer = ProductOffer(**item)
+                        for it in cached:
+                            offer = ProductOffer(**it)
                             key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
                             if key not in seen_keys:
                                 seen_keys.add(key)
@@ -285,19 +290,25 @@ async def search_stream(request: SearchRequest):
                             seen_keys.add(key)
                             store_offers.append(offer)
 
+                status = "done"
+                completed.append(store_name)
                 payload = json.dumps({
+                    "event": "store_done",
                     "store": store_name,
+                    "status": status,
                     "duration_ms": int((time.time() - t0) * 1000),
                     "offers": [o.model_dump() for o in store_offers],
+                    "pending_stores": [s for s in all_store_names if s not in completed],
                     "done": False,
                 })
                 yield f"data: {payload}\n\n"
 
             except Exception as e:
                 logger.error(f"Stream error [{store_name}]: {e}")
-                yield f"data: {json.dumps({'store': store_name, 'offers': [], 'done': False, 'error': str(e)})}\n\n"
+                completed.append(store_name)
+                yield f"data: {json.dumps({'event': 'store_done', 'store': store_name, 'status': 'error', 'offers': [], 'pending_stores': [s for s in all_store_names if s not in completed], 'done': False, 'error': str(e)})}\n\n"
 
-        yield f"data: {json.dumps({'done': True})}\n\n"
+        yield f"data: {json.dumps({'event': 'end', 'done': True})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream", headers={
         "Cache-Control": "no-cache",
