@@ -237,14 +237,29 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
             all_offers: List[ProductOffer] = []
             seen: set[str] = set()
 
-            for sq in synonym_queries:
-                sq_normalized = normalize_text(sq)
-                sq_offers = await search_all_stores(sq_normalized, force_refresh=request.force_refresh)
-                for offer in sq_offers:
-                    key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
-                    if key not in seen:
-                        seen.add(key)
-                        all_offers.append(offer)
+            def _merge(offers_list):
+                for sq_offers in offers_list:
+                    if isinstance(sq_offers, Exception):
+                        continue
+                    for offer in sq_offers:
+                        key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
+                        if key not in seen:
+                            seen.add(key)
+                            all_offers.append(offer)
+
+            # Buscar termo principal primeiro — se já tiver resultados, sinônimos rodam em paralelo
+            main_offers = await search_all_stores(normalized_query, force_refresh=request.force_refresh)
+            _merge([main_offers])
+
+            # Sinônimos extras (excluindo o principal que já foi buscado)
+            extra_queries = [sq for sq in synonym_queries if normalize_text(sq) != normalized_query]
+            if extra_queries:
+                tasks = [
+                    search_all_stores(normalize_text(sq), force_refresh=request.force_refresh)
+                    for sq in extra_queries
+                ]
+                extra_results = await asyncio.gather(*tasks, return_exceptions=True)
+                _merge(extra_results)
 
             offers = all_offers
             item_ms = int((time.time() - t_item) * 1000)

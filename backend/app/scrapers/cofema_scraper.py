@@ -14,6 +14,10 @@ HEADERS = {
 }
 MAX_PRODUCTS = 40
 MAX_LOGIN_RETRIES = 3
+SESSION_TTL = 3600  # reutiliza sessão por até 1 hora
+
+# Cache global de sessão — evita re-login a cada busca
+_session_cache: dict = {"session": None, "logged_in": False, "at": 0.0, "user": ""}
 
 
 class CofemaScraper(BaseScraper):
@@ -29,10 +33,25 @@ class CofemaScraper(BaseScraper):
     def search(self, query: str, username: str = "", password: str = "", **kwargs) -> List[ProductOffer]:
         try:
             if username and password:
-                self._do_login(username, password)
+                # Reutilizar sessão cacheada se ainda válida
+                cached = _session_cache
+                age = time.time() - cached["at"]
+                if cached["logged_in"] and cached["session"] and age < SESSION_TTL and cached["user"] == username:
+                    self.session = cached["session"]
+                    self._logged_in = True
+                    logger.info("Cofema: reutilizando sessão cacheada (%.0fs atrás)", age)
+                else:
+                    self._do_login(username, password)
+                    if self._logged_in:
+                        cached["session"] = self.session
+                        cached["logged_in"] = True
+                        cached["at"] = time.time()
+                        cached["user"] = username
             return self._search(query)
         except Exception as e:
             logger.error(f"Cofema search error: {e}", exc_info=True)
+            # Invalidar cache em caso de erro
+            _session_cache["logged_in"] = False
             return []
 
     def _do_login(self, username: str, password: str) -> bool:
