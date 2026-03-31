@@ -9,9 +9,19 @@ import requests
 logger = logging.getLogger(__name__)
 
 _lock = threading.Lock()
+# Lock por scraper para evitar logins simultâneos
+_login_locks: dict[str, threading.Lock] = {}
 
 # { scraper_key: { "session": requests.Session, "user": str } }
 _cache: dict[str, dict] = {}
+
+
+def get_login_lock(scraper_key: str) -> threading.Lock:
+    """Retorna (criando se necessário) um lock exclusivo por scraper."""
+    with _lock:
+        if scraper_key not in _login_locks:
+            _login_locks[scraper_key] = threading.Lock()
+        return _login_locks[scraper_key]
 
 
 def get_session(scraper_key: str, username: str) -> requests.Session | None:

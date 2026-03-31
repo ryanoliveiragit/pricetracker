@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from app.scrapers.base_scraper import BaseScraper
 from app.models.product import ProductOffer
-from app.services.session_cache import get_session, store_session, invalidate
+from app.services.session_cache import get_session, store_session, invalidate, get_login_lock
 
 logger = logging.getLogger(__name__)
 BASE_URL = "https://www.cofema.com.br"
@@ -36,9 +36,17 @@ class CofemaScraper(BaseScraper):
                     self.session = cached
                     self._logged_in = True
                 else:
-                    self._do_login(username, password)
-                    if self._logged_in:
-                        store_session(CACHE_KEY, username, self.session)
+                    # Lock evita que múltiplas buscas simultâneas façam login ao mesmo tempo (429)
+                    with get_login_lock(CACHE_KEY):
+                        # Re-check após adquirir o lock (outro thread pode ter logado)
+                        cached = get_session(CACHE_KEY, username)
+                        if cached:
+                            self.session = cached
+                            self._logged_in = True
+                        else:
+                            self._do_login(username, password)
+                            if self._logged_in:
+                                store_session(CACHE_KEY, username, self.session)
 
             results = self._search(query)
 

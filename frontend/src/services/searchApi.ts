@@ -97,21 +97,13 @@ export async function searchMaterialsStream(
 }
 
 function buildResponse(items: string[], allOffers: ApiOffer[], stores: string[]): SearchResponse {
-  const minPrice = Math.min(...allOffers.filter((o) => o.price > 0).map((o) => o.price));
-
+  const mapped = allOffers.map((o) => mapOffer(o, allOffers));
   return {
-    items: items.map((rawQuery) => {
-      const offers = allOffers.map((o) => ({
-        ...mapOffer(o, allOffers),
-        rawQuery,
-        isBestPrice: o.price > 0 && o.price === minPrice,
-      }));
-      return {
-        rawQuery,
-        normalizedQuery: rawQuery.toLowerCase(),
-        offers,
-      };
-    }),
+    items: items.map((rawQuery) => ({
+      rawQuery,
+      normalizedQuery: rawQuery.toLowerCase(),
+      offers: mapped,
+    })),
     totalItems: items.length,
     stores,
     generatedAt: new Date().toISOString(),
