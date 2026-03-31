@@ -348,7 +348,8 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-4">
+        <main className="flex-1 overflow-y-auto min-h-0">
+          <CommandMenu />
           {children}
         </main>
       </div>

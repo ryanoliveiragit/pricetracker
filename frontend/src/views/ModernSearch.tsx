@@ -172,7 +172,7 @@ export default function ModernSearch() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="space-y-4"
         >
-          <div className="rounded-xl border border-[#E8E8E4] bg-white p-6 shadow-card sticky top-4">
+          <div className="rounded-xl border border-[#E8E8E4] bg-white p-6 shadow-card lg:sticky lg:top-4">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-[#84CC16]" />
               <h2 className="text-lg font-semibold text-[#1A1A18]">

@@ -345,7 +345,7 @@ export default function ModernSavedOffers() {
     <div className="min-h-screen bg-[#F7F7F5]">
       
       {/* ── Top bar (identical to Results) ── */}
-      <div className="sticky top-0 z-30 h-14 bg-white border-b border-[#E8E8E4] px-4 flex items-center gap-4">
+      <div className="sticky top-0 md:top-16 z-30 h-14 bg-white border-b border-[#E8E8E4] px-4 flex items-center gap-4">
         <div className="flex-1 min-w-0">
           <span className="text-xs text-[#A0A09A]">
             Dashboard&nbsp;/&nbsp;
@@ -374,7 +374,7 @@ export default function ModernSavedOffers() {
       <div className="flex">
         
         {/* Desktop Sidebar */}
-        <aside className="w-72 shrink-0 border-r border-[#E8E8E4] bg-white hidden xl:flex flex-col h-[calc(100vh-56px)] sticky top-14 overflow-y-auto">
+        <aside className="w-72 shrink-0 border-r border-[#E8E8E4] bg-white hidden xl:flex flex-col h-[calc(100vh-120px)] sticky top-[120px] overflow-y-auto">
           <div className="px-5 py-6">
             {filterContent}
           </div>
