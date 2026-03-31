@@ -2,26 +2,31 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Home, Search, Package, BarChart3, Store, Settings,
-  LogOut, ChevronLeft, ChevronRight, Bell, Menu,
-  Sun, Moon, SearchIcon,
+  Search, Package, BarChart3, Store, Settings,
+  LogOut, ChevronLeft, ChevronRight, Bell, Menu, Shield,
+  Sun, Moon, SearchIcon, Command, Star, Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import CommandMenu from "../components/CommandMenu";
+import { RoleGuard } from "../components/auth/RoleGuard";
+import UpdateNotifications from "../components/Notifications";
+import AppTour from "../components/AppTour";
+import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: Home },
-  { href: "/search", label: "Buscar Precos", icon: Search },
-  { href: "/products", label: "Produtos", icon: Package },
-  { href: "/suppliers", label: "Fornecedores", icon: Store },
-  { href: "/results", label: "Resultados", icon: BarChart3 },
+  { href: "/search", label: "Buscar Precos", icon: Search, id: "tour-nav-search" },
+  { href: "/products", label: "Produtos", icon: Package, id: "tour-nav-products" },
+  { href: "/suppliers", label: "Fornecedores", icon: Store, id: "tour-nav-suppliers" },
+  { href: "/results", label: "Resultados", icon: BarChart3, id: "tour-nav-results" },
+  { href: "/saves", label: "Ofertas Salvas", icon: Star, id: "tour-nav-saves" },
 ];
 
 const bottomItems = [
-  { href: "/settings", label: "Configuracoes", icon: Settings },
+  { href: "/settings", label: "Configuracoes", icon: Settings, id: "tour-nav-settings" },
 ];
 
 export default function SidebarLayout({ children }: { children: ReactNode }) {
@@ -31,6 +36,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
   const { mode, toggleMode } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const isDark = mode === "dark";
 
   function handleLogout() {
@@ -50,7 +56,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex h-[60px] items-center gap-2.5 px-4 border-b border-slate-200 dark:border-neutral-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex-shrink-0 shadow-sm shadow-emerald-500/20">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-lime-400 to-lime-600 flex-shrink-0 shadow-sm shadow-lime-500/20">
           <Package className="h-5 w-5 text-white" />
         </div>
         {!collapsed && (
@@ -83,10 +89,11 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               key={navItem.href}
               href={navItem.href}
               onClick={() => setMobileOpen(false)}
+              id={navItem.id}
               className={`
                 group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200
                 ${active
-                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  ? "bg-lime-50 dark:bg-lime-500/10 text-lime-700 dark:text-lime-400"
                   : "text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800/50 hover:text-slate-900 dark:hover:text-neutral-200"
                 }
               `}
@@ -95,13 +102,13 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               {active && (
                 <motion.div
                   layoutId="activeSidebarItem"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-emerald-500"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-lime-500"
                   transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                 />
               )}
               <Icon
                 className={`relative h-[18px] w-[18px] flex-shrink-0 ${collapsed ? "mx-auto" : ""} ${
-                  active ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-neutral-500"
+                  active ? "text-lime-600 dark:text-lime-400" : "text-slate-500 dark:text-neutral-500"
                 }`}
               />
               {!collapsed && (
@@ -110,23 +117,13 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+
+
       </nav>
 
       {/* Bottom section */}
       <div className="border-t border-slate-200 dark:border-neutral-800 px-3 py-3 space-y-0.5">
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleMode}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800/50 hover:text-slate-900 dark:hover:text-neutral-200"
-          title={collapsed ? (isDark ? "Modo claro" : "Modo escuro") : undefined}
-        >
-          {isDark ? (
-            <Sun className={`h-[18px] w-[18px] flex-shrink-0 text-amber-500 ${collapsed ? "mx-auto" : ""}`} />
-          ) : (
-            <Moon className={`h-[18px] w-[18px] flex-shrink-0 text-slate-500 ${collapsed ? "mx-auto" : ""}`} />
-          )}
-          {!collapsed && <span>{isDark ? "Modo Claro" : "Modo Escuro"}</span>}
-        </button>
+        <div className="h-2" /> {/* Spacer */}
 
         {bottomItems.map((navItem) => {
           const Icon = navItem.icon;
@@ -137,10 +134,11 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               key={navItem.href}
               href={navItem.href}
               onClick={() => setMobileOpen(false)}
+              id={navItem.id}
               className={`
                 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200
                 ${active
-                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  ? "bg-lime-50 dark:bg-lime-500/10 text-lime-700 dark:text-lime-400"
                   : "text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800/50 hover:text-slate-900 dark:hover:text-neutral-200"
                 }
               `}
@@ -216,8 +214,8 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
         transition={{ duration: 0.2, ease: "easeInOut" }}
         className="flex-1 hidden md:flex md:flex-col min-h-screen"
       >
-        {/* Header */}
-        <header className="sticky top-0 z-30 h-16 border-b border-slate-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/80 backdrop-blur-xl">
+        {/* Header - Fixed high z-index to stay above page content */}
+        <header className="sticky top-0 z-50 h-16 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
           <div className="flex h-full items-center justify-between px-6">
             {/* Left: Page info */}
             <div className="flex items-center gap-4">
@@ -234,49 +232,58 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
               {/* Search */}
-              <div className="hidden lg:flex items-center gap-2 rounded-xl border border-slate-300 dark:border-neutral-700 bg-slate-100 dark:bg-neutral-800 px-3 py-2 w-72 focus-within:border-emerald-500 focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
-                <SearchIcon className="h-4 w-4 text-slate-500 dark:text-neutral-500 flex-shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Buscar produto em todas as lojas..."
-                  className="flex-1 bg-transparent text-sm text-slate-800 dark:text-neutral-200 placeholder-slate-500 dark:placeholder-neutral-500 outline-none border-none focus:ring-0"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const val = (e.target as HTMLInputElement).value.trim();
-                      if (val) {
-                        localStorage.setItem("construprice-last-search-items", JSON.stringify([val]));
-                        window.dispatchEvent(new CustomEvent("construprice-header-search", { detail: [val] }));
-                        router.push("/results");
-                        (e.target as HTMLInputElement).value = "";
-                      }
-                    }
-                  }}
-                />
-                <kbd className="hidden xl:inline text-[10px] text-slate-500 dark:text-neutral-600 bg-white dark:bg-neutral-700 border border-slate-300 dark:border-neutral-600 rounded px-1.5 py-0.5 font-mono">
-                  Enter
-                </kbd>
-              </div>
-
-              {/* Dark mode toggle */}
               <button
-                onClick={toggleMode}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 transition-all hover:bg-slate-100 dark:hover:bg-neutral-700 hover:text-slate-900 dark:hover:text-neutral-200"
-                title={isDark ? "Modo claro" : "Modo escuro"}
+                id="tour-search-bar"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-command-menu"))}
+                className="hidden lg:flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 shadow-sm px-3 py-2 w-72 transition-all text-left group"
               >
-                {isDark ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-slate-600" />}
+                <SearchIcon className="h-4 w-4 text-slate-400 flex-shrink-0 group-hover:text-lime-500 transition-colors" />
+                <span className="flex-1 text-[13px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">
+                  Buscar variantes...
+                </span>
+                <kbd className="hidden xl:inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 rounded px-1.5 py-0.5 shadow-[0_1px_rgba(0,0,0,0.05)]">
+                  <Command className="h-3 w-3" />
+                  <span>K</span>
+                </kbd>
               </button>
 
+
+
               {/* Notifications */}
-              <button className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 transition-all hover:bg-slate-100 dark:hover:bg-neutral-700 hover:text-slate-900 dark:hover:text-neutral-200">
-                <Bell className="h-4 w-4" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-neutral-800" />
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className={cn(
+                    "relative flex h-9 w-9 items-center justify-center rounded-xl border transition-all",
+                    showNotifications 
+                      ? "border-lime-500 bg-lime-50/50 dark:bg-lime-500/10 text-lime-600 dark:text-lime-400"
+                      : "border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-700 hover:text-slate-900 dark:hover:text-neutral-200"
+                  )}
+                >
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-lime-500 ring-2 ring-white dark:ring-neutral-800" />
+                </button>
+                <UpdateNotifications 
+                  open={showNotifications} 
+                  onClose={() => setShowNotifications(false)} 
+                />
+              </div>
+
+              {/* Help / Tour */}
+              <button
+                id="tour-help-button"
+                onClick={() => window.dispatchEvent(new CustomEvent("start-app-tour"))}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 transition-all hover:bg-lime-500 hover:border-lime-600 hover:text-[#1A1A18] shadow-sm"
+                title="Iniciar Tour"
+              >
+                <Sparkles className="h-4 w-4" />
               </button>
 
               <div className="h-8 w-px bg-slate-200 dark:bg-neutral-700 mx-1" />
 
               {/* User avatar */}
               <div className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-default">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-xs font-semibold text-white shadow-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-lime-400 to-lime-600 text-xs font-semibold text-white shadow-sm">
                   {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
                 </div>
                 <div className="hidden xl:block">
@@ -292,9 +299,11 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 mx-auto w-full max-w-[1400px] px-6 py-6">
+        <main className="flex-1 w-full min-w-0">
+          <CommandMenu />
           {children}
         </main>
+        <AppTour />
       </motion.div>
 
       {/* Mobile layout */}
@@ -308,7 +317,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               <Menu className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-lime-500">
                 <Package className="h-4 w-4 text-white" />
               </div>
               <span className="text-sm font-bold text-slate-800 dark:text-neutral-100">ConstruPrice</span>
@@ -320,33 +329,22 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               >
                 {isDark ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
               </button>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-xs font-semibold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-lime-400 to-lime-600 text-xs font-semibold text-white">
                 {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
               </div>
             </div>
           </div>
           {/* Mobile search bar */}
           <div className="px-4 pb-3">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-3 py-2 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("open-command-menu"))}
+              className="flex w-full items-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800/80 px-3 py-2.5 transition-colors active:bg-slate-100 dark:active:bg-neutral-800 focus:outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/20"
+            >
               <SearchIcon className="h-4 w-4 text-slate-400 dark:text-neutral-500 flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="Buscar produto..."
-                className="flex-1 bg-transparent text-sm text-slate-700 dark:text-neutral-200 placeholder-slate-400 dark:placeholder-neutral-500 outline-none border-none focus:ring-0"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const val = (e.target as HTMLInputElement).value.trim();
-                    if (val) {
-                      localStorage.setItem("construprice-last-search-items", JSON.stringify([val]));
-                      window.dispatchEvent(new CustomEvent("construprice-header-search", { detail: [val] }));
-                      router.push("/results");
-                      (e.target as HTMLInputElement).value = "";
-                      setMobileOpen(false);
-                    }
-                  }
-                }}
-              />
-            </div>
+              <span className="flex-1 text-left text-sm font-medium text-slate-500 dark:text-neutral-400">
+                Buscar produto ou variante...
+              </span>
+            </button>
           </div>
         </header>
 

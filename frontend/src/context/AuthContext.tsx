@@ -6,6 +6,7 @@ import { authApi } from "../services/api";
 interface UserSession {
   email: string;
   displayName: string;
+  role: string;
 }
 
 interface AuthContextValue {
@@ -31,7 +32,11 @@ function readStoredUser(): UserSession | null {
   }
 
   try {
-    return JSON.parse(raw) as UserSession;
+    const parsed = JSON.parse(raw) as UserSession;
+    if (!parsed.role) {
+      parsed.role = "admin"; // Fallback for older sessions without role
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -55,7 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const session: UserSession = {
       email: authResult.user.email,
-      displayName: authResult.user.name ?? authResult.user.email.split("@")[0]
+      displayName: authResult.user.name ?? authResult.user.email.split("@")[0],
+      role: authResult.user.role ?? "funcionario"
     };
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));

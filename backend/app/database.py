@@ -34,6 +34,8 @@ async def get_db():
 
 async def create_tables():
     """Create all tables (called on startup)."""
+    # Import models here to ensure they are registered with Base metadata
+    from app.models import db_models
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("✅ Tabelas do banco de dados criadas/verificadas")

@@ -22,8 +22,8 @@ interface PriceAnalysisProps {
 const VERDICT_CONFIG = {
   barato: {
     label: "Muito Barato",
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10 border-emerald-500/30",
+    color: "text-lime-400",
+    bg: "bg-lime-500/10 border-lime-500/30",
     icon: TrendingDown,
   },
   otimo: {
@@ -194,7 +194,7 @@ export function PriceAnalysis({ productName, currentPrice }: PriceAnalysisProps)
                     className={cn(
                       "rounded-full px-2 py-0.5 font-semibold",
                       analysis.diffPercent <= 0
-                        ? "bg-emerald-500/20 text-emerald-400"
+                        ? "bg-lime-500/20 text-lime-400"
                         : "bg-red-500/20 text-red-400"
                     )}
                   >
@@ -215,7 +215,7 @@ export function PriceAnalysis({ productName, currentPrice }: PriceAnalysisProps)
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-500">Menor preço:</span>
-                    <span className="text-emerald-400">{formatBRL(analysis.marketMin)}</span>
+                    <span className="text-lime-400">{formatBRL(analysis.marketMin)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-500">Maior preço:</span>

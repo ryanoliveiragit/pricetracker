@@ -90,7 +90,7 @@ function PriceBar({ min, max, current }: { min: number; max: number; current: nu
     <div className="mx-auto w-4/5 space-y-2">
       <div className="relative h-1.5 w-full rounded-full bg-slate-200 dark:bg-neutral-700">
         <motion.div
-          className="absolute top-1/2 h-3 w-3 rounded-full bg-emerald-500 shadow-md border-2 border-white dark:border-neutral-900"
+          className="absolute top-1/2 h-3 w-3 rounded-full bg-lime-500 shadow-md border-2 border-white dark:border-neutral-900"
           style={{ marginTop: "-6px", marginLeft: "-6px" }}
           initial={{ left: "50%" }}
           animate={{ left: `${pct}%` }}
@@ -226,9 +226,9 @@ export function PriceAnalysisModal({
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "shrink-0 rounded-xl px-3 py-2 text-center",
-                      isGood ? "bg-emerald-50 dark:bg-emerald-500/10" : "bg-red-50 dark:bg-red-500/10"
+                      isGood ? "bg-lime-50 dark:bg-lime-500/10" : "bg-red-50 dark:bg-red-500/10"
                     )}>
-                      <p className={cn("text-xl font-black", isGood ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                      <p className={cn("text-xl font-black", isGood ? "text-lime-600 dark:text-lime-400" : "text-red-600 dark:text-red-400")}>
                         {diff > 0 ? "+" : ""}{diff}%
                       </p>
                       <p className="text-[9px] text-slate-500 mt-0.5">
@@ -247,7 +247,7 @@ export function PriceAnalysisModal({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500 dark:text-neutral-400">Menor</span>
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatBRL(data.min)}</span>
+                        <span className="font-semibold text-lime-600 dark:text-lime-400">{formatBRL(data.min)}</span>
                       </div>
                     </div>
                   </div>
@@ -284,12 +284,12 @@ export function PriceAnalysisModal({
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className={cn("text-xs font-bold", cheaper ? "text-emerald-600 dark:text-emerald-400" : "text-slate-700 dark:text-neutral-200")}>
+                              <p className={cn("text-xs font-bold", cheaper ? "text-lime-600 dark:text-lime-400" : "text-slate-700 dark:text-neutral-200")}>
                                 {formatBRL(item.price)}
                               </p>
                               <p className={cn(
                                 "text-[10px]",
-                                cheaper ? "text-emerald-500" : "text-red-500"
+                                cheaper ? "text-lime-500" : "text-red-500"
                               )}>
                                 {pDiff > 0 ? "+" : ""}{pDiff}%
                               </p>

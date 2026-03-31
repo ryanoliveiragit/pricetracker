@@ -33,8 +33,8 @@ export default function ModernLogin() {
     <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-neutral-950">
       {/* Subtle background gradient */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-emerald-100/50 dark:bg-emerald-500/10 blur-[100px]" />
-        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-emerald-50/60 dark:bg-emerald-500/5 blur-[100px]" />
+        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-lime-100/50 dark:bg-lime-500/10 blur-[100px]" />
+        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-lime-50/60 dark:bg-lime-500/5 blur-[100px]" />
       </div>
 
       <div className="relative z-10 w-full max-w-[420px] px-4">
@@ -49,7 +49,7 @@ export default function ModernLogin() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 shadow-lg shadow-emerald-500/20"
+              className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-500 shadow-lg shadow-lime-500/20"
             >
               <Package className="h-7 w-7 text-white" />
             </motion.div>
@@ -78,7 +78,7 @@ export default function ModernLogin() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-4 py-3 text-sm text-slate-800 dark:text-neutral-100 placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-4 py-3 text-sm text-slate-800 dark:text-neutral-100 placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:border-lime-500 focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-lime-500/20"
                   placeholder="seu@email.com"
                   required
                 />
@@ -93,7 +93,7 @@ export default function ModernLogin() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-4 py-3 text-sm text-slate-800 dark:text-neutral-100 placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:border-emerald-500 focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-4 py-3 text-sm text-slate-800 dark:text-neutral-100 placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:border-lime-500 focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-lime-500/20"
                   placeholder="********"
                   required
                 />
@@ -112,7 +112,7 @@ export default function ModernLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group w-full rounded-xl bg-lime-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-lime-500/20 transition-all hover:bg-lime-600 hover:shadow-lg hover:shadow-lime-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="flex items-center justify-center gap-2">
                   {loading ? "Entrando..." : "Entrar"}
@@ -124,7 +124,7 @@ export default function ModernLogin() {
             {/* Demo notice */}
             <div className="mt-5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-100 dark:border-neutral-700 p-3.5">
               <div className="flex items-start gap-2.5">
-                <Info className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                <Info className="h-4 w-4 text-lime-500 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-slate-500 dark:text-neutral-400">
                   <p className="font-medium text-slate-600 dark:text-neutral-300 mb-0.5">Modo demonstracao</p>
                   <p>Use as credenciais pre-preenchidas para acessar.</p>

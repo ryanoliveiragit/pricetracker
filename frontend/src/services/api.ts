@@ -151,7 +151,7 @@ export const productsApi = {
 
 // Auth API
 export const authApi = {
-  async login(email: string, password: string): Promise<{ success: boolean; message?: string; user?: { email: string; name?: string }; token?: string }> {
+  async login(email: string, password: string): Promise<{ success: boolean; message?: string; user?: { email: string; name?: string; role?: string }; token?: string }> {
     console.log('🔐 Login mockado - sem requisições de rede');
     
     // Validação básica
@@ -164,13 +164,19 @@ export const authApi = {
     }
     
     // Login mockado - aceita qualquer email/senha válidos para desenvolvimento
-    console.log('✅ Login mockado aceito');
+    let inferredRole = "funcionario";
+    if (email.toLowerCase().includes("admin")) inferredRole = "admin";
+    else if (email.toLowerCase().includes("gestor")) inferredRole = "gestor";
+    else if (email.toLowerCase().includes("user") || email.toLowerCase().includes("usuario")) inferredRole = "usuario";
+
+    console.log('✅ Login mockado aceito:', inferredRole);
     return {
       success: true,
       message: 'Login realizado com sucesso',
       user: {
         email: email.trim(),
-        name: email.trim().split('@')[0]
+        name: email.trim().split('@')[0],
+        role: inferredRole
       },
       token: `mock-token-${Date.now()}`
     };

@@ -55,7 +55,7 @@ export default function Home() {
         </CardHeader>
         <Divider className="bg-[#2e2250]" />
         <CardBody className="grid gap-3 md:grid-cols-3">
-          <Chip className="border border-emerald-500/30 bg-emerald-500/20 text-emerald-100">
+          <Chip className="border border-lime-500/30 bg-lime-500/20 text-lime-100">
             Scraper Megaleste: online
           </Chip>
           <Chip className="border border-yellow-500/30 bg-yellow-500/20 text-yellow-100">

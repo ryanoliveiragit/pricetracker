@@ -90,10 +90,10 @@ export function CartModal({ open, onClose }: CartModalProps) {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-neutral-800/60 px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <ShoppingCart className="h-5 w-5 text-emerald-500" />
+                <ShoppingCart className="h-5 w-5 text-lime-500" />
                 <h2 className="text-base font-semibold text-slate-800 dark:text-neutral-100">Carrinho</h2>
                 {items.length > 0 && (
-                  <span className="rounded-full bg-emerald-100 dark:bg-emerald-600/30 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-300">
+                  <span className="rounded-full bg-lime-100 dark:bg-lime-600/30 px-2 py-0.5 text-xs font-semibold text-lime-600 dark:text-lime-300">
                     {items.length} {items.length === 1 ? "item" : "itens"}
                   </span>
                 )}
@@ -114,7 +114,7 @@ export function CartModal({ open, onClose }: CartModalProps) {
                   <p className="text-sm text-slate-500 dark:text-neutral-500">Seu carrinho está vazio.</p>
                   <button
                     onClick={onClose}
-                    className="mt-1 text-xs text-emerald-500 underline-offset-4 hover:underline"
+                    className="mt-1 text-xs text-lime-500 underline-offset-4 hover:underline"
                   >
                     Continuar buscando
                   </button>
@@ -155,7 +155,7 @@ export function CartModal({ open, onClose }: CartModalProps) {
                               href={item.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="ml-auto text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400"
+                              className="ml-auto text-lime-500 hover:text-lime-600 dark:hover:text-lime-400"
                             >
                               <ExternalLink className="h-3 w-3" />
                             </a>
@@ -183,7 +183,7 @@ export function CartModal({ open, onClose }: CartModalProps) {
 
                             {/* Subtotal + remover */}
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">
+                              <span className="text-sm font-semibold text-lime-600 dark:text-lime-300">
                                 {formatBRL(item.price * item.quantity)}
                               </span>
                               <button
@@ -218,7 +218,7 @@ export function CartModal({ open, onClose }: CartModalProps) {
                     className={cn(
                       "flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-semibold transition",
                       copied
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                        ? "border-lime-500/40 bg-lime-500/10 text-lime-400"
                         : "border-slate-200 dark:border-neutral-700/60 bg-slate-50 dark:bg-neutral-800/60 text-slate-600 dark:text-neutral-300 hover:border-slate-300 dark:hover:border-neutral-600 hover:bg-slate-100 dark:hover:bg-neutral-700/60"
                     )}
                   >
@@ -239,7 +239,7 @@ export function CartModal({ open, onClose }: CartModalProps) {
 
                 <button
                   onClick={() => { handleCopyList(); onClose(); }}
-                  className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600 active:scale-[0.98]"
+                  className="w-full rounded-xl bg-lime-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-lime-500/20 transition hover:bg-lime-600 active:scale-[0.98]"
                 >
                   Finalizar Pedido
                 </button>

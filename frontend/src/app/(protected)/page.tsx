@@ -1,5 +1,5 @@
-import ModernDashboard from "../../views/ModernDashboard";
+import { redirect } from 'next/navigation';
 
-export default function DashboardPage() {
-  return <ModernDashboard />;
+export default function RootRedirectPage() {
+  redirect('/search');
 }

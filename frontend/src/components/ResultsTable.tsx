@@ -100,7 +100,7 @@ export default function ResultsTable({ items }: ResultsTableProps) {
                             <h3 className="text-lg font-bold text-white">{offer.store}</h3>
                           
                           {isAvailable ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-lime-500/10 px-3 py-1 text-xs font-bold text-lime-400 border border-lime-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                               <CheckCircle2 className="h-3.5 w-3.5" />
                               Em Estoque
                             </span>

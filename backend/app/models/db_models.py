@@ -2,8 +2,8 @@
 SQLAlchemy ORM models for PostgreSQL persistence.
 """
 from datetime import datetime, timezone
-from sqlalchemy import String, Text, Boolean, Float, DateTime, Integer, JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Text, Boolean, Float, DateTime, Integer, JSON, Enum, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
@@ -81,3 +81,59 @@ class ScrapeTimingDB(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
+
+import enum
+
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    GESTOR = "gestor"
+    USUARIO = "usuario"
+    FUNCIONARIO = "funcionario"
+
+class UserDB(Base):
+    """Usuários e suas Roles no sistema RBAC."""
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nome: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    telefone: Mapped[str] = mapped_column(String(64), nullable=True, default="")
+    empresa: Mapped[str] = mapped_column(String(255), nullable=True, default="")
+    cargo: Mapped[str] = mapped_column(String(128), nullable=True, default="")
+    avatar: Mapped[str] = mapped_column(Text, nullable=True, default="")
+    
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.USUARIO)
+    
+    # Relacionamento de subordinação
+    parent_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class SavedOfferDB(Base):
+    """Ofertas salvas (favoritas) pelos usuários."""
+    __tablename__ = "saved_offers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    
+    store: Mapped[str] = mapped_column(String(255), nullable=False)
+    product_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    price: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String(16), default="BRL")
+    product_url: Mapped[str] = mapped_column(Text, nullable=False)
+    image_url: Mapped[str] = mapped_column(Text, nullable=True)
+    availability: Mapped[str] = mapped_column(String(64), default="em_estoque")
+    sku: Mapped[str] = mapped_column(String(128), nullable=True)
+    brand: Mapped[str] = mapped_column(String(128), nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+

@@ -89,7 +89,7 @@ export function ImageModal({
             {hasPrev && (
               <button
                 onClick={() => onNavigate(currentIndex - 1)}
-                className="absolute -left-5 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800/90 text-neutral-200 shadow-lg backdrop-blur transition hover:bg-emerald-600 hover:text-white"
+                className="absolute -left-5 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800/90 text-neutral-200 shadow-lg backdrop-blur transition hover:bg-lime-600 hover:text-white"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -99,7 +99,7 @@ export function ImageModal({
             {hasNext && (
               <button
                 onClick={() => onNavigate(currentIndex + 1)}
-                className="absolute -right-5 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800/90 text-neutral-200 shadow-lg backdrop-blur transition hover:bg-emerald-600 hover:text-white"
+                className="absolute -right-5 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800/90 text-neutral-200 shadow-lg backdrop-blur transition hover:bg-lime-600 hover:text-white"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>

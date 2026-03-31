@@ -36,7 +36,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+      <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
         {label}
       </label>
       {children}
@@ -51,10 +51,10 @@ function Field({
 }
 
 function inputCls(hasError?: boolean) {
-  return `w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-800 dark:text-neutral-100 placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:outline-none focus:ring-2 ${
+  return `w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#1A1A18] placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:outline-none focus:ring-2 ${
     hasError
       ? "border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-500/20"
-      : "border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 focus:border-emerald-500 focus:ring-emerald-500/20"
+      : "border-[#E8E8E4] bg-[#F7F7F5] focus:border-[#84CC16] focus:ring-[#84CC16]/20"
   }`;
 }
 
@@ -270,7 +270,7 @@ export default function ModernCatalog() {
   const productsWithImage = products.filter((p) => p.logo).length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}
@@ -279,10 +279,10 @@ export default function ModernCatalog() {
         className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-neutral-100">
+          <h1 className="text-xl font-bold text-[#1A1A18]">
             Gerenciar Produtos
           </h1>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-neutral-400">
+          <p className="mt-0.5 text-sm text-[#A0A09A]">
             Catálogo de produtos para cotação
           </p>
         </div>
@@ -302,7 +302,7 @@ export default function ModernCatalog() {
           />
           <button
             onClick={downloadExampleCsv}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3.5 py-2 text-sm text-slate-500 dark:text-neutral-400 transition-colors hover:bg-slate-50 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-300"
+            className="flex items-center gap-2 rounded-lg border border-[#E8E8E4] bg-white px-3.5 py-2 text-sm text-[#A0A09A] transition-colors hover:bg-[#F7F7F5] hover:text-[#1A1A18]"
             title="Baixar modelo CSV de exemplo"
           >
             <Download className="h-4 w-4" />
@@ -310,14 +310,14 @@ export default function ModernCatalog() {
           </button>
           <button
             onClick={() => csvInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3.5 py-2 text-sm text-slate-500 dark:text-neutral-400 transition-colors hover:bg-slate-50 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-300"
+            className="flex items-center gap-2 rounded-lg border border-[#E8E8E4] bg-white px-3.5 py-2 text-sm text-[#A0A09A] transition-colors hover:bg-[#F7F7F5] hover:text-[#1A1A18]"
           >
             <Upload className="h-4 w-4" />
             Importar CSV
           </button>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 rounded-lg bg-emerald-500 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
+            className="flex items-center gap-2 rounded-lg bg-[#84CC16] px-3.5 py-2 text-sm font-medium text-[#1A1A18] transition-colors hover:bg-[#78b814]"
           >
             <Plus className="h-4 w-4" />
             Novo Produto
@@ -333,19 +333,19 @@ export default function ModernCatalog() {
         className="grid grid-cols-2 gap-3 sm:grid-cols-4"
       >
         {[
-          { label: "Produtos", value: totalProducts, icon: Package, color: "text-emerald-500" },
+          { label: "Produtos", value: totalProducts, icon: Package, color: "text-[#84CC16]" },
           { label: "Categorias", value: totalCategories, icon: LayoutGrid, color: "text-blue-500" },
-          { label: "Marcas", value: totalBrands, icon: Box, color: "text-emerald-500" },
+          { label: "Marcas", value: totalBrands, icon: Box, color: "text-[#84CC16]" },
           { label: "Com Foto", value: productsWithImage, icon: ImageIcon, color: "text-amber-500" },
         ].map((stat) => (
           <div
             key={stat.label}
-            className="flex items-center gap-3 rounded-2xl border border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3 shadow-sm"
+            className="flex items-center gap-3 rounded-xl border border-[#E8E8E4] bg-white px-4 py-3 shadow-sm"
           >
             <stat.icon className={`h-4 w-4 ${stat.color} flex-shrink-0`} />
             <div>
-              <p className="text-lg font-semibold text-slate-800 dark:text-neutral-100">{stat.value}</p>
-              <p className="text-xs text-slate-500 dark:text-neutral-400">{stat.label}</p>
+              <p className="text-lg font-semibold text-[#1A1A18]">{stat.value}</p>
+              <p className="text-xs text-[#A0A09A]">{stat.label}</p>
             </div>
           </div>
         ))}
@@ -360,12 +360,12 @@ export default function ModernCatalog() {
       >
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-neutral-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A0A09A]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 py-2 pl-10 pr-4 text-sm text-slate-800 dark:text-neutral-100 placeholder-slate-400 dark:placeholder-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+            className="w-full rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] py-2 pl-10 pr-4 text-sm text-[#1A1A18] placeholder-slate-400 dark:placeholder-neutral-500 focus:border-[#84CC16] focus:outline-none focus:ring-1 focus:ring-[#84CC16]/20"
             placeholder="Buscar por nome, categoria, marca ou SKU..."
           />
         </div>
@@ -374,7 +374,7 @@ export default function ModernCatalog() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-3 py-2 text-sm text-slate-600 dark:text-neutral-300 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+          className="rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#6B6B63] focus:border-[#84CC16] focus:outline-none focus:ring-1 focus:ring-[#84CC16]/20"
         >
           <option value="all">Categoria ({availableCategories.length})</option>
           {availableCategories.map((c) => (
@@ -386,7 +386,7 @@ export default function ModernCatalog() {
         <select
           value={brandFilter}
           onChange={(e) => setBrandFilter(e.target.value)}
-          className="rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-3 py-2 text-sm text-slate-600 dark:text-neutral-300 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+          className="rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#6B6B63] focus:border-[#84CC16] focus:outline-none focus:ring-1 focus:ring-[#84CC16]/20"
         >
           <option value="all">Marca ({availableBrands.length})</option>
           {availableBrands.map((b) => (
@@ -397,7 +397,7 @@ export default function ModernCatalog() {
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="rounded-lg border border-slate-200 dark:border-neutral-700 px-3 py-2 text-xs text-slate-500 dark:text-neutral-400 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-300"
+            className="rounded-lg border border-[#E8E8E4] px-3 py-2 text-xs text-[#A0A09A] transition-colors hover:bg-[#EFEFEA] hover:text-[#1A1A18]"
           >
             Limpar
           </button>
@@ -407,11 +407,11 @@ export default function ModernCatalog() {
       {/* Active filter tags */}
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-400 dark:text-neutral-500">Filtros ativos:</span>
+          <span className="text-xs text-[#A0A09A]">Filtros ativos:</span>
           {searchQuery && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1 rounded-md bg-[#84CC16]/15 border border-[#84CC16]/30 px-2 py-0.5 text-xs text-[#3d6600]">
               &quot;{searchQuery}&quot;
-              <button onClick={() => setSearchQuery("")} className="ml-0.5 hover:text-emerald-800">&times;</button>
+              <button onClick={() => setSearchQuery("")} className="ml-0.5 hover:text-lime-800">&times;</button>
             </span>
           )}
           {categoryFilter !== "all" && (
@@ -421,9 +421,9 @@ export default function ModernCatalog() {
             </span>
           )}
           {brandFilter !== "all" && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1 rounded-md bg-[#84CC16]/15 border border-[#84CC16]/30 px-2 py-0.5 text-xs text-[#3d6600]">
               {brandFilter}
-              <button onClick={() => setBrandFilter("all")} className="ml-0.5 hover:text-emerald-800">&times;</button>
+              <button onClick={() => setBrandFilter("all")} className="ml-0.5 hover:text-lime-800">&times;</button>
             </span>
           )}
         </div>
@@ -434,12 +434,12 @@ export default function ModernCatalog() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
-        className="overflow-hidden rounded-2xl border border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm"
+        className="overflow-hidden rounded-xl border border-[#E8E8E4] bg-white shadow-sm"
       >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-neutral-800">
+              <tr className="border-b border-[#E8E8E4]">
                 {[
                   { label: "Produto", align: "left" },
                   { label: "SKU", align: "left" },
@@ -450,7 +450,7 @@ export default function ModernCatalog() {
                 ].map((h, i) => (
                   <th
                     key={i}
-                    className={`px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-neutral-500 ${
+                    className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A] ${
                       h.align === "right" ? "text-right" : "text-left"
                     }`}
                   >
@@ -464,8 +464,8 @@ export default function ModernCatalog() {
                 <tr>
                   <td colSpan={6} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <Package className="h-8 w-8 text-slate-300 dark:text-neutral-600" />
-                      <p className="text-sm text-slate-500 dark:text-neutral-400">
+                      <Package className="h-8 w-8 text-[#A0A09A]" />
+                      <p className="text-sm text-[#A0A09A]">
                         {hasActiveFilters
                           ? "Nenhum produto encontrado com esses filtros"
                           : "Nenhum produto cadastrado"}
@@ -473,7 +473,7 @@ export default function ModernCatalog() {
                       {hasActiveFilters && (
                         <button
                           onClick={clearFilters}
-                          className="mt-1 text-xs text-emerald-500 hover:text-emerald-600"
+                          className="mt-1 text-xs text-[#84CC16] hover:text-[#3d6600]"
                         >
                           Limpar filtros
                         </button>
@@ -485,8 +485,8 @@ export default function ModernCatalog() {
                 paginatedProducts.map((product, idx) => (
                   <tr
                     key={product.id}
-                    className={`group border-b border-slate-50 dark:border-neutral-800 transition-colors hover:bg-slate-50 dark:hover:bg-neutral-800 ${
-                      idx % 2 === 0 ? "" : "bg-slate-50/50 dark:bg-neutral-800/50"
+                    className={`group border-b border-[#E8E8E4] transition-colors hover:bg-[#F7F7F5] ${
+                      idx % 2 === 0 ? "" : "bg-[#F7F7F5]/50"
                     }`}
                   >
                     {/* Produto */}
@@ -496,19 +496,19 @@ export default function ModernCatalog() {
                           <img
                             src={product.logo}
                             alt={product.name}
-                            className="h-8 w-8 flex-shrink-0 rounded-md border border-slate-200 dark:border-neutral-700 object-contain"
+                            className="h-8 w-8 flex-shrink-0 rounded-md border border-[#E8E8E4] object-contain"
                           />
                         ) : (
-                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-slate-100 dark:bg-neutral-800">
-                            <Package className="h-3.5 w-3.5 text-slate-400 dark:text-neutral-500" />
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-[#F7F7F5] border border-[#E8E8E4]">
+                            <Package className="h-3.5 w-3.5 text-[#A0A09A]" />
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-slate-700 dark:text-neutral-300">
+                          <p className="truncate text-sm font-medium text-[#1A1A18]">
                             {product.name}
                           </p>
                           {product.notes && (
-                            <p className="mt-0.5 max-w-[240px] truncate text-[11px] text-slate-400">
+                            <p className="mt-0.5 max-w-[240px] truncate text-[11px] text-[#A0A09A]">
                               {product.notes}
                             </p>
                           )}
@@ -519,28 +519,28 @@ export default function ModernCatalog() {
                     {/* SKU */}
                     <td className="px-4 py-3">
                       {product.sku ? (
-                        <span className="font-mono text-xs text-slate-500 dark:text-neutral-400">
+                        <span className="font-mono text-xs text-[#A0A09A]">
                           {product.sku}
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-300 dark:text-neutral-600">&mdash;</span>
+                        <span className="text-xs text-[#A0A09A]">&mdash;</span>
                       )}
                     </td>
 
                     {/* Categoria */}
                     <td className="px-4 py-3">
-                      <span className="rounded-md bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 text-xs text-slate-600 dark:text-neutral-300">
+                      <span className="rounded-md bg-[#F7F7F5] border border-[#E8E8E4] px-2 py-0.5 text-xs text-[#6B6B63]">
                         {product.category}
                       </span>
                     </td>
 
                     {/* Marca */}
-                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-neutral-400">
+                    <td className="px-4 py-3 text-sm text-[#A0A09A]">
                       {product.brand}
                     </td>
 
                     {/* Unidade */}
-                    <td className="px-4 py-3 text-xs text-slate-500 dark:text-neutral-400">
+                    <td className="px-4 py-3 text-xs text-[#A0A09A]">
                       {product.unit}
                     </td>
 
@@ -549,7 +549,7 @@ export default function ModernCatalog() {
                       <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         <button
                           onClick={() => handleEdit(product)}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-200"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-[#A0A09A] transition-colors hover:bg-[#EFEFEA] hover:text-[#1A1A18]"
                           title="Editar"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
@@ -564,7 +564,7 @@ export default function ModernCatalog() {
                             </button>
                             <button
                               onClick={() => setDeleteConfirmId(null)}
-                              className="rounded-md px-2 py-1 text-[11px] text-slate-500 transition-colors hover:bg-slate-100"
+                              className="rounded-md px-2 py-1 text-[11px] text-[#A0A09A] transition-colors hover:bg-[#F7F7F5]"
                             >
                               Não
                             </button>
@@ -572,7 +572,7 @@ export default function ModernCatalog() {
                         ) : (
                           <button
                             onClick={() => setDeleteConfirmId(product.id)}
-                            className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-[#A0A09A] transition-colors hover:bg-red-50 hover:text-red-500"
                             title="Excluir"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -589,16 +589,16 @@ export default function ModernCatalog() {
 
         {/* Pagination */}
         {filteredProducts.length > 0 && (
-          <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-neutral-800 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-[#E8E8E4] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <p className="text-xs text-slate-400 dark:text-neutral-500">
+              <p className="text-xs text-[#A0A09A]">
                 {(safePage - 1) * pageSize + 1}&ndash;{Math.min(safePage * pageSize, filteredProducts.length)} de{" "}
-                <span className="text-slate-600 dark:text-neutral-300">{filteredProducts.length}</span>
+                <span className="text-[#6B6B63]">{filteredProducts.length}</span>
               </p>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="rounded-md border border-slate-200 dark:border-neutral-700 bg-transparent px-2 py-1 text-xs text-slate-500 dark:text-neutral-400 focus:outline-none"
+                className="rounded-md border border-[#E8E8E4] bg-transparent px-2 py-1 text-xs text-[#A0A09A] focus:outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>
@@ -612,14 +612,14 @@ export default function ModernCatalog() {
               <button
                 onClick={() => setCurrentPage(1)}
                 disabled={safePage <= 1}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-200 disabled:pointer-events-none disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-[#A0A09A] transition-colors hover:bg-[#EFEFEA] hover:text-[#1A1A18] disabled:pointer-events-none disabled:opacity-30"
               >
                 <ChevronsLeft className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={safePage <= 1}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-200 disabled:pointer-events-none disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-[#A0A09A] transition-colors hover:bg-[#EFEFEA] hover:text-[#1A1A18] disabled:pointer-events-none disabled:opacity-30"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
@@ -648,8 +648,8 @@ export default function ModernCatalog() {
                       onClick={() => setCurrentPage(item)}
                       className={`flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors ${
                         item === safePage
-                          ? "bg-emerald-500 font-medium text-white"
-                          : "text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-200"
+                          ? "bg-[#84CC16] font-medium text-[#1A1A18]"
+                          : "text-[#A0A09A] hover:bg-[#EFEFEA] hover:text-[#1A1A18]"
                       }`}
                     >
                       {item}
@@ -660,14 +660,14 @@ export default function ModernCatalog() {
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage >= totalPages}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-200 disabled:pointer-events-none disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-[#A0A09A] transition-colors hover:bg-[#EFEFEA] hover:text-[#1A1A18] disabled:pointer-events-none disabled:opacity-30"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={safePage >= totalPages}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-200 disabled:pointer-events-none disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-[#A0A09A] transition-colors hover:bg-[#EFEFEA] hover:text-[#1A1A18] disabled:pointer-events-none disabled:opacity-30"
               >
                 <ChevronsRight className="h-3.5 w-3.5" />
               </button>
@@ -692,19 +692,19 @@ export default function ModernCatalog() {
               exit={{ opacity: 0, scale: 0.96, y: 16 }}
               transition={{ type: "spring", duration: 0.35 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl"
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-neutral-800 bg-white shadow-2xl"
             >
               {/* Modal header */}
-              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-6 py-4">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-neutral-800 bg-white px-6 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
-                    <Package className="h-5 w-5 text-emerald-500" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#84CC16]/15 border border-[#84CC16]/30">
+                    <Package className="h-5 w-5 text-[#84CC16]" />
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-slate-800 dark:text-neutral-100">
+                    <h2 className="text-base font-semibold text-[#1A1A18]">
                       {editingId ? "Editar Produto" : "Novo Produto"}
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-neutral-400">
+                    <p className="text-xs text-[#A0A09A]">
                       {editingId
                         ? "Atualize as informações do produto"
                         : "Preencha os dados para cadastrar"}
@@ -713,7 +713,7 @@ export default function ModernCatalog() {
                 </div>
                 <button
                   onClick={handleCancel}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-700 dark:hover:text-neutral-200"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[#A0A09A] transition-colors hover:bg-[#EFEFEA] hover:text-[#1A1A18]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -725,15 +725,15 @@ export default function ModernCatalog() {
                   {/* ── Section: Identificação ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-emerald-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Identificação
                       </span>
                     </div>
 
                     <Field label="Nome do Produto *" error={errors.name?.message}>
                       <div className="relative">
-                        <Package className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Package className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A0A09A]" />
                         <input
                           type="text"
                           {...register("name")}
@@ -745,7 +745,7 @@ export default function ModernCatalog() {
 
                     <Field label="Código / SKU" error={errors.sku?.message}>
                       <div className="relative">
-                        <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A0A09A]" />
                         <input
                           type="text"
                           {...register("sku")}
@@ -759,15 +759,15 @@ export default function ModernCatalog() {
                   {/* ── Section: Classificação ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-emerald-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Classificação
                       </span>
                     </div>
 
                     <Field label="Categoria *" error={errors.category?.message}>
                       <div className="relative">
-                        <Layers className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Layers className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A0A09A]" />
                         <input
                           type="text"
                           {...register("category")}
@@ -781,15 +781,15 @@ export default function ModernCatalog() {
                   {/* ── Section: Imagem ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-emerald-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Imagem
                       </span>
                     </div>
 
                     <div className="flex gap-4">
                       {/* Preview */}
-                      <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800">
+                      <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E8E8E4] bg-[#F7F7F5]">
                         {logoValue ? (
                           <img
                             src={logoValue}
@@ -807,7 +807,7 @@ export default function ModernCatalog() {
                           onChange={(base64) => setValue("logo", base64)}
                           aspect={1}
                         />
-                        <p className="mt-2 text-xs text-slate-400">
+                        <p className="mt-2 text-xs text-[#A0A09A]">
                           JPG, PNG ou WebP · Máx 5 MB · Será recortado em quadrado
                         </p>
                       </div>
@@ -817,15 +817,15 @@ export default function ModernCatalog() {
                   {/* ── Section: Observações ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-emerald-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Observações
                       </span>
                     </div>
 
                     <Field label="Descrição / Notas" error={errors.notes?.message}>
                       <div className="relative">
-                        <FileText className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <FileText className="absolute left-3 top-3 h-4 w-4 text-[#A0A09A]" />
                         <textarea
                           {...register("notes")}
                           rows={3}
@@ -841,7 +841,7 @@ export default function ModernCatalog() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="h-1 w-5 rounded-full bg-violet-500" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                           Variantes / Sinônimos
                         </span>
                       </div>
@@ -856,7 +856,7 @@ export default function ModernCatalog() {
                       </button>
                     </div>
 
-                    <p className="text-xs text-slate-400 dark:text-neutral-500">
+                    <p className="text-xs text-[#A0A09A]">
                       Nomes alternativos para este produto. Usados para expandir buscas automaticamente (ex: &quot;cola&quot; → &quot;adesivo&quot;, &quot;fixador&quot;).
                     </p>
 
@@ -896,7 +896,7 @@ export default function ModernCatalog() {
                         type="button"
                         onClick={addVariant}
                         disabled={!variantInput.trim()}
-                        className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 px-3 py-2 text-sm font-medium text-slate-600 dark:text-neutral-300 transition hover:bg-slate-100 dark:hover:bg-neutral-700 disabled:opacity-40"
+                        className="flex items-center gap-1 rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm font-medium text-[#6B6B63] transition hover:bg-[#F7F7F5] dark:hover:bg-neutral-700 disabled:opacity-40"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         Add
@@ -906,17 +906,17 @@ export default function ModernCatalog() {
                 </div>
 
                 {/* Modal footer */}
-                <div className="sticky bottom-0 flex gap-3 border-t border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-6 py-4">
+                <div className="sticky bottom-0 flex gap-3 border-t border-slate-200 dark:border-neutral-800 bg-white px-6 py-4">
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="flex-1 rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 py-2.5 text-sm font-medium text-slate-600 dark:text-neutral-300 transition-colors hover:bg-slate-100 dark:hover:bg-neutral-700 hover:text-slate-800 dark:hover:text-neutral-100"
+                    className="flex-1 rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] py-2.5 text-sm font-medium text-[#6B6B63] transition-colors hover:bg-[#F7F7F5] dark:hover:bg-neutral-700 hover:text-slate-800 dark:hover:text-neutral-100"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
+                    className="flex-1 rounded-xl bg-[#84CC16] py-2.5 text-sm font-semibold text-[#1A1A18] transition-colors hover:bg-[#78b814]"
                   >
                     {editingId ? "Salvar Alterações" : "Adicionar Produto"}
                   </button>

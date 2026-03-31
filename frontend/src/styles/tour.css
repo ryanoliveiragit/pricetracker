@@ -1,0 +1,116 @@
+/* Driver.js Minimalist Theme - Exact Parity with ConstruPrice */
+
+.driver-popover.driverjs-construprice {
+  background-color: #ffffff !important;
+  color: #1a1a18 !important;
+  border-radius: 12px !important;
+  border: 1px solid #e8e8e4 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+  padding: 24px !important;
+  max-width: 340px !important;
+}
+
+/* Remove any accent lines or extra decorations */
+.driver-popover.driverjs-construprice::before {
+  display: none !important;
+}
+
+/* Arrow - Keep it simple or hide it */
+.driver-popover.driverjs-construprice .driver-popover-arrow {
+  display: none !important;
+}
+
+/* Title - Concise and bold */
+.driver-popover.driverjs-construprice .driver-popover-title {
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #1a1a18 !important;
+  margin-bottom: 8px !important;
+}
+
+/* Description - Clean and legible */
+.driver-popover.driverjs-construprice .driver-popover-description {
+  font-family: inherit !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: #6b6b63 !important;
+}
+
+/* Footer Section */
+.driver-popover.driverjs-construprice .driver-popover-footer {
+  margin-top: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+/* Progress Text */
+.driver-popover.driverjs-construprice .driver-popover-progress-text {
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #a0a09a !important;
+}
+
+/* Buttons Container */
+.driver-popover.driverjs-construprice .driver-popover-navigation-btns {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+/* Base Button Style - Exact copy of system buttons */
+.driver-popover.driverjs-construprice .driver-popover-btn {
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  border: 1px solid #e8e8e4 !important;
+  background-color: #ffffff !important;
+  color: #6b6b63 !important;
+  transition: all 0.2s ease !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+/* Next / Primary Button */
+.driver-popover.driverjs-construprice .driver-popover-next-btn {
+  background-color: #84cc16 !important;
+  color: #1a1a18 !important;
+  border-color: #7ab914 !important;
+}
+
+.driver-popover.driverjs-construprice .driver-popover-next-btn:hover {
+  background-color: #78b814 !important;
+  border-color: #6a9c12 !important;
+}
+
+/* Back / Secondary Button */
+.driver-popover.driverjs-construprice .driver-popover-prev-btn {
+  background-color: #f7f7f5 !important;
+  color: #6b6b63 !important;
+}
+
+.driver-popover.driverjs-construprice .driver-popover-prev-btn:hover {
+  background-color: #eeeeec !important;
+  color: #1a1a18 !important;
+}
+
+/* Close Button (X) */
+.driver-popover.driverjs-construprice .driver-popover-close-btn {
+  color: #d0d0ca !important;
+  font-size: 16px !important;
+  right: 12px !important;
+  top: 12px !important;
+}
+
+.driver-popover.driverjs-construprice .driver-popover-close-btn:hover {
+  color: #1a1a18 !important;
+}
+
+/* Highlight Stage */
+.driver-stage {
+  border-radius: 12px !important;
+}

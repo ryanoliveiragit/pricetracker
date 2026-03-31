@@ -65,14 +65,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     const themeRgb = THEME_RGB[settings.color];
     
-    // Apply mode
-    if (settings.mode === "dark") {
-      root.classList.add("dark");
-      root.classList.remove("light");
-    } else {
-      root.classList.add("light");
-      root.classList.remove("dark");
-    }
+    // Apply mode (Forced to light by user request)
+    root.classList.add("light");
+    root.classList.remove("dark");
 
     // Apply color theme
     root.setAttribute("data-theme-color", settings.color);
@@ -97,7 +92,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   function toggleMode() {
-    setTheme((prev) => ({ ...prev, mode: prev.mode === "dark" ? "light" : "dark" }));
+    // Disabled temporarily
+    setTheme((prev) => ({ ...prev, mode: "light" }));
   }
 
   return (

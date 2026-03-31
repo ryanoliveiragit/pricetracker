@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from app.config import settings
-from app.api.routes import search, auth, suppliers, products
+from app.api.routes import search, auth, suppliers, products, users, saves
 
 # Configurar logging
 logging.basicConfig(
@@ -50,6 +50,8 @@ app.include_router(search.router, prefix="/api", tags=["search"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(suppliers.router, prefix="/api", tags=["suppliers"])
 app.include_router(products.router, prefix="/api", tags=["products"])
+app.include_router(users.router, prefix="/api", tags=["users"])
+app.include_router(saves.router, prefix="/api/saves", tags=["saves"])
 
 @app.post("/api/admin/reseed-suppliers")
 async def reseed_suppliers():

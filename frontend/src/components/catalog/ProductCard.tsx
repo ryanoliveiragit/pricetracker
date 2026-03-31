@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, BookmarkPlus } from "lucide-react";
+import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, BookmarkPlus, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { Offer } from "@/types/search";
@@ -9,6 +9,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useProductCatalog } from "@/context/ProductCatalogContext";
 import { PriceAnalysisModal } from "./PriceAnalysisModal";
 import { cn } from "@/lib/utils";
+import { useSavedOffers } from "@/context/SavedOffersContext";
 
 interface ProductCardProps {
   offer: Offer;
@@ -23,7 +24,7 @@ function formatBRL(value: number) {
 
 function availabilityConfig(status: string) {
   if (status === "em_estoque")
-    return { label: "Em estoque", dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" };
+    return { label: "Em estoque", dot: "bg-lime-500", text: "text-lime-600 dark:text-lime-400" };
   if (status === "por_encomenda")
     return { label: "Por encomenda", dot: "bg-amber-400", text: "text-amber-600 dark:text-amber-400" };
   return { label: "Indisponível", dot: "bg-red-400", text: "text-red-400 dark:text-red-400" };
@@ -38,6 +39,8 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
   const [justAdded, setJustAdded] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const { isSaved: checkIsSaved, toggleSave } = useSavedOffers();
+  const isSaved = checkIsSaved(offer.productUrl);
 
   const itemId = `${offer.store}-${offer.sku ?? offer.productName}`;
   const cartItem = items.find((i) => i.id === itemId);
@@ -81,8 +84,10 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
   async function handleUpdateProduct() {
     if (!matchedProduct) return;
     await updateProduct(matchedProduct.id, {
-      name: matchedProduct.name, category: matchedProduct.category,
-      brand: offer.brand || matchedProduct.brand, unit: matchedProduct.unit,
+      name: matchedProduct.name,
+      category: matchedProduct.category,
+      brand: offer.brand || matchedProduct.brand,
+      unit: matchedProduct.unit,
       sku: offer.sku || matchedProduct.sku || "",
       logo: offer.imageUrl?.startsWith("http") ? offer.imageUrl : (matchedProduct.logo || ""),
       notes: matchedProduct.notes || "",
@@ -100,13 +105,13 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
         "transition-all duration-200",
         "hover:shadow-md hover:-translate-y-px",
         offer.isBestPrice
-          ? "border-amber-200 dark:border-amber-500/20 shadow-sm shadow-amber-100 dark:shadow-amber-500/5"
+          ? "border-lime-300 dark:border-lime-500/30 shadow-[0_0_15px_-3px_rgba(132,204,22,0.15)] dark:shadow-[0_0_15px_-3px_rgba(132,204,22,0.1)]"
           : "border-slate-200 dark:border-neutral-800 shadow-sm"
       )}
     >
       {/* Image */}
       <div
-        className="relative cursor-zoom-in overflow-hidden rounded-t-xl bg-slate-50 dark:bg-neutral-800"
+        className="relative cursor-zoom-in overflow-hidden rounded-t-xl bg-white dark:bg-white border-b border-slate-100 dark:border-neutral-200"
         onClick={() => onImageClick([imageUrl], 0, offer.productName)}
       >
         <img
@@ -115,11 +120,26 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
           className="h-40 w-full object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
           onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/280x160/f8fafc/cbd5e1?text=."; }}
         />
+        
+        {/* Save Offer Button (Heart) */}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleSave(offer); }}
+          className={cn(
+            "absolute top-2 right-2 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 border shadow-sm transition-all z-10",
+            isSaved 
+              ? "border-[#84CC16]/20 text-[#84CC16]" 
+              : "border-slate-100 text-slate-400 hover:text-[#84CC16] hover:scale-110"
+          )}
+          title={isSaved ? "Remover dos favoritos" : "Salvar nos favoritos"}
+        >
+          <Heart className={cn("h-4 w-4", isSaved && "fill-[#84CC16]")} />
+        </button>
+
         {offer.isBestPrice && (
           <div className="absolute bottom-2 left-2">
-            <span className="flex items-center gap-1 rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white tracking-wide shadow-sm">
-              <Star className="h-2.5 w-2.5 fill-white" />
-              MELHOR PREÇO
+            <span className="flex items-center gap-1 rounded-md bg-white/90 dark:bg-neutral-900/90 border border-lime-200 dark:border-lime-500/20 px-2.5 py-1 text-[10px] font-bold text-lime-600 dark:text-lime-400 tracking-wide shadow-sm backdrop-blur-sm">
+              <Star className="h-3 w-3 fill-lime-500 text-lime-500" />
+              MENOR PREÇO
             </span>
           </div>
         )}
@@ -151,7 +171,7 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
         <div className="flex items-center justify-between">
           <div>
             <span className={cn("text-xl font-bold leading-none tabular-nums",
-              offer.isBestPrice ? "text-amber-600 dark:text-amber-400" : "text-slate-900 dark:text-neutral-50"
+              offer.isBestPrice ? "text-lime-600 dark:text-lime-400" : "text-slate-900 dark:text-neutral-50"
             )}>
               {offer.price > 0 ? formatBRL(offer.price) : <span className="text-sm font-normal text-slate-400">Consultar</span>}
             </span>
@@ -171,7 +191,7 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all",
               registered
-                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 cursor-default"
+                ? "bg-lime-50 dark:bg-lime-500/10 text-lime-600 dark:text-lime-400 cursor-default"
                 : "border border-dashed border-slate-200 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
             )}
           >
@@ -205,14 +225,14 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
         {/* Cart */}
         {inCart && cartItem ? (
           <div className="flex items-center gap-1.5">
-            <div className="flex flex-1 items-center justify-between rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10">
+            <div className="flex flex-1 items-center justify-between rounded-lg border border-lime-200 dark:border-lime-500/30 bg-lime-50 dark:bg-lime-500/10">
               <button onClick={() => updateQuantity(itemId, cartItem.quantity - 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-l-lg text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-100 dark:hover:bg-emerald-500/20">
+                className="flex h-8 w-8 items-center justify-center rounded-l-lg text-lime-600 dark:text-lime-400 transition hover:bg-lime-100 dark:hover:bg-lime-500/20">
                 <Minus className="h-3 w-3" />
               </button>
-              <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{cartItem.quantity}</span>
+              <span className="text-sm font-bold text-lime-700 dark:text-lime-400">{cartItem.quantity}</span>
               <button onClick={() => updateQuantity(itemId, cartItem.quantity + 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-r-lg text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-100 dark:hover:bg-emerald-500/20">
+                className="flex h-8 w-8 items-center justify-center rounded-r-lg text-lime-600 dark:text-lime-400 transition hover:bg-lime-100 dark:hover:bg-lime-500/20">
                 <Plus className="h-3 w-3" />
               </button>
             </div>
@@ -226,10 +246,10 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
             className={cn(
               "flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-semibold transition-all active:scale-[0.98]",
               justAdded
-                ? "border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                ? "border border-lime-200 dark:border-lime-500/30 bg-lime-50 dark:bg-lime-500/10 text-lime-700 dark:text-lime-400"
                 : offer.availability === "indisponivel"
                 ? "bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 cursor-not-allowed"
-                : "bg-emerald-500 text-white hover:bg-emerald-600"
+                : "bg-lime-500 text-white hover:bg-lime-600"
             )}>
             {justAdded ? <><Check className="h-3.5 w-3.5" /> Adicionado</> : <><ShoppingCart className="h-3.5 w-3.5" /> Adicionar</>}
           </button>
