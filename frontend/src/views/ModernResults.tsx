@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  BarChart3, AlertCircle,
+  BarChart3, AlertCircle, CheckCircle2, Loader2, TriangleAlert,
   Search, SlidersHorizontal, Tag,
   ChevronLeft, ChevronRight, RefreshCw, Clock,
   X, Star, Store as StoreIcon, Grid3X3, List, Package, Layers,
@@ -42,6 +42,14 @@ export default function ModernResults() {
   const [estimatedWait, setEstimatedWait] = useState<number | null>(null);
   const [scraperAvgs, setScraperAvgs] = useState<Record<string, number>>({});
   const [elapsed, setElapsed] = useState(0);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+
+  const failedStores = storeStates.filter((s) => s.status === "error");
+
+  // Abre modal de erros automaticamente ao terminar a busca com falhas
+  useEffect(() => {
+    if (!loading && failedStores.length > 0) setShowErrorModal(true);
+  }, [loading]);
 
   // Listen for header search events (when user is already on /results)
   useEffect(() => {
@@ -545,6 +553,18 @@ export default function ModernResults() {
                 <span className="hidden sm:inline">Atualizar</span>
               </button>
             )}
+            {!loading && failedStores.length > 0 && (
+              <button
+                onClick={() => setShowErrorModal(true)}
+                title={`${failedStores.length} loja(s) com erro`}
+                className="relative rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+              >
+                <TriangleAlert className="h-4 w-4" />
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                  {failedStores.length}
+                </span>
+              </button>
+            )}
             <Link
               href="/search"
               className="rounded-lg border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 dark:text-neutral-300 transition-colors hover:bg-slate-50 dark:hover:bg-neutral-800 hover:text-slate-800 dark:hover:text-neutral-100"
@@ -737,77 +757,74 @@ export default function ModernResults() {
             </div>
           </motion.div>
 
-          {/* Loading — só mostra spinner quando ainda não há resultados */}
-          {loading && allOffers.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <div className="relative">
-                <div className="h-14 w-14 animate-spin rounded-full border-4 border-slate-200 dark:border-neutral-700 border-t-emerald-500" />
-                <Search className="absolute inset-0 m-auto h-5 w-5 text-emerald-500" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-slate-700 dark:text-neutral-200">Buscando em todas as lojas...</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-neutral-500">Isso pode levar alguns segundos</p>
+          {/* Loading — spinner inicial sem resultados */}
+          {loading && allOffers.length === 0 && storeStates.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+              <p className="text-sm font-medium text-slate-600 dark:text-neutral-300">Conectando às lojas...</p>
+            </div>
+          )}
+
+          {/* Loading por loja — aparece assim que o stream começar */}
+          {loading && storeStates.length > 0 && (
+            <div className={`rounded-2xl border border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 shadow-sm ${allOffers.length > 0 ? "mb-4" : "my-6 mx-auto max-w-md"}`}>
+              <div className="flex items-center gap-2 mb-4">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-500 flex-shrink-0" />
+                <span className="text-sm font-semibold text-slate-700 dark:text-neutral-200">Buscando nas lojas</span>
+                <span className="ml-auto text-xs text-slate-400 dark:text-neutral-500">{elapsed}s</span>
               </div>
 
-              <div className="flex flex-col items-center gap-2">
-                {estimatedWait !== null && (
-                  <div className="flex items-center gap-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 px-4 py-2.5">
-                    <Clock className="h-4 w-4 text-slate-400 dark:text-neutral-500" />
-                    <div className="text-xs">
-                      <span className="text-slate-500 dark:text-neutral-400">Estimado: </span>
-                      <span className="font-semibold text-slate-700 dark:text-neutral-200">~{estimatedWait}s</span>
-                      {elapsed > 0 && (
-                        <span className="ml-2 text-slate-400 dark:text-neutral-500">
-                          ({elapsed}s decorridos)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {/* Progress bar */}
-                {estimatedWait !== null && elapsed > 0 && (
-                  <div className="w-48 h-1.5 rounded-full bg-slate-200 dark:bg-neutral-700 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-emerald-500"
-                      initial={{ width: "0%" }}
-                      animate={{ width: `${Math.min(95, (elapsed / estimatedWait) * 100)}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {storeStates.length > 0 && (
-                <div className="mt-2 flex flex-wrap justify-center gap-2">
-                  {storeStates.map((s) => {
-                    const isDone = s.status === "done";
-                    const isError = s.status === "error";
-                    const isSearching = s.status === "searching";
-                    return (
-                      <span
-                        key={s.name}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all ${
-                          isDone
-                            ? "border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                            : isError
-                            ? "border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
-                            : "border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-slate-500 dark:text-neutral-400"
-                        }`}
-                      >
-                        <span className={`h-1.5 w-1.5 rounded-full ${
-                          isDone ? "bg-emerald-500" : isError ? "bg-red-500" : isSearching ? "animate-pulse bg-amber-400" : "bg-slate-300 dark:bg-neutral-600"
-                        }`} />
-                        {s.name}
-                        {isDone && s.offerCount > 0 && <span className="font-semibold">{s.offerCount}</span>}
-                        {isDone && s.offerCount === 0 && <span className="opacity-60">0</span>}
-                        {isSearching && <span className="opacity-70">buscando...</span>}
-                        {isError && <span className="opacity-70">falhou</span>}
-                        {s.status === "pending" && <span className="opacity-50">aguardando</span>}
+              <div className="space-y-2">
+                {storeStates.map((s) => {
+                  const isDone = s.status === "done";
+                  const isError = s.status === "error";
+                  const isSearching = s.status === "searching";
+                  const isPending = s.status === "pending";
+                  return (
+                    <div
+                      key={s.name}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all ${
+                        isSearching ? "bg-amber-50 dark:bg-amber-500/10" :
+                        isDone ? "bg-emerald-50 dark:bg-emerald-500/10" :
+                        isError ? "bg-red-50 dark:bg-red-500/10" :
+                        "bg-slate-50 dark:bg-neutral-800/50"
+                      }`}
+                    >
+                      <div className="flex-shrink-0">
+                        {isSearching && <Loader2 className="h-4 w-4 animate-spin text-amber-500" />}
+                        {isDone && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                        {isError && <AlertCircle className="h-4 w-4 text-red-500" />}
+                        {isPending && <div className="h-4 w-4 rounded-full border-2 border-slate-300 dark:border-neutral-600" />}
+                      </div>
+                      <span className={`flex-1 text-sm font-medium ${
+                        isSearching ? "text-amber-700 dark:text-amber-400" :
+                        isDone ? "text-emerald-700 dark:text-emerald-400" :
+                        isError ? "text-red-600 dark:text-red-400" :
+                        "text-slate-400 dark:text-neutral-500"
+                      }`}>{s.name}</span>
+                      <span className="text-xs text-slate-400 dark:text-neutral-500">
+                        {isSearching && "buscando..."}
+                        {isDone && `${s.offerCount} resultado${s.offerCount !== 1 ? "s" : ""}`}
+                        {isError && "erro"}
+                        {isPending && "aguardando"}
                       </span>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Barra de progresso geral */}
+              <div className="mt-4 h-1 rounded-full bg-slate-100 dark:bg-neutral-800 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-emerald-500"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${Math.round((storeStates.filter(s => s.status === "done" || s.status === "error").length / Math.max(storeStates.length, 1)) * 100)}%` }}
+                  transition={{ duration: 0.4 }}
+                />
+              </div>
+              <p className="mt-1.5 text-right text-xs text-slate-400 dark:text-neutral-500">
+                {storeStates.filter(s => s.status === "done" || s.status === "error").length} / {storeStates.length} lojas
+              </p>
             </div>
           )}
 
@@ -928,6 +945,76 @@ export default function ModernResults() {
         onNavigate={navigateImg}
       />
       <CartModal open={cartOpen} onClose={() => setCartOpen(false)} />
+
+      {/* Modal de erros por loja */}
+      <AnimatePresence>
+        {showErrorModal && failedStores.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+            onClick={() => setShowErrorModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-2xl p-6"
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <div className="flex-shrink-0 rounded-full bg-amber-100 dark:bg-amber-500/20 p-2">
+                  <TriangleAlert className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800 dark:text-neutral-100">
+                    {failedStores.length === 1 ? "1 loja com problema" : `${failedStores.length} lojas com problema`}
+                  </h3>
+                  <p className="mt-0.5 text-sm text-slate-500 dark:text-neutral-400">
+                    A busca foi concluída, mas algumas lojas não responderam.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowErrorModal(false)}
+                  className="ml-auto flex-shrink-0 rounded-lg p-1 text-slate-400 hover:text-slate-600 dark:hover:text-neutral-200 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2 mb-5">
+                {failedStores.map((s) => (
+                  <div key={s.name} className="flex items-center gap-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 px-3 py-2.5">
+                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-red-700 dark:text-red-400">{s.name}</p>
+                      <p className="text-xs text-red-500/80 dark:text-red-400/70 mt-0.5">
+                        Possível causa: IP bloqueado ou credenciais inválidas
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowErrorModal(false)}
+                  className="flex-1 rounded-xl bg-slate-100 dark:bg-neutral-800 px-4 py-2 text-sm font-medium text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={() => { setShowErrorModal(false); void search(items, true); }}
+                  className="flex-1 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition-colors"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
