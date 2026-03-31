@@ -158,8 +158,10 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
         scrapers_to_run.append((scraper_class, credentials))
 
     # ── Executar scrapers não cacheados em paralelo ──
+    SCRAPER_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT_SECONDS", "45"))
+
     if scrapers_to_run:
-        logger.info(f"🚀 Executando {len(scrapers_to_run)} scrapers sem cache...")
+        logger.info(f"🚀 Executando {len(scrapers_to_run)} scrapers sem cache (timeout={SCRAPER_TIMEOUT}s)...")
         loop = asyncio.get_event_loop()
 
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -167,7 +169,14 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
                 loop.run_in_executor(executor, scrape_store, scraper_class, query, credentials)
                 for scraper_class, credentials in scrapers_to_run
             ]
-            raw_results = await asyncio.gather(*futures, return_exceptions=True)
+            try:
+                raw_results = await asyncio.wait_for(
+                    asyncio.gather(*futures, return_exceptions=True),
+                    timeout=SCRAPER_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"⏱️ Timeout ({SCRAPER_TIMEOUT}s) atingido ao buscar '{query}'")
+                raw_results = []
 
         for raw in raw_results:
             if isinstance(raw, Exception):
@@ -194,6 +203,18 @@ async def search_products(request: SearchRequest):
     Endpoint principal de busca de produtos com cache PostgreSQL.
     Retorna timing e estimativas de espera.
     """
+    TOTAL_TIMEOUT = int(os.getenv("SEARCH_TOTAL_TIMEOUT_SECONDS", "55"))
+    try:
+        return await asyncio.wait_for(_search_products_inner(request), timeout=TOTAL_TIMEOUT)
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout global ({TOTAL_TIMEOUT}s) na busca: {request.items}")
+        raise HTTPException(status_code=504, detail="Busca demorou demais. Tente novamente.")
+    except Exception as e:
+        logger.error(f"Erro na busca: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _search_products_inner(request: SearchRequest) -> SearchResponse:
     try:
         t_total = time.time()
         results = []
