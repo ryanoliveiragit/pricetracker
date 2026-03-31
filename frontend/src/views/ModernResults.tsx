@@ -508,7 +508,7 @@ export default function ModernResults() {
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-neutral-100">
               {items.length === 1 ? items[0] : `${items.length} produtos`}
             </h1>
-            {!loading && totalOffers > 0 && (
+            {totalOffers > 0 && (
               <div className="mt-1 flex flex-wrap items-center gap-3">
                 <p className="text-sm text-slate-500 dark:text-neutral-400">
                   <span className="font-semibold text-slate-700 dark:text-neutral-300">{totalOffers}</span> oferta{totalOffers !== 1 ? "s" : ""} em{" "}
@@ -519,7 +519,13 @@ export default function ModernResults() {
                     </span>
                   )}
                 </p>
-                {cacheAgeMinutes !== null && (
+                {loading && (
+                  <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    buscando mais lojas...
+                  </span>
+                )}
+                {cacheAgeMinutes !== null && !loading && (
                   <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-neutral-500">
                     <Clock className="h-3 w-3" />
                     {cacheAgeMinutes === 0 ? "Atualizado agora" : `${cacheAgeMinutes} min atrás`}
@@ -731,8 +737,8 @@ export default function ModernResults() {
             </div>
           </motion.div>
 
-          {/* Loading */}
-          {loading && (
+          {/* Loading — só mostra spinner quando ainda não há resultados */}
+          {loading && allOffers.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <div className="relative">
                 <div className="h-14 w-14 animate-spin rounded-full border-4 border-slate-200 dark:border-neutral-700 border-t-emerald-500" />
@@ -801,7 +807,7 @@ export default function ModernResults() {
           )}
 
           {/* No results after filter */}
-          {!loading && !error && filtered.length === 0 && allOffers.length > 0 && (
+          {!error && filtered.length === 0 && allOffers.length > 0 && (
             <div className="rounded-2xl border border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-12 text-center shadow-sm">
               <Search className="mx-auto mb-4 h-12 w-12 text-slate-300 dark:text-neutral-600" />
               <h3 className="mb-2 text-lg font-semibold text-slate-600 dark:text-neutral-300">Nenhum resultado para os filtros aplicados</h3>
@@ -815,8 +821,8 @@ export default function ModernResults() {
             </div>
           )}
 
-          {/* Cards grid */}
-          {!loading && !error && paginated.length > 0 && (
+          {/* Cards grid — exibe mesmo durante loading (resultados parciais do streaming) */}
+          {!error && paginated.length > 0 && (
             <>
               <motion.div
                 initial={{ opacity: 0 }}
