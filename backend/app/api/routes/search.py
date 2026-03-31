@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from typing import List, Dict, Type
 import asyncio
+import json
 import logging
 import time
 import httpx
@@ -199,19 +201,108 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
 
 @router.post("/search", response_model=SearchResponse)
 async def search_products(request: SearchRequest):
+    return await _search_products_inner(request)
+
+
+@router.post("/search/stream")
+async def search_stream(request: SearchRequest):
     """
-    Endpoint principal de busca de produtos com cache PostgreSQL.
-    Retorna timing e estimativas de espera.
+    Streaming SSE: envia resultados por fornecedor assim que cada um termina.
     """
-    TOTAL_TIMEOUT = int(os.getenv("SEARCH_TOTAL_TIMEOUT_SECONDS", "55"))
-    try:
-        return await asyncio.wait_for(_search_products_inner(request), timeout=TOTAL_TIMEOUT)
-    except asyncio.TimeoutError:
-        logger.error(f"Timeout global ({TOTAL_TIMEOUT}s) na busca: {request.items}")
-        raise HTTPException(status_code=504, detail="Busca demorou demais. Tente novamente.")
-    except Exception as e:
-        logger.error(f"Erro na busca: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    async def generate():
+        from app.api.routes.suppliers import get_all_suppliers_from_db
+
+        keyword_mapping = {
+            "megaleste": MegalesteScraper,
+            "cofema": CofemaScraper,
+            "atacadista": EstoqueAtacadistaScraper,
+        }
+
+        all_suppliers = await get_all_suppliers_from_db()
+        active_suppliers = [s for s in all_suppliers if s.is_active]
+        scrapers = []
+
+        if not active_suppliers:
+            scrapers = [(MegalesteScraper, None, "Megaleste")]
+        else:
+            seen = set()
+            for supplier in active_suppliers:
+                normalized = supplier.name.lower().strip()
+                scraper_class = next((cls for kw, cls in keyword_mapping.items() if kw in normalized), None)
+                if not scraper_class or scraper_class in seen:
+                    continue
+                seen.add(scraper_class)
+                creds = {"url": supplier.url or "", "region": supplier.region or "sp"}
+                if supplier.requires_login and supplier.username and supplier.password:
+                    creds["username"] = supplier.username
+                    creds["password"] = supplier.password
+                scrapers.append((scraper_class, creds, supplier.name))
+
+        # Expandir sinônimos uma vez
+        all_queries: list[str] = []
+        for item in request.items:
+            normalized = normalize_text(item)
+            db_terms = await get_db_variants(normalized)
+            terms = db_terms if len(db_terms) > 1 else get_synonyms(normalized)
+            all_queries.extend(terms)
+
+        loop = asyncio.get_event_loop()
+
+        for scraper_class, credentials, store_name in scrapers:
+            t0 = time.time()
+            try:
+                # Coleta ofertas de todos os sinônimos para este fornecedor
+                store_offers: list[ProductOffer] = []
+                seen_keys: set[str] = set()
+
+                for sq in all_queries:
+                    sq_norm = normalize_text(sq)
+                    scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
+
+                    # Checar cache
+                    cached = await db_cache_get(scraper_key, sq_norm, ttl_seconds=CACHE_TTL)
+                    if cached is not None:
+                        for item in cached:
+                            offer = ProductOffer(**item)
+                            key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
+                            if key not in seen_keys:
+                                seen_keys.add(key)
+                                store_offers.append(offer)
+                        continue
+
+                    raw = await loop.run_in_executor(
+                        None, scrape_store, scraper_class, sq_norm, credentials
+                    )
+                    if isinstance(raw, Exception):
+                        continue
+                    offers, duration, _ = raw
+                    if offers:
+                        await db_cache_set(scraper_key, sq_norm, [o.model_dump() for o in offers])
+                    await record_scrape_time_db(scraper_key, duration, sq_norm)
+                    for offer in offers:
+                        key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
+                        if key not in seen_keys:
+                            seen_keys.add(key)
+                            store_offers.append(offer)
+
+                payload = json.dumps({
+                    "store": store_name,
+                    "duration_ms": int((time.time() - t0) * 1000),
+                    "offers": [o.model_dump() for o in store_offers],
+                    "done": False,
+                })
+                yield f"data: {payload}\n\n"
+
+            except Exception as e:
+                logger.error(f"Stream error [{store_name}]: {e}")
+                yield f"data: {json.dumps({'store': store_name, 'offers': [], 'done': False, 'error': str(e)})}\n\n"
+
+        yield f"data: {json.dumps({'done': True})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
 
 
 async def _search_products_inner(request: SearchRequest) -> SearchResponse:

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { searchMaterials } from "../services/searchApi";
+import { searchMaterialsStream } from "../services/searchApi";
 import {
   getCachedSearch,
   setCachedSearch,
@@ -36,7 +36,9 @@ export function useSearchResults() {
       setCacheAgeMinutes(null);
 
       try {
-        const data = await searchMaterials({ items });
+        const data = await searchMaterialsStream({ items }, (partial) => {
+          setResult(partial); // atualiza UI a cada fornecedor que retorna
+        });
         setResult(data);
         const totalOffers = data.items.reduce((sum, item) => sum + item.offers.length, 0);
         if (totalOffers > 0) {

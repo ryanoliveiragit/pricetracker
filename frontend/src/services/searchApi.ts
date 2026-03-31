@@ -1,6 +1,5 @@
 import type { Offer, SearchRequest, SearchResponse } from "../types/search";
 
-// URL da API real de web scraping (backend Python)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 interface ApiOffer {
@@ -18,17 +17,16 @@ interface ApiOffer {
   brand?: string;
 }
 
-interface ApiSearchItemResult {
-  raw_query: string;
-  normalized_query: string;
+interface StreamChunk {
+  store: string;
   offers: ApiOffer[];
+  duration_ms: number;
+  done: false;
+  error?: string;
 }
 
-interface ApiSearchResponse {
-  items: ApiSearchItemResult[];
-  total_items: number;
-  stores: string[];
-  generated_at: string;
+interface StreamDone {
+  done: true;
 }
 
 function mapOffer(apiOffer: ApiOffer, allOffers: ApiOffer[]): Offer {
@@ -50,34 +48,77 @@ function mapOffer(apiOffer: ApiOffer, allOffers: ApiOffer[]): Offer {
   };
 }
 
-function mapApiResponse(data: ApiSearchResponse): SearchResponse {
-  return {
-    items: data.items.map((item) => ({
-      rawQuery: item.raw_query,
-      normalizedQuery: item.normalized_query,
-      offers: item.offers.map((offer) => mapOffer(offer, item.offers)),
-    })),
-    totalItems: data.total_items,
-    stores: data.stores,
-    generatedAt: data.generated_at,
-  };
-}
-
-export async function searchMaterials(payload: SearchRequest): Promise<SearchResponse> {
-  console.log("🔍 Enviando busca para API real...");
-
-  const response = await fetch(`${API_BASE_URL}/api/search`, {
+export async function searchMaterialsStream(
+  payload: SearchRequest,
+  onChunk: (partial: SearchResponse) => void
+): Promise<SearchResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/search/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items: payload.items, stores: payload.stores }),
+    body: JSON.stringify({ items: payload.items }),
   });
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     throw new Error(`Erro na busca: ${response.status} ${response.statusText}`);
   }
 
-  const data = (await response.json()) as ApiSearchResponse;
-  console.log("✅ Resultados recebidos da API");
+  const allOffers: ApiOffer[] = [];
+  const stores = new Set<string>();
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
 
-  return mapApiResponse(data);
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
+
+      const parsed: StreamChunk | StreamDone = JSON.parse(raw);
+      if (parsed.done) continue;
+
+      allOffers.push(...parsed.offers);
+      stores.add(parsed.store);
+
+      // Emitir resultado parcial acumulado
+      const partial = buildResponse(payload.items, allOffers, [...stores]);
+      onChunk(partial);
+    }
+  }
+
+  return buildResponse(payload.items, allOffers, [...stores]);
+}
+
+function buildResponse(items: string[], allOffers: ApiOffer[], stores: string[]): SearchResponse {
+  const minPrice = Math.min(...allOffers.filter((o) => o.price > 0).map((o) => o.price));
+
+  return {
+    items: items.map((rawQuery) => {
+      const offers = allOffers.map((o) => ({
+        ...mapOffer(o, allOffers),
+        rawQuery,
+        isBestPrice: o.price > 0 && o.price === minPrice,
+      }));
+      return {
+        rawQuery,
+        normalizedQuery: rawQuery.toLowerCase(),
+        offers,
+      };
+    }),
+    totalItems: items.length,
+    stores,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+// Mantém compatibilidade com código legado
+export async function searchMaterials(payload: SearchRequest): Promise<SearchResponse> {
+  return searchMaterialsStream(payload, () => {});
 }
