@@ -48,86 +48,71 @@ class CofemaScraper(BaseScraper):
                             if self._logged_in:
                                 store_session(CACHE_KEY, username, self.session)
 
-            results = self._search(query)
+            if not self._logged_in:
+                logger.warning("Cofema: sem sessão ativa — pulando busca para '%s'", query)
+                return []
 
-            # Se não retornou nada e estava usando sessão cacheada, tenta re-login
-            if not results and self._logged_in:
-                invalidate(CACHE_KEY)
-                self.session = requests.Session()
-                self.session.headers.update(HEADERS)
-                self._logged_in = False
-                if username and password:
-                    self._do_login(username, password)
-                    if self._logged_in:
-                        store_session(CACHE_KEY, username, self.session)
-                        results = self._search(query)
-
-            return results
+            return self._search(query)
         except Exception as e:
             logger.error(f"Cofema search error: {e}", exc_info=True)
             invalidate(CACHE_KEY)
             return []
 
     def _do_login(self, username: str, password: str) -> bool:
-        for attempt in range(1, MAX_LOGIN_RETRIES + 1):
+        try:
+            r = self.session.get(f"{BASE_URL}/Home", timeout=15)
+            if r.status_code == 429:
+                logger.warning("Cofema: IP bloqueado pelo CDN (429) — pulando Cofema nesta busca")
+                return False
+            r.raise_for_status()
+
+            token = self.session.cookies.get("__RequestVerificationToken", "")
+            if not token:
+                from bs4 import BeautifulSoup as _BS
+                inp = _BS(r.text, "html.parser").find("input", {"name": "__RequestVerificationToken"})
+                token = inp.get("value", "") if inp else ""
+
+            if not token:
+                logger.warning("Cofema: token CSRF não encontrado — pulando login")
+                return False
+
+            time.sleep(1)
+
+            r3 = self.session.post(
+                f"{BASE_URL}/Home/Logon",
+                data={"User": username, "Password": password, "RememberMe": "true", "ReturnUrl": "", "__RequestVerificationToken": token},
+                headers={
+                    **self.session.headers,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE_URL}/Home",
+                    "Origin": BASE_URL,
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                },
+                timeout=15,
+            )
+
+            if r3.status_code == 429:
+                logger.warning("Cofema: IP bloqueado no Logon (429) — pulando Cofema. O CDN bloqueou o IP do servidor.")
+                return False
+
+            if not r3.ok:
+                logger.warning("Cofema: login retornou HTTP %d", r3.status_code)
+                return False
+
             try:
-                r = self.session.get(f"{BASE_URL}/Home", timeout=15)
-                if r.status_code == 429:
-                    wait = attempt * 10
-                    logger.warning("Cofema: rate limit no GET /Home (tentativa %d/%d) — aguardando %ds", attempt, MAX_LOGIN_RETRIES, wait)
-                    time.sleep(wait)
-                    continue
-                r.raise_for_status()
+                data = r3.json()
+                if data.get("success") or data.get("Success"):
+                    self._logged_in = True
+                    logger.info("Cofema: login OK")
+                    return True
+                logger.warning("Cofema: login falhou — resposta: %s", data.get("message", r3.text[:100]))
+            except Exception:
+                logger.warning("Cofema: resposta não é JSON — %s", r3.text[:100])
 
-                # Token vem do cookie, não do HTML
-                token = self.session.cookies.get("__RequestVerificationToken", "")
-                time.sleep(1)
+        except Exception as e:
+            logger.error("Cofema login error: %s", e)
 
-                self.session.post(
-                    f"{BASE_URL}/Home/GetLogonPage",
-                    headers={**self.session.headers, "X-Requested-With": "XMLHttpRequest", "Referer": f"{BASE_URL}/Home"},
-                    timeout=10,
-                )
-                time.sleep(0.5)
-
-                r3 = self.session.post(
-                    f"{BASE_URL}/Home/Logon",
-                    data={"User": username, "Password": password, "RememberMe": "true", "ReturnUrl": "", "__RequestVerificationToken": token},
-                    headers={
-                        **self.session.headers,
-                        "X-Requested-With": "XMLHttpRequest",
-                        "Referer": f"{BASE_URL}/Home",
-                        "Origin": BASE_URL,
-                        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                        "Accept": "application/json, text/javascript, */*; q=0.01",
-                    },
-                    timeout=15,
-                )
-
-                if r3.status_code == 429:
-                    wait = attempt * 15
-                    logger.warning("Cofema: rate limit no Logon (tentativa %d/%d) — aguardando %ds", attempt, MAX_LOGIN_RETRIES, wait)
-                    time.sleep(wait)
-                    # Resetar sessão para nova tentativa
-                    self.session = requests.Session()
-                    self.session.headers.update(HEADERS)
-                    continue
-
-                if r3.ok and r3.text:
-                    data = r3.json()
-                    if data.get("success") or data.get("Success"):
-                        self._logged_in = True
-                        logger.info("Cofema login OK (tentativa %d)", attempt)
-                        return True
-                    logger.warning("Cofema login falhou: %s", data.get("message", ""))
-                    return False
-
-            except Exception as e:
-                logger.error("Cofema login error (tentativa %d): %s", attempt, e)
-                if attempt < MAX_LOGIN_RETRIES:
-                    time.sleep(attempt * 5)
-
-        logger.error("Cofema login: todas as tentativas falharam")
         return False
 
     def _search(self, query: str) -> List[ProductOffer]:
