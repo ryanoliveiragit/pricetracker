@@ -6,6 +6,7 @@ import logging
 import urllib3
 from app.scrapers.base_scraper import BaseScraper
 from app.models.product import ProductOffer
+from app.services.session_cache import get_session, store_session, invalidate
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -295,18 +296,23 @@ class EstoqueAtacadistaScraper(BaseScraper):
 
     def search(self, query: str, username: Optional[str] = None, password: Optional[str] = None, region: str = "sp") -> List[ProductOffer]:
         """Busca todos os produtos no Estoque Atacadista."""
+        CACHE_KEY = "estoqueatacadista"
         offers = []
         try:
             logger.info(f"🔍 {self.store_name} | base_url: {self.base_url} | query: '{query}'")
 
-            # Login
             if username and password:
-                logger.info(f"   👤 Credenciais recebidas para: {username}")
-                login_ok = self.login(username, password)
-                if not login_ok:
-                    logger.warning("⚠️  Login falhou — buscando como visitante (preços podem não aparecer)")
+                cached = get_session(CACHE_KEY, username)
+                if cached:
+                    self.session = cached
+                    self.is_logged_in = True
+                    logger.info("   ✅ Reutilizando sessão cacheada")
                 else:
-                    logger.info(f"   🍪 Cookies após login: {[c.name for c in self.session.cookies]}")
+                    login_ok = self.login(username, password)
+                    if not login_ok:
+                        logger.warning("⚠️  Login falhou — buscando como visitante")
+                    else:
+                        store_session(CACHE_KEY, username, self.session)
             else:
                 logger.info("ℹ️  Sem credenciais — buscando como visitante")
 
@@ -360,5 +366,6 @@ class EstoqueAtacadistaScraper(BaseScraper):
 
         except Exception as e:
             logger.error(f"❌ Erro crítico em {self.store_name}: {e}", exc_info=True)
+            invalidate(CACHE_KEY)
 
         return offers

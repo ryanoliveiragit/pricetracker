@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from app.scrapers.base_scraper import BaseScraper
 from app.models.product import ProductOffer
+from app.services.session_cache import get_session, store_session, invalidate
 
 logger = logging.getLogger(__name__)
 BASE_URL = "https://www.cofema.com.br"
@@ -14,10 +15,7 @@ HEADERS = {
 }
 MAX_PRODUCTS = 40
 MAX_LOGIN_RETRIES = 3
-SESSION_TTL = 3600  # reutiliza sessão por até 1 hora
-
-# Cache global de sessão — evita re-login a cada busca
-_session_cache: dict = {"session": None, "logged_in": False, "at": 0.0, "user": ""}
+CACHE_KEY = "cofema"
 
 
 class CofemaScraper(BaseScraper):
@@ -33,25 +31,33 @@ class CofemaScraper(BaseScraper):
     def search(self, query: str, username: str = "", password: str = "", **kwargs) -> List[ProductOffer]:
         try:
             if username and password:
-                # Reutilizar sessão cacheada se ainda válida
-                cached = _session_cache
-                age = time.time() - cached["at"]
-                if cached["logged_in"] and cached["session"] and age < SESSION_TTL and cached["user"] == username:
-                    self.session = cached["session"]
+                cached = get_session(CACHE_KEY, username)
+                if cached:
+                    self.session = cached
                     self._logged_in = True
-                    logger.info("Cofema: reutilizando sessão cacheada (%.0fs atrás)", age)
                 else:
                     self._do_login(username, password)
                     if self._logged_in:
-                        cached["session"] = self.session
-                        cached["logged_in"] = True
-                        cached["at"] = time.time()
-                        cached["user"] = username
-            return self._search(query)
+                        store_session(CACHE_KEY, username, self.session)
+
+            results = self._search(query)
+
+            # Se não retornou nada e estava usando sessão cacheada, tenta re-login
+            if not results and self._logged_in:
+                invalidate(CACHE_KEY)
+                self.session = requests.Session()
+                self.session.headers.update(HEADERS)
+                self._logged_in = False
+                if username and password:
+                    self._do_login(username, password)
+                    if self._logged_in:
+                        store_session(CACHE_KEY, username, self.session)
+                        results = self._search(query)
+
+            return results
         except Exception as e:
             logger.error(f"Cofema search error: {e}", exc_info=True)
-            # Invalidar cache em caso de erro
-            _session_cache["logged_in"] = False
+            invalidate(CACHE_KEY)
             return []
 
     def _do_login(self, username: str, password: str) -> bool:

@@ -7,6 +7,7 @@ import re
 import urllib.parse
 from app.scrapers.base_scraper import BaseScraper
 from app.models.product import ProductOffer
+from app.services.session_cache import get_session, store_session, invalidate
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +267,7 @@ class MegalesteScraper(BaseScraper):
         Busca todos os produtos em TODAS as páginas e retorna a lista completa.
         Usa requests + BeautifulSoup — rápido e sem stale elements.
         """
+        CACHE_KEY = f"megaleste_{region}"
         offers = []
         try:
             logger.info(f"🔍 Iniciando scraping em {self.store_name} para: '{query}'")
@@ -274,10 +276,16 @@ class MegalesteScraper(BaseScraper):
                 logger.error(f"❌ {self.store_name} REQUER credenciais! Configure no .env")
                 return []
 
-            # Login
-            if not self.login(username, password, region):
-                logger.error("❌ Login falhou!")
-                return []
+            # Reutilizar sessão cacheada se disponível
+            cached = get_session(CACHE_KEY, username)
+            if cached:
+                self.session = cached
+                self.is_logged_in = True
+            else:
+                if not self.login(username, password, region):
+                    logger.error("❌ Login falhou!")
+                    return []
+                store_session(CACHE_KEY, username, self.session)
 
             # Iterar por TODAS as páginas
             page = 1
@@ -337,8 +345,8 @@ class MegalesteScraper(BaseScraper):
 
         except Exception as e:
             logger.error(f"❌ Erro crítico em {self.store_name}: {e}", exc_info=True)
+            invalidate(CACHE_KEY)
         finally:
             self._close_driver()
-            self.is_logged_in = False
 
         return offers
