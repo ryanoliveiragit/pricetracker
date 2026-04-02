@@ -27,7 +27,8 @@
       "Bash(done)",
       "Bash(npm install:*)",
       "Bash(python -m py_compile app/api/routes/search.py app/scrapers/cofema_scraper.py)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Read(//c/Users/**)"
     ],
     "deny": [],
     "ask": []

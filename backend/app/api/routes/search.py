@@ -11,7 +11,7 @@ from app.models.product import (
     SearchRequest, SearchResponse, SearchItemResult, ProductOffer,
     ProductSearchBySupplierRequest, ProductSearchBySupplierResponse
 )
-from app.utils.text_normalizer import normalize_text
+from app.utils.text_normalizer import normalize_text, filter_results_by_query
 from app.services.synonyms import get_synonyms
 from app.scrapers.base_scraper import BaseScraper
 from app.database import async_session
@@ -292,6 +292,20 @@ async def search_stream(request: SearchRequest):
 
                 status = "done"
                 completed.append(store_name)
+                # Filtrar para retornar apenas produtos que contenham todos os termos da busca original
+                original_queries = [normalize_text(item) for item in request.items]
+                filtered_offers = []
+                for orig in original_queries:
+                    filtered_offers.extend(filter_results_by_query(orig, store_offers))
+                # Deduplicar após filtro
+                seen_final: set[str] = set()
+                deduped: list[ProductOffer] = []
+                for o in filtered_offers:
+                    k = f"{o.store}:{o.sku or o.product_name[:30].lower()}"
+                    if k not in seen_final:
+                        seen_final.add(k)
+                        deduped.append(o)
+                store_offers = deduped
                 payload = json.dumps({
                     "event": "store_done",
                     "store": store_name,
@@ -363,7 +377,7 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                 extra_results = await asyncio.gather(*tasks, return_exceptions=True)
                 _merge(extra_results)
 
-            offers = all_offers
+            offers = filter_results_by_query(item, all_offers)
             item_ms = int((time.time() - t_item) * 1000)
 
             # Marcar melhor preço

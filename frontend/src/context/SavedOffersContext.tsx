@@ -8,6 +8,7 @@ import type { Offer } from "@/types/search";
 interface SavedOffersContextValue {
   savedOffers: SavedOffer[];
   loading: boolean;
+  pendingUrls: Set<string>;
   toggleSave: (offer: Offer) => Promise<void>;
   isSaved: (productUrl: string) => boolean;
   removeSave: (id: number) => Promise<void>;
@@ -19,6 +20,7 @@ const SavedOffersContext = createContext<SavedOffersContextValue | undefined>(un
 export function SavedOffersProvider({ children }: { children: React.ReactNode }) {
   const [savedOffers, setSavedOffers] = useState<SavedOffer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingUrls, setPendingUrls] = useState<Set<string>>(new Set());
 
   const fetchSaves = useCallback(async () => {
     setLoading(true);
@@ -41,18 +43,15 @@ export function SavedOffersProvider({ children }: { children: React.ReactNode })
   }, [savedOffers]);
 
   const toggleSave = async (offer: Offer) => {
+    if (pendingUrls.has(offer.productUrl)) return;
+    setPendingUrls(prev => new Set(prev).add(offer.productUrl));
     const existing = savedOffers.find(o => o.product_url === offer.productUrl);
-    
-    if (existing) {
-      try {
+    try {
+      if (existing) {
         await savesApi.delete(existing.id);
         setSavedOffers(prev => prev.filter(o => o.id !== existing.id));
         toast.success("Oferta removida dos favoritos");
-      } catch (error) {
-        toast.error("Erro ao remover dos favoritos");
-      }
-    } else {
-      try {
+      } else {
         const payload: SaveOfferPayload = {
           store: offer.store,
           product_name: offer.productName,
@@ -67,28 +66,37 @@ export function SavedOffersProvider({ children }: { children: React.ReactNode })
         const newSave = await savesApi.save(payload);
         setSavedOffers(prev => [...prev, newSave]);
         toast.success("Oferta salva nos favoritos");
-      } catch (error: any) {
-        toast.error("Erro ao salvar oferta: " + (error.message || "Erro desconhecido"));
       }
+    } catch (error: any) {
+      toast.error(existing ? "Erro ao remover dos favoritos" : "Erro ao salvar oferta: " + (error.message || "Erro desconhecido"));
+    } finally {
+      setPendingUrls(prev => { const s = new Set(prev); s.delete(offer.productUrl); return s; });
     }
   };
 
   const removeSave = async (id: number) => {
+    const offer = savedOffers.find(o => o.id === id);
+    const url = offer?.product_url ?? String(id);
+    if (pendingUrls.has(url)) return;
+    setPendingUrls(prev => new Set(prev).add(url));
     try {
       await savesApi.delete(id);
       setSavedOffers(prev => prev.filter(o => o.id !== id));
       toast.success("Oferta removida");
     } catch (error) {
       toast.error("Erro ao remover");
+    } finally {
+      setPendingUrls(prev => { const s = new Set(prev); s.delete(url); return s; });
     }
   };
 
   return (
-    <SavedOffersContext.Provider value={{ 
-      savedOffers, 
-      loading, 
-      toggleSave, 
-      isSaved, 
+    <SavedOffersContext.Provider value={{
+      savedOffers,
+      loading,
+      pendingUrls,
+      toggleSave,
+      isSaved,
       removeSave,
       refresh: fetchSaves
     }}>

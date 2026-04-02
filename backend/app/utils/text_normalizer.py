@@ -59,3 +59,29 @@ def is_match(query: str, product_name: str, threshold: float = 70.0) -> bool:
     """
     score = calculate_similarity(query, product_name)
     return score >= threshold
+
+
+def filter_results_by_query(query: str, offers: list) -> list:
+    """
+    Filtra resultados garantindo que o nome do produto contenha TODOS os tokens
+    da query original. Isso evita que "cadeado 30" retorne modelos diferentes como
+    "cadeado 40" ou "fechadura".
+    """
+    query_normalized = normalize_text(query)
+    tokens = query_normalized.split()
+
+    # Ignorar stop words e tokens muito curtos
+    stop_words = {'de', 'da', 'do', 'com', 'para', 'em', 'e', 'a', 'o', 'as', 'os', 'un', 'cx', 'pct'}
+    key_tokens = [t for t in tokens if len(t) >= 2 and t not in stop_words]
+
+    if not key_tokens:
+        return offers
+
+    filtered = []
+    for offer in offers:
+        name_normalized = normalize_text(offer.product_name.lstrip("✓ "))
+        if all(token in name_normalized for token in key_tokens):
+            filtered.append(offer)
+
+    # Se o filtro eliminar tudo (ex: sinônimo sem os tokens), retornar sem filtrar
+    return filtered if filtered else offers

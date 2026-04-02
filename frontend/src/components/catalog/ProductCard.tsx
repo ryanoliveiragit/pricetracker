@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, BookmarkPlus, Heart } from "lucide-react";
+import { ShoppingCart, ExternalLink, Star, Check, Plus, Minus, Trash2, BarChart2, RefreshCw, BookmarkPlus, Heart, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { Offer } from "@/types/search";
@@ -16,6 +16,7 @@ interface ProductCardProps {
   index?: number;
   onImageClick: (images: string[], index: number, name: string) => void;
   searchQuery?: string;
+  onRemove?: () => void;
 }
 
 function formatBRL(value: number) {
@@ -30,7 +31,7 @@ function availabilityConfig(status: string) {
   return { label: "Indisponível", dot: "bg-red-400", text: "text-red-400 dark:text-red-400" };
 }
 
-export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: ProductCardProps) {
+export function ProductCard({ offer, index = 0, onImageClick, searchQuery, onRemove }: ProductCardProps) {
   const { products, updateProduct, createProduct } = useProductCatalog();
   const addItem = useCartStore((s) => s.addItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -39,8 +40,10 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
   const [justAdded, setJustAdded] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [registered, setRegistered] = useState(false);
-  const { isSaved: checkIsSaved, toggleSave } = useSavedOffers();
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const { isSaved: checkIsSaved, toggleSave, pendingUrls } = useSavedOffers();
   const isSaved = checkIsSaved(offer.productUrl);
+  const isSavePending = pendingUrls.has(offer.productUrl);
 
   const itemId = `${offer.store}-${offer.sku ?? offer.productName}`;
   const cartItem = items.find((i) => i.id === itemId);
@@ -68,6 +71,7 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
     const productName = searchQuery?.trim()
       ? searchQuery.trim().charAt(0).toUpperCase() + searchQuery.trim().slice(1).toLowerCase()
       : offer.productName;
+    setRegisterLoading(true);
     try {
       await createProduct({
         name: productName, category: "", brand: "",
@@ -78,6 +82,8 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
       toast.success("Cadastrado no catálogo");
     } catch {
       toast.error("Erro ao cadastrar");
+    } finally {
+      setRegisterLoading(false);
     }
   }
 
@@ -121,19 +127,35 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
           onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/280x160/f8fafc/cbd5e1?text=."; }}
         />
         
-        {/* Save Offer Button (Heart) */}
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleSave(offer); }}
-          className={cn(
-            "absolute top-2 right-2 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 border shadow-sm transition-all z-10",
-            isSaved 
-              ? "border-[#84CC16]/20 text-[#84CC16]" 
-              : "border-slate-100 text-slate-400 hover:text-[#84CC16] hover:scale-110"
-          )}
-          title={isSaved ? "Remover dos favoritos" : "Salvar nos favoritos"}
-        >
-          <Heart className={cn("h-4 w-4", isSaved && "fill-[#84CC16]")} />
-        </button>
+        {/* Remove button (only in favorites page) */}
+        {onRemove ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 border border-red-100 text-red-400 shadow-sm transition-all z-10 hover:bg-red-50 hover:text-red-600 hover:scale-110"
+            title="Remover dos favoritos"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ) : (
+          /* Save Offer Button (Heart) */
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleSave(offer); }}
+            disabled={isSavePending}
+            className={cn(
+              "absolute top-2 right-2 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 border shadow-sm transition-all z-10",
+              isSavePending
+                ? "border-slate-200 text-slate-300 cursor-wait"
+                : isSaved
+                ? "border-[#84CC16]/20 text-[#84CC16]"
+                : "border-slate-100 text-slate-400 hover:text-[#84CC16] hover:scale-110"
+            )}
+            title={isSaved ? "Remover dos favoritos" : "Salvar nos favoritos"}
+          >
+            {isSavePending
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Heart className={cn("h-4 w-4", isSaved && "fill-[#84CC16]")} />}
+          </button>
+        )}
 
         {offer.isBestPrice && (
           <div className="absolute bottom-2 left-2">
@@ -186,17 +208,21 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery }: Pro
         <div className="flex items-center justify-between gap-1.5">
           {/* Salvar no catálogo — botão com texto */}
           <button
-            onClick={registered ? undefined : handleRegisterProduct}
-            disabled={registered}
+            onClick={registered || registerLoading ? undefined : handleRegisterProduct}
+            disabled={registered || registerLoading}
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all",
               registered
                 ? "bg-lime-50 dark:bg-lime-500/10 text-lime-600 dark:text-lime-400 cursor-default"
+                : registerLoading
+                ? "border border-dashed border-slate-200 dark:border-neutral-700 text-slate-300 dark:text-neutral-600 cursor-wait"
                 : "border border-dashed border-slate-200 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
             )}
           >
             {registered
               ? <><Check className="h-3 w-3" /> Salvo no catálogo</>
+              : registerLoading
+              ? <><Loader2 className="h-3 w-3 animate-spin" /> Salvando...</>
               : <><BookmarkPlus className="h-3 w-3" /> Salvar produto</>}
           </button>
 

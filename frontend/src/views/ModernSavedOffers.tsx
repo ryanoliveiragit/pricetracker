@@ -22,7 +22,7 @@ function formatBRL(value: number) {
 }
 
 export default function ModernSavedOffers() {
-  const { savedOffers, loading, toggleSave } = useSavedOffers();
+  const { savedOffers, loading, removeSave, pendingUrls } = useSavedOffers();
   
   /* ── Filter state ── */
   const [cardSearch, setCardSearch] = useState("");
@@ -456,9 +456,25 @@ export default function ModernSavedOffers() {
                 <div
                   id="tour-saves-grid"
                   className={cn(viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4" : "flex flex-col gap-4")}>
-                  {paginated.map((offer, i) => (
-                    <ProductCard key={offer.id} offer={offer} index={i} onImageClick={openModal} />
-                  ))}
+                  {paginated.map((offer, i) => {
+                    const url = offer.productUrl;
+                    const isPending = pendingUrls.has(url) || pendingUrls.has(String(offer.id));
+                    return (
+                      <div key={offer.id} className="relative">
+                        <ProductCard
+                          offer={offer}
+                          index={i}
+                          onImageClick={openModal}
+                          onRemove={isPending ? undefined : () => removeSave(offer.id)}
+                        />
+                        {isPending && (
+                          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 z-20">
+                            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#84CC16] border-t-transparent" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Pagination */}

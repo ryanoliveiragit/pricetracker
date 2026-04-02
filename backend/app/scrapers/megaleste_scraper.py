@@ -287,9 +287,9 @@ class MegalesteScraper(BaseScraper):
                     return []
                 store_session(CACHE_KEY, username, self.session)
 
-            # Iterar por TODAS as páginas
+            # Iterar pelas primeiras páginas (resultados mais relevantes aparecem primeiro)
             page = 1
-            max_pages = 50  # Segurança
+            max_pages = 5
             total_products = []
 
             while page <= max_pages:
@@ -311,7 +311,7 @@ class MegalesteScraper(BaseScraper):
                 if next_url:
                     logger.info(f"   ➡️  Próxima página disponível")
                     page += 1
-                    time.sleep(0.5)  # Delay mínimo entre páginas
+                    time.sleep(0.1)  # Delay mínimo entre páginas
                 else:
                     logger.info(f"   ✅ Última página alcançada ({page} página(s) no total)")
                     break
