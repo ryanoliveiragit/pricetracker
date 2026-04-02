@@ -64,8 +64,8 @@ def is_match(query: str, product_name: str, threshold: float = 70.0) -> bool:
 def filter_results_by_query(query: str, offers: list) -> list:
     """
     Filtra resultados garantindo que o nome do produto contenha TODOS os tokens
-    da query original. Isso evita que "cadeado 30" retorne modelos diferentes como
-    "cadeado 40" ou "fechadura".
+    da query original como palavras inteiras (word boundary).
+    Isso evita que "pado 20" bata em "200GR" ou que "cadeado 30" retorne "cadeado 300".
     """
     query_normalized = normalize_text(query)
     tokens = query_normalized.split()
@@ -77,10 +77,13 @@ def filter_results_by_query(query: str, offers: list) -> list:
     if not key_tokens:
         return offers
 
+    # Compilar padrões com word boundary para cada token
+    patterns = [re.compile(r'(?<![a-z0-9])' + re.escape(t) + r'(?![a-z0-9])') for t in key_tokens]
+
     filtered = []
     for offer in offers:
         name_normalized = normalize_text(offer.product_name.lstrip("✓ "))
-        if all(token in name_normalized for token in key_tokens):
+        if all(p.search(name_normalized) for p in patterns):
             filtered.append(offer)
 
     # Se o filtro eliminar tudo (ex: sinônimo sem os tokens), retornar sem filtrar
