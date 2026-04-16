@@ -55,17 +55,11 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-[60px] items-center gap-2.5 px-4 border-b border-slate-200 dark:border-neutral-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-lime-400 to-lime-600 flex-shrink-0 shadow-sm shadow-lime-500/20">
-          <Package className="h-5 w-5 text-white" />
-        </div>
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="text-base font-bold text-slate-800 dark:text-neutral-100 whitespace-nowrap leading-tight">
-              ConstruPrice
-            </span>
-            <span className="text-[10px] text-slate-400 dark:text-neutral-500 leading-tight">Comparador de preços</span>
-          </div>
+      <div className="flex h-[60px] items-center justify-center px-4 border-b border-slate-200 dark:border-neutral-800">
+        {collapsed ? (
+          <img src="/logo.jpg" alt="ConstruPrice" className="h-8 w-8 object-contain rounded-lg" />
+        ) : (
+          <img src="/logo.jpg" alt="ConstruPrice" className="h-10 w-auto max-w-[180px] object-contain" />
         )}
       </div>
 
@@ -316,11 +310,8 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-lime-500">
-                <Package className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-sm font-bold text-slate-800 dark:text-neutral-100">ConstruPrice</span>
+            <div className="flex items-center">
+              <img src="/logo.jpg" alt="ConstruPrice" className="h-8 w-auto object-contain" />
             </div>
             <div className="flex items-center gap-2">
               <button

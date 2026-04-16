@@ -38,10 +38,11 @@ export default function ModernAppLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 md:px-6">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-glow-sm transition-shadow group-hover:shadow-glow">
-              <Package className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-neutral-100">ConstruPrice</span>
+            <img
+              src="/logo.jpg"
+              alt="ConstruPrice"
+              className="h-10 w-auto object-contain transition-opacity group-hover:opacity-80"
+            />
           </Link>
 
           {/* Desktop Navigation */}
