@@ -17,13 +17,14 @@ interface ApiOffer {
   brand?: string;
 }
 
-export type StoreStatus = "pending" | "searching" | "done" | "error";
+export type StoreStatus = "pending" | "searching" | "done" | "error" | "login_error";
 
 export interface StoreState {
   name: string;
   status: StoreStatus;
   offerCount: number;
   duration_ms?: number;
+  error?: string;
 }
 
 interface StreamStart {
@@ -35,7 +36,7 @@ interface StreamStart {
 interface StreamStoreDone {
   event: "store_done";
   store: string;
-  status: "done" | "error";
+  status: "done" | "error" | "login_error";
   offers: ApiOffer[];
   duration_ms: number;
   pending_stores: string[];
@@ -120,6 +121,7 @@ export async function searchMaterialsStream(
           status: parsed.status,
           offerCount: parsed.offers.length,
           duration_ms: parsed.duration_ms,
+          error: parsed.error,
         });
         // Próxima loja passa para "searching"
         const next = parsed.pending_stores[0];

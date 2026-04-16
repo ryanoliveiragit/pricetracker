@@ -43,7 +43,7 @@ export default function ModernResults() {
   const [elapsed, setElapsed] = useState(0);
   const [showErrorModal, setShowErrorModal] = useState(false);
 
-  const failedStores = storeStates.filter((s) => s.status === "error");
+  const failedStores = storeStates.filter((s) => s.status === "error" || s.status === "login_error");
 
   // Abre modal de erros automaticamente ao terminar a busca com falhas
   useEffect(() => {
@@ -561,7 +561,7 @@ export default function ModernResults() {
           <div className="hidden md:flex items-center gap-1.5 overflow-x-auto max-w-md">
             {storeStates.map((s) => {
               const isDone = s.status === "done";
-              const isError = s.status === "error";
+              const isError = s.status === "error" || s.status === "login_error";
               const isSearching = s.status === "searching";
               return (
                 <span
@@ -838,7 +838,8 @@ export default function ModernResults() {
                 <div className="space-y-3.5 mb-6">
                   {storeStates.map((s) => {
                     const isDone = s.status === "done";
-                    const isError = s.status === "error";
+                    const isError = s.status === "error" || s.status === "login_error";
+                    const isLoginError = s.status === "login_error";
                     const isSearching = s.status === "searching";
                     const isPending = s.status === "pending";
                     return (
@@ -871,7 +872,8 @@ export default function ModernResults() {
                           )}>
                             {isSearching && "Buscando..."}
                             {isDone && `${s.offerCount} resultado${s.offerCount !== 1 ? "s" : ""}`}
-                            {isError && "Erro na busca"}
+                            {isLoginError && "Login falhou"}
+                            {!isLoginError && isError && "Erro na busca"}
                             {isPending && "Aguardando"}
                           </span>
                         </div>
@@ -1062,7 +1064,9 @@ export default function ModernResults() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-red-700">{s.name}</p>
                       <p className="text-xs text-red-500/80 mt-0.5">
-                        Possível causa: IP bloqueado ou credenciais inválidas
+                        {s.status === "login_error"
+                          ? (s.error ?? "Login falhou — verifique as credenciais nas Configurações")
+                          : "Erro ao buscar — possível instabilidade ou bloqueio"}
                       </p>
                     </div>
                   </div>

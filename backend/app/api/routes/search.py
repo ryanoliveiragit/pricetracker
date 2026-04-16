@@ -67,7 +67,8 @@ async def get_db_variants(query: str) -> List[str]:
 def scrape_store(scraper_class, query: str, credentials: dict = None) -> tuple:
     """
     Executa scraping em uma loja específica.
-    Retorna (results, duration_seconds, scraper_key).
+    Retorna (results, duration_seconds, scraper_key, error_msg).
+    error_msg é None em caso de sucesso, ou uma string descrevendo o erro.
     """
     scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
     t0 = time.time()
@@ -85,12 +86,13 @@ def scrape_store(scraper_class, query: str, credentials: dict = None) -> tuple:
         else:
             results = scraper.search(query)
 
+        login_error = getattr(scraper, 'login_error', None)
         duration = time.time() - t0
-        return (results, duration, scraper_key)
+        return (results, duration, scraper_key, login_error)
 
     except Exception as e:
         logger.error(f"Erro ao executar scraper {scraper_class.__name__}: {e}")
-        return ([], time.time() - t0, scraper_key)
+        return ([], time.time() - t0, scraper_key, str(e))
 
 
 async def search_all_stores(query: str, force_refresh: bool = False) -> List[ProductOffer]:
@@ -187,10 +189,11 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
             if isinstance(raw, Exception):
                 logger.error(f"Erro em scraper: {raw}")
                 continue
-            offers, duration, scraper_key = raw
+            offers, duration, scraper_key, error_msg = raw
             if isinstance(offers, list):
-                # Só salvar no cache se teve resultados (evita cachear erros de login)
-                if offers:
+                if error_msg:
+                    logger.error(f"   ❌ {scraper_key}:{query} — {error_msg}")
+                elif offers:
                     await db_cache_set(scraper_key, query, [o.model_dump() for o in offers])
                 else:
                     logger.warning(f"   ⚠️  {scraper_key}:{query} retornou 0 produtos — NÃO cacheado")
@@ -262,6 +265,7 @@ async def search_stream(request: SearchRequest):
         for scraper_class, credentials, store_name in scrapers:
             t0 = time.time()
             status = "searching"
+            store_error_msg = None
             try:
                 store_offers: list[ProductOffer] = []
                 seen_keys: set[str] = set()
@@ -285,7 +289,11 @@ async def search_stream(request: SearchRequest):
                     )
                     if isinstance(raw, Exception):
                         continue
-                    offers, duration, _ = raw
+                    offers, duration, _, error_msg = raw
+                    if error_msg:
+                        store_error_msg = error_msg
+                        logger.error(f"Stream [{store_name}]: {error_msg}")
+                        break  # login falhou — não adianta tentar os outros termos
                     if offers:
                         await db_cache_set(scraper_key, sq_norm, [o.model_dump() for o in offers])
                     await record_scrape_time_db(scraper_key, duration, sq_norm)
@@ -295,7 +303,7 @@ async def search_stream(request: SearchRequest):
                             seen_keys.add(key)
                             store_offers.append(offer)
 
-                status = "done"
+                status = "login_error" if store_error_msg else "done"
                 completed.append(store_name)
                 # Filtrar para retornar apenas produtos que contenham todos os termos da busca original
                 original_queries = [normalize_text(item) for item in request.items]
@@ -319,6 +327,7 @@ async def search_stream(request: SearchRequest):
                     "offers": [o.model_dump() for o in store_offers],
                     "pending_stores": [s for s in all_store_names if s not in completed],
                     "done": False,
+                    **({"error": store_error_msg} if store_error_msg else {}),
                 })
                 yield f"data: {payload}\n\n"
 
@@ -519,7 +528,7 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
                 {"username": username, "password": password} if username and password else None
             )
 
-        offers, duration, _ = raw if isinstance(raw, tuple) else (raw, 0.0, scraper_key)
+        offers, duration, _, error_msg = raw if isinstance(raw, tuple) and len(raw) == 4 else (raw, 0.0, scraper_key, None)
         duration_ms = int((time.time() - t0) * 1000)
 
         # Salvar no cache PostgreSQL + registrar tempo

@@ -42,6 +42,7 @@ class SuperABCScraper(BaseScraper):
         self.session = requests.Session()
         self.session.headers.update(HEADERS)
         self.is_logged_in = False
+        self.login_error: Optional[str] = None
 
     def login(self, username: str, password: str) -> bool:
         """Login no OpenCart — POST para /index.php?route=account/login."""
@@ -309,7 +310,9 @@ class SuperABCScraper(BaseScraper):
                 else:
                     login_ok = self.login(username, password)
                     if not login_ok:
-                        logger.warning("⚠️  Login falhou — buscando como visitante")
+                        self.login_error = "Login falhou — verifique as credenciais da Super ABC Distribuidora"
+                        logger.error(f"❌ {self.login_error}")
+                        return []
                     else:
                         store_session(CACHE_KEY, username, self.session)
             else:
