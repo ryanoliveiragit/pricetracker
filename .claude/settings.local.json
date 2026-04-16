@@ -28,7 +28,19 @@
       "Bash(npm install:*)",
       "Bash(python -m py_compile app/api/routes/search.py app/scrapers/cofema_scraper.py)",
       "Bash(npm run:*)",
-      "Read(//c/Users/**)"
+      "Read(//c/Users/**)",
+      "Bash(grep -r bomretiro . --include=*.py --include=*.md)",
+      "Bash(grep -r google . --include=*.py --include=*.md)",
+      "WebFetch(domain:superabcdistribuidora.com.br)",
+      "Bash(curl -s -I \"https://superabcdistribuidora.com.br/\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\")",
+      "Bash(curl -s \"https://superabcdistribuidora.com.br/\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36\")",
+      "Bash(curl -s \"https://superabcdistribuidora.com.br/\" -H \"User-Agent: Mozilla/5.0\" -o /tmp/superabc.html)",
+      "Read(//tmp/**)",
+      "Bash(cd /Users/rodolfo linhares/Documents/pricetracker/backend)",
+      "Bash(python test_superabc.py)",
+      "Bash(cd C:/Users/rodolfo linhares/Documents/pricetracker/backend)",
+      "Bash(python3 test_superabc.py)",
+      "Bash(dir)"
     ],
     "deny": [],
     "ask": []

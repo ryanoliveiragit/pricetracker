@@ -113,6 +113,17 @@ DEFAULT_SUPPLIERS = [
         "region": "sp",
         "notes": "Atacado de materiais de construção",
     },
+    {
+        "id": "4",
+        "name": "Super ABC Distribuidora",
+        "url": "https://superabcdistribuidora.com.br",
+        "requires_login": True,
+        "username": "bomretiro_materiais@hotmail.com",
+        "password": "Jjc253047",
+        "is_active": True,
+        "region": "sp",
+        "notes": "Distribuidora de materiais de construção",
+    },
 ]
 
 

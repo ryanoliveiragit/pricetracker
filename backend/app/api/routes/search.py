@@ -20,6 +20,7 @@ from sqlalchemy import select
 from app.scrapers.megaleste_scraper import MegalesteScraper
 from app.scrapers.cofema_scraper import CofemaScraper
 from app.scrapers.estoque_atacadista_scraper import EstoqueAtacadistaScraper
+from app.scrapers.superabc_scraper import SuperABCScraper
 from app.services.credentials_manager import get_credentials_manager
 from app.services.cache import (
     db_cache_get, db_cache_set, db_cache_clear,
@@ -105,6 +106,8 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
         "megaleste": MegalesteScraper,
         "cofema": CofemaScraper,
         "atacadista": EstoqueAtacadistaScraper,
+        "super abc": SuperABCScraper,
+        "superabc": SuperABCScraper,
     }
 
     def resolve_scraper(name: str):
@@ -216,6 +219,8 @@ async def search_stream(request: SearchRequest):
             "megaleste": MegalesteScraper,
             "cofema": CofemaScraper,
             "atacadista": EstoqueAtacadistaScraper,
+            "super abc": SuperABCScraper,
+            "superabc": SuperABCScraper,
         }
 
         all_suppliers = await get_all_suppliers_from_db()
@@ -437,6 +442,8 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
             "cofema": CofemaScraper,
             "Estoque Atacadista": EstoqueAtacadistaScraper,
             "estoque_atacadista": EstoqueAtacadistaScraper,
+            "Super ABC Distribuidora": SuperABCScraper,
+            "superabc": SuperABCScraper,
         }
 
         scraper_class = scraper_mapping.get(
