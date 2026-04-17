@@ -75,7 +75,7 @@ export async function searchMaterialsStream(
   const response = await fetch(`${API_BASE_URL}/api/search/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items: payload.items }),
+    body: JSON.stringify({ items: payload.items, force_refresh: payload.force_refresh ?? false }),
   });
 
   if (!response.ok || !response.body) {

@@ -508,19 +508,17 @@ export default function ModernResults() {
             {/* Refresh button */}
             {!loading && totalOffers > 0 && (
               <button
-                onClick={() => isFromCatalog ? void refreshPrices(items) : void search(items, true)}
-                disabled={refreshing}
+                onClick={() => void search(items, true)}
+                disabled={refreshing || loading}
                 className={cn(
                   "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors",
-                  isFromCatalog
-                    ? "bg-[#84CC16] text-[#1A1A18] hover:bg-[#78b814] shadow-sm"
-                    : "border border-[#E8E8E4] bg-white text-[#6B6B63] hover:bg-[#F7F7F5]",
-                  refreshing && "opacity-60 cursor-not-allowed"
+                  "bg-[#84CC16] text-[#1A1A18] hover:bg-[#78b814] shadow-sm",
+                  (refreshing || loading) && "opacity-60 cursor-not-allowed"
                 )}
               >
-                <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+                <RefreshCw className={cn("h-3.5 w-3.5", (refreshing || loading) && "animate-spin")} />
                 <span className="hidden sm:inline">
-                  {refreshing ? "Atualizando..." : isFromCatalog ? "Atualizar Precos" : "Rebuscar"}
+                  {refreshing || loading ? "Buscando..." : "Atualizar Preços"}
                 </span>
               </button>
             )}

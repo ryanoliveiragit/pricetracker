@@ -46,35 +46,40 @@ export function useSearchResults() {
       setCacheAgeMinutes(null);
       setStoreStates([]);
 
-      try {
-        // Try instant search first (from pre-scraped catalog)
-        const instantData = await searchInstant({ items });
-        const totalOffers = instantData.items.reduce(
-          (sum, item) => sum + item.offers.length, 0,
-        );
-
-        if (totalOffers > 0) {
-          setResult(instantData);
-          setCatalogAgeMinutes(instantData.catalogAgeMinutes ?? null);
-          setIsFromCatalog(true);
-          setCacheAgeMinutes(0);
-          setCachedSearch(items, instantData);
-          setLoading(false);
-          toast.success(
-            `${totalOffers} oferta${totalOffers !== 1 ? "s" : ""} (catálogo local)`,
+      // Tentar catálogo local apenas quando não é force refresh
+      if (!forceRefresh) {
+        try {
+          const instantData = await searchInstant({ items });
+          const totalOffers = instantData.items.reduce(
+            (sum, item) => sum + item.offers.length, 0,
           );
-          return;
+
+          if (totalOffers > 0) {
+            setResult(instantData);
+            setCatalogAgeMinutes(instantData.catalogAgeMinutes ?? null);
+            setIsFromCatalog(true);
+            setCacheAgeMinutes(0);
+            setCachedSearch(items, instantData);
+            setLoading(false);
+            toast.success(
+              `${totalOffers} oferta${totalOffers !== 1 ? "s" : ""} (catálogo local)`,
+            );
+            return;
+          }
+        } catch {
+          // Instant search failed — fall through to streaming
         }
-      } catch {
-        // Instant search failed or no catalog — fall through to streaming
       }
 
-      // Fallback: live streaming search
+      // Live streaming search (sempre usado em force refresh)
       try {
-        const data = await searchMaterialsStream({ items }, (partial, stores) => {
-          setResult(partial);
-          setStoreStates(stores);
-        });
+        const data = await searchMaterialsStream(
+          { items, force_refresh: forceRefresh },
+          (partial, stores) => {
+            setResult(partial);
+            setStoreStates(stores);
+          },
+        );
         setResult(data);
         setIsFromCatalog(false);
         setCatalogAgeMinutes(null);
@@ -103,34 +108,9 @@ export function useSearchResults() {
 
   const refreshPrices = useCallback(
     async (items: string[]) => {
-      setRefreshing(true);
-      try {
-        const data = await searchRefresh({ items });
-        const totalOffers = data.items.reduce(
-          (sum, item) => sum + item.offers.length, 0,
-        );
-
-        if (totalOffers > 0) {
-          setResult(data);
-          setIsFromCatalog(false);
-          setCatalogAgeMinutes(0);
-          setCacheAgeMinutes(0);
-          invalidateCachedSearch(items);
-          setCachedSearch(items, data);
-          toast.success(
-            `${totalOffers} preço${totalOffers !== 1 ? "s" : ""} atualizado${totalOffers !== 1 ? "s" : ""}`,
-          );
-        } else {
-          toast.warning("Nenhum resultado na atualização");
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro ao atualizar preços";
-        toast.error(msg);
-      } finally {
-        setRefreshing(false);
-      }
+      await search(items, true);
     },
-    [],
+    [search],
   );
 
   const filteredItems = useMemo(() => {

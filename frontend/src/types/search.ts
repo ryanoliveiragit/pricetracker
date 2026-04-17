@@ -10,6 +10,7 @@ export interface StoreCredential {
 export interface SearchRequest {
   items: string[];
   stores?: StoreCredential[];
+  force_refresh?: boolean;
 }
 
 export interface Offer {
