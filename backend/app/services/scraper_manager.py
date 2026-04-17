@@ -135,8 +135,16 @@ class ScraperManager:
                     self._record_failure(scraper_key)
                     logger.error(f"❌ {scraper_key}:{query_norm} — {error}")
                     return [], duration, scraper_key, error
+                else:
+                    # Sucesso (tuple sem erro)
+                    if offers:
+                        await db_cache_set(scraper_key, query_norm, [o.model_dump() for o in offers])
+                    self._record_success(scraper_key)
+                    await record_scrape_time_db(scraper_key, duration, query_norm)
+                    logger.info(f"✅ {scraper_key}:{query_norm} — {len(offers)} produtos ({duration:.1f}s)")
+                    return offers, duration, scraper_key, None
             else:
-                # Sucesso
+                # Sucesso (list direto, backwards compat)
                 if offers:
                     await db_cache_set(scraper_key, query_norm, [o.model_dump() for o in offers])
                 self._record_success(scraper_key)
