@@ -861,7 +861,7 @@ export default function ModernResults() {
                       <p className="text-[11px] text-red-500 mt-0.5">
                         {s.status === "login_error"
                           ? (s.error ?? "Login falhou — verifique as credenciais")
-                          : "Erro ao buscar — instabilidade ou bloqueio"}
+                          : (s.error ?? "Erro ao buscar — instabilidade ou bloqueio")}
                       </p>
                     </div>
                   </div>

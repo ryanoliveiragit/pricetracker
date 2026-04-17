@@ -317,7 +317,7 @@ class EstoqueAtacadistaScraper(BaseScraper):
                 logger.info("ℹ️  Sem credenciais — buscando como visitante")
 
             page = 1
-            max_pages = 5
+            max_pages = 3
             total_products = []
 
             while page <= max_pages:

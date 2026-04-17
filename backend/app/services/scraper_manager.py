@@ -18,7 +18,7 @@ from app.utils.text_normalizer import normalize_text
 
 logger = logging.getLogger(__name__)
 
-SCRAPER_TIMEOUT = 10  # Escopo: máximo 10 segundos por loja
+SCRAPER_TIMEOUT = 30  # Login + busca em lojas que exigem autenticação podem levar até 25s
 SEARCH_CACHE_TTL = 1800  # 30 minutos
 MAX_WORKERS = 5
 CIRCUIT_BREAKER_THRESHOLD = 5  # Após 5 falhas, pula a loja
