@@ -182,19 +182,32 @@ class ScraperManager:
                 parsed = urlparse(credentials['url'])
                 scraper.base_url = f"{parsed.scheme}://{parsed.netloc}"
 
-            # Fazer login se credenciais fornecidas
-            if credentials and 'username' in credentials:
-                username = credentials.get('username')
-                password = credentials.get('password')
+            username = (credentials or {}).get('username')
+            password = (credentials or {}).get('password')
+            region = (credentials or {}).get('region', 'sp')
 
-                if username and password:
-                    login_ok = scraper.login(username, password)
-                    if not login_ok:
-                        error = scraper.login_error or "Login falhou — credenciais inválidas"
-                        return [], error
+            # Passar credenciais diretamente ao search() — cada scraper lida do seu jeito
+            import inspect
+            sig = inspect.signature(scraper.search)
+            params = sig.parameters
 
-            # Executar busca
-            offers = scraper.search(query)
+            if username and password:
+                kwargs = {}
+                if 'username' in params:
+                    kwargs['username'] = username
+                if 'password' in params:
+                    kwargs['password'] = password
+                if 'region' in params:
+                    kwargs['region'] = region
+                offers = scraper.search(query, **kwargs)
+            else:
+                offers = scraper.search(query)
+
+            # Verificar login_error após busca (alguns scrapers setam isso internamente)
+            login_error = getattr(scraper, 'login_error', None)
+            if login_error:
+                return [], login_error
+
             return offers, None
 
         except Exception as e:
