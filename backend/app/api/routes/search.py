@@ -5,8 +5,8 @@ import asyncio
 import json
 import logging
 import time
+from datetime import datetime
 import httpx
-from concurrent.futures import ThreadPoolExecutor
 from app.models.product import (
     SearchRequest, SearchResponse, SearchItemResult, ProductOffer,
     ProductSearchBySupplierRequest, ProductSearchBySupplierResponse
@@ -23,10 +23,10 @@ from app.scrapers.estoque_atacadista_scraper import EstoqueAtacadistaScraper
 from app.scrapers.superabc_scraper import SuperABCScraper
 from app.services.credentials_manager import get_credentials_manager
 from app.services.cache import (
-    db_cache_get, db_cache_set, db_cache_clear,
-    record_scrape_time_db, get_estimated_wait_db, get_all_estimates_db,
-    mem_cache_get, mem_cache_set,
+    db_cache_get, db_cache_clear,
+    get_estimated_wait_db, get_all_estimates_db,
 )
+from app.services.scraper_manager import get_scraper_manager
 import os
 
 logger = logging.getLogger(__name__)
@@ -64,45 +64,18 @@ async def get_db_variants(query: str) -> List[str]:
     return [query]
 
 
-def scrape_store(scraper_class, query: str, credentials: dict = None) -> tuple:
-    """
-    Executa scraping em uma loja específica.
-    Retorna (results, duration_seconds, scraper_key, error_msg).
-    error_msg é None em caso de sucesso, ou uma string descrevendo o erro.
-    """
-    scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
-    t0 = time.time()
-    try:
-        scraper = scraper_class()
-
-        if credentials and credentials.get('url'):
-            from urllib.parse import urlparse
-            parsed = urlparse(credentials['url'])
-            scraper.base_url = f"{parsed.scheme}://{parsed.netloc}"
-
-        if credentials and hasattr(scraper, 'search') and 'username' in credentials:
-            region = credentials.get('region') or 'sp'
-            results = scraper.search(query, credentials['username'], credentials['password'], region=region)
-        else:
-            results = scraper.search(query)
-
-        login_error = getattr(scraper, 'login_error', None)
-        duration = time.time() - t0
-        return (results, duration, scraper_key, login_error)
-
-    except Exception as e:
-        logger.error(f"Erro ao executar scraper {scraper_class.__name__}: {e}")
-        return ([], time.time() - t0, scraper_key, str(e))
 
 
 async def search_all_stores(query: str, force_refresh: bool = False) -> List[ProductOffer]:
     """
-    Busca em todas as lojas em paralelo com cache PostgreSQL.
-    Cache inteligente: verifica TTL, atualiza quando necessário.
+    Busca em todas as lojas em paralelo com:
+    - Cache PostgreSQL com TTL
+    - Circuit breaker para lojas problemáticas
+    - Timeout rigoroso de 10s por loja
+    - Execução paralela com ScraperManager
     """
     from app.api.routes.suppliers import get_all_suppliers_from_db
-
-    scrapers = []
+    from app.services.catalog_scraper import store_scraped_results
 
     keyword_mapping = {
         "megaleste": MegalesteScraper,
@@ -123,9 +96,10 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
     all_suppliers = await get_all_suppliers_from_db()
     active_suppliers = [s for s in all_suppliers if s.is_active]
 
+    scrapers_with_creds = []
     if not active_suppliers:
         logger.warning("⚠️  Nenhum fornecedor ativo encontrado")
-        scrapers = [(MegalesteScraper, None)]
+        scrapers_with_creds = [(MegalesteScraper, None, "megaleste")]
     else:
         seen_scrapers = set()
         for supplier in active_suppliers:
@@ -136,6 +110,7 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
                 continue
 
             seen_scrapers.add(scraper_class)
+            scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
             credentials = {
                 'url': supplier.url or '',
                 'region': supplier.region or 'sp',
@@ -143,66 +118,28 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
             if supplier.requires_login and supplier.username and supplier.password:
                 credentials['username'] = supplier.username
                 credentials['password'] = supplier.password
-            scrapers.append((scraper_class, credentials))
+            scrapers_with_creds.append((scraper_class, credentials, scraper_key))
 
-        logger.info(f"✅ {len(scrapers)} scrapers resolvidos")
+        logger.info(f"✅ {len(scrapers_with_creds)} scrapers resolvidos")
 
-    # ── Verificar cache por scraper (PostgreSQL) ──
-    scrapers_to_run = []
-    all_offers: List[ProductOffer] = []
+    # Usar ScraperManager para execução paralela com timeout, cache e circuit breaker
+    manager = get_scraper_manager()
+    offers = await manager.scrape_all_stores_parallel(scrapers_with_creds, query, force_refresh=force_refresh)
 
-    for scraper_class, credentials in scrapers:
-        scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
+    # Salvar no catálogo local
+    if offers:
+        store_offers_by_key = {}
+        for offer in offers:
+            key = offer.store
+            if key not in store_offers_by_key:
+                store_offers_by_key[key] = []
+            store_offers_by_key[key].append(offer)
 
-        if not force_refresh:
-            cached = await db_cache_get(scraper_key, query, ttl_seconds=CACHE_TTL)
-            if cached is not None:
-                all_offers.extend([ProductOffer(**item) for item in cached])
-                continue
+        for store_key, store_offers_list in store_offers_by_key.items():
+            await store_scraped_results(store_offers_list, store_key, query)
 
-        if force_refresh:
-            logger.info(f"   🔄 FORCE REFRESH — {scraper_key}:{query}")
-        scrapers_to_run.append((scraper_class, credentials))
-
-    # ── Executar scrapers não cacheados em paralelo ──
-    SCRAPER_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT_SECONDS", "45"))
-
-    if scrapers_to_run:
-        logger.info(f"🚀 Executando {len(scrapers_to_run)} scrapers sem cache (timeout={SCRAPER_TIMEOUT}s)...")
-        loop = asyncio.get_event_loop()
-
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = [
-                loop.run_in_executor(executor, scrape_store, scraper_class, query, credentials)
-                for scraper_class, credentials in scrapers_to_run
-            ]
-            try:
-                raw_results = await asyncio.wait_for(
-                    asyncio.gather(*futures, return_exceptions=True),
-                    timeout=SCRAPER_TIMEOUT,
-                )
-            except asyncio.TimeoutError:
-                logger.warning(f"⏱️ Timeout ({SCRAPER_TIMEOUT}s) atingido ao buscar '{query}'")
-                raw_results = []
-
-        for raw in raw_results:
-            if isinstance(raw, Exception):
-                logger.error(f"Erro em scraper: {raw}")
-                continue
-            offers, duration, scraper_key, error_msg = raw
-            if isinstance(offers, list):
-                if error_msg:
-                    logger.error(f"   ❌ {scraper_key}:{query} — {error_msg}")
-                elif offers:
-                    await db_cache_set(scraper_key, query, [o.model_dump() for o in offers])
-                else:
-                    logger.warning(f"   ⚠️  {scraper_key}:{query} retornou 0 produtos — NÃO cacheado")
-                await record_scrape_time_db(scraper_key, duration, query)
-                logger.info(f"   ✅ Scraping concluído — {scraper_key}:{query} ({len(offers)} produtos, {duration:.1f}s)")
-                all_offers.extend(offers)
-
-    logger.info(f"Total de ofertas encontradas: {len(all_offers)}")
-    return all_offers
+    logger.info(f"Total de ofertas encontradas: {len(offers)}")
+    return offers
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -214,9 +151,11 @@ async def search_products(request: SearchRequest):
 async def search_stream(request: SearchRequest):
     """
     Streaming SSE: envia resultados por fornecedor assim que cada um termina.
+    Usa ScraperManager para execução com timeout 10s, cache e circuit breaker.
     """
     async def generate():
         from app.api.routes.suppliers import get_all_suppliers_from_db
+        from app.services.catalog_scraper import store_scraped_results
 
         keyword_mapping = {
             "megaleste": MegalesteScraper,
@@ -231,7 +170,7 @@ async def search_stream(request: SearchRequest):
         scrapers = []
 
         if not active_suppliers:
-            scrapers = [(MegalesteScraper, None, "Megaleste")]
+            scrapers = [(MegalesteScraper, None, "Megaleste", "megaleste")]
         else:
             seen = set()
             for supplier in active_suppliers:
@@ -240,11 +179,12 @@ async def search_stream(request: SearchRequest):
                 if not scraper_class or scraper_class in seen:
                     continue
                 seen.add(scraper_class)
+                scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
                 creds = {"url": supplier.url or "", "region": supplier.region or "sp"}
                 if supplier.requires_login and supplier.username and supplier.password:
                     creds["username"] = supplier.username
                     creds["password"] = supplier.password
-                scrapers.append((scraper_class, creds, supplier.name))
+                scrapers.append((scraper_class, creds, supplier.name, scraper_key))
 
         # Expandir sinônimos uma vez
         all_queries: list[str] = []
@@ -254,7 +194,7 @@ async def search_stream(request: SearchRequest):
             terms = db_terms if len(db_terms) > 1 else get_synonyms(normalized)
             all_queries.extend(terms)
 
-        loop = asyncio.get_event_loop()
+        manager = get_scraper_manager()
         all_store_names = [s[2] for s in scrapers]
 
         # Emite evento inicial informando quais lojas serão buscadas
@@ -262,9 +202,9 @@ async def search_stream(request: SearchRequest):
 
         completed: list[str] = []
 
-        for scraper_class, credentials, store_name in scrapers:
+        for scraper_class, credentials, store_name, scraper_key in scrapers:
             t0 = time.time()
-            status = "searching"
+            status = "done"
             store_error_msg = None
             try:
                 store_offers: list[ProductOffer] = []
@@ -272,38 +212,30 @@ async def search_stream(request: SearchRequest):
 
                 for sq in all_queries:
                     sq_norm = normalize_text(sq)
-                    scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
 
-                    cached = await db_cache_get(scraper_key, sq_norm, ttl_seconds=CACHE_TTL)
-                    if cached is not None:
-                        for it in cached:
-                            offer = ProductOffer(**it)
-                            key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
-                            if key not in seen_keys:
-                                seen_keys.add(key)
-                                store_offers.append(offer)
-                        continue
-
-                    raw = await loop.run_in_executor(
-                        None, scrape_store, scraper_class, sq_norm, credentials
+                    # Usar manager para scraping com timeout, cache e circuit breaker
+                    offers, duration, _, error_msg = await manager.scrape_store_async(
+                        scraper_class, sq_norm, scraper_key, credentials, force_refresh=request.force_refresh
                     )
-                    if isinstance(raw, Exception):
-                        continue
-                    offers, duration, _, error_msg = raw
+
                     if error_msg:
                         store_error_msg = error_msg
                         logger.error(f"Stream [{store_name}]: {error_msg}")
-                        break  # login falhou — não adianta tentar os outros termos
+                        status = "login_error" if "login" in error_msg.lower() else "error"
+                        break  # Erro — não adianta tentar outros termos
+
                     if offers:
-                        await db_cache_set(scraper_key, sq_norm, [o.model_dump() for o in offers])
-                    await record_scrape_time_db(scraper_key, duration, sq_norm)
+                        await store_scraped_results(offers, scraper_key, sq_norm)
+
                     for offer in offers:
                         key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
                         if key not in seen_keys:
                             seen_keys.add(key)
                             store_offers.append(offer)
 
-                status = "login_error" if store_error_msg else "done"
+                if not store_error_msg:
+                    status = "done"
+
                 completed.append(store_name)
                 # Filtrar para retornar apenas produtos que contenham todos os termos da busca original
                 original_queries = [normalize_text(item) for item in request.items]
@@ -433,6 +365,7 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
 async def search_by_supplier(request: ProductSearchBySupplierRequest):
     """
     Endpoint para buscar produtos por nome em um fornecedor específico.
+    Usa ScraperManager para execução com timeout 10s, cache e circuit breaker.
     """
     try:
         if not request.product_name or len(request.product_name.strip()) < 2:
@@ -492,7 +425,7 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
                     detail="Credenciais inválidas (usuário ou senha muito curtos)"
                 )
 
-        # ── Verificar cache PostgreSQL ──
+        # ── Executar com ScraperManager (trata cache, timeout, circuit breaker) ──
         scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
         estimated = await get_estimated_wait_db(scraper_key)
 
@@ -511,30 +444,28 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
                     estimated_wait_seconds=estimated,
                 )
 
-        # ── Cache miss / force refresh — executar scraping ──
         if request.force_refresh:
             logger.info(f"🔄 Force refresh solicitado — ignorando cache de {scraper_key}:{normalized_query}")
-        if estimated:
-            logger.info(f"⏱️  Estimativa de espera para {scraper_key}: ~{estimated}s")
 
         t0 = time.time()
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            raw = await loop.run_in_executor(
-                executor,
-                scrape_store,
-                scraper_class,
-                normalized_query,
-                {"username": username, "password": password} if username and password else None
-            )
+        manager = get_scraper_manager()
+        credentials = None
+        if username and password:
+            credentials = {"username": username, "password": password}
 
-        offers, duration, _, error_msg = raw if isinstance(raw, tuple) and len(raw) == 4 else (raw, 0.0, scraper_key, None)
+        offers, duration, _, error_msg = await manager.scrape_store_async(
+            scraper_class, normalized_query, scraper_key, credentials, force_refresh=request.force_refresh
+        )
         duration_ms = int((time.time() - t0) * 1000)
 
-        # Salvar no cache PostgreSQL + registrar tempo
-        if isinstance(offers, list) and offers:
-            await db_cache_set(scraper_key, normalized_query, [o.model_dump() for o in offers])
-            await record_scrape_time_db(scraper_key, duration, normalized_query)
+        if error_msg:
+            logger.error(f"Erro na busca por fornecedor: {error_msg}")
+            raise HTTPException(status_code=400, detail=f"Erro ao buscar em {request.supplier_name}: {error_msg}")
+
+        # Salvar no catálogo local
+        if offers:
+            from app.services.catalog_scraper import store_scraped_results
+            await store_scraped_results(offers, scraper_key, normalized_query)
 
         logger.info(f"Busca concluída: {len(offers)} produtos em {request.supplier_name} ({duration_ms}ms)")
 
@@ -660,6 +591,257 @@ async def clear_search_cache():
     """Limpa todo o cache de buscas no PostgreSQL."""
     count = await db_cache_clear()
     return {"status": "cache_cleared", "entries_removed": count}
+
+
+@router.post("/search/instant", response_model=SearchResponse)
+async def search_instant(request: SearchRequest):
+    """
+    Busca instantânea no catálogo local (pré-scraped).
+    Retorna em <100ms usando dados do PostgreSQL.
+    Se não houver dados pré-scraped, faz fallback para busca normal.
+    """
+    from app.models.db_models import ScrapedProductDB, CatalogScrapeStatusDB
+    from sqlalchemy import func, or_
+
+    t0 = time.time()
+    results = []
+    has_catalog_data = False
+
+    try:
+        async with async_session() as session:
+            count = await session.execute(
+                select(func.count()).select_from(ScrapedProductDB)
+            )
+            has_catalog_data = (count.scalar() or 0) > 0
+
+        if not has_catalog_data:
+            logger.info("No catalog data — falling back to live search")
+            return await _search_products_inner(request)
+
+        for item in request.items:
+            normalized = normalize_text(item)
+            tokens = normalized.split()
+
+            async with async_session() as session:
+                query = select(ScrapedProductDB)
+                conditions = []
+                for token in tokens:
+                    if len(token) >= 2:
+                        conditions.append(
+                            ScrapedProductDB.product_name_normalized.ilike(f"%{token}%")
+                        )
+                if conditions:
+                    query = query.where(*conditions)
+
+                query = query.order_by(ScrapedProductDB.price.asc()).limit(200)
+                result = await session.execute(query)
+                rows = result.scalars().all()
+
+            offers = []
+            seen = set()
+            for row in rows:
+                key = f"{row.store}:{row.sku or row.product_name[:30].lower()}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                offers.append(ProductOffer(
+                    store=row.store,
+                    product_name=row.product_name,
+                    price=row.price,
+                    currency=row.currency,
+                    product_url=row.product_url,
+                    add_to_cart_url=row.add_to_cart_url,
+                    availability=row.availability,
+                    sku=row.sku,
+                    image_url=row.image_url,
+                    description=row.description,
+                    brand=row.brand,
+                    score=row.score,
+                ))
+
+            offers = filter_results_by_query(item, offers)
+
+            prices_with_value = [o.price for o in offers if o.price > 0]
+            if offers and prices_with_value:
+                min_price = min(prices_with_value)
+                for o in offers:
+                    if o.price == min_price:
+                        o.product_name = f"✓ {o.product_name}"
+
+            results.append(SearchItemResult(
+                raw_query=item,
+                normalized_query=normalized,
+                offers=offers,
+                search_duration_ms=int((time.time() - t0) * 1000),
+                cached=True,
+            ))
+
+        all_stores = set()
+        for r in results:
+            for o in r.offers:
+                all_stores.add(o.store)
+
+        # Get catalog freshness info
+        catalog_age_minutes = None
+        async with async_session() as session:
+            from sqlalchemy import desc
+            stmt = (
+                select(ScrapedProductDB.scraped_at)
+                .order_by(desc(ScrapedProductDB.scraped_at))
+                .limit(1)
+            )
+            result = await session.execute(stmt)
+            latest = result.scalar()
+            if latest:
+                from datetime import timezone as tz
+                age = datetime.now(tz.utc) - latest.replace(tzinfo=tz.utc)
+                catalog_age_minutes = int(age.total_seconds() / 60)
+
+        return SearchResponse(
+            items=results,
+            total_items=len(results),
+            stores=sorted(list(all_stores)),
+            total_duration_ms=int((time.time() - t0) * 1000),
+            estimated_wait_seconds={"catalog_age_minutes": catalog_age_minutes} if catalog_age_minutes is not None else None,
+        )
+
+    except Exception as e:
+        logger.error(f"Instant search error: {e}", exc_info=True)
+        return await _search_products_inner(request)
+
+
+@router.post("/search/refresh")
+async def search_refresh(request: SearchRequest):
+    """
+    Atualiza preços sob demanda: re-scrapa os produtos solicitados
+    e retorna resultados frescos. Atualiza o catálogo local também.
+    """
+    from app.services.catalog_scraper import refresh_products
+
+    t0 = time.time()
+    fresh_offers = await refresh_products(request.items)
+
+    results = []
+    for item in request.items:
+        normalized = normalize_text(item)
+        item_offers = filter_results_by_query(item, fresh_offers)
+
+        prices_with_value = [o.price for o in item_offers if o.price > 0]
+        if item_offers and prices_with_value:
+            min_price = min(prices_with_value)
+            for o in item_offers:
+                if o.price == min_price:
+                    o.product_name = f"✓ {o.product_name}"
+
+        results.append(SearchItemResult(
+            raw_query=item,
+            normalized_query=normalized,
+            offers=item_offers,
+            search_duration_ms=int((time.time() - t0) * 1000),
+            cached=False,
+        ))
+
+    all_stores = set()
+    for r in results:
+        for o in r.offers:
+            all_stores.add(o.store)
+
+    return SearchResponse(
+        items=results,
+        total_items=len(results),
+        stores=sorted(list(all_stores)),
+        total_duration_ms=int((time.time() - t0) * 1000),
+    )
+
+
+@router.get("/search/catalog-status")
+async def catalog_status():
+    """
+    Retorna status do catálogo pré-scraped:
+    - Quantos produtos estão no catálogo local
+    - Quando foi a última atualização por loja
+    - Se o scraping está rodando agora
+    """
+    from app.models.db_models import ScrapedProductDB, CatalogScrapeStatusDB
+    from app.services.catalog_scraper import is_running
+    from sqlalchemy import func, desc
+    from datetime import timezone as tz
+
+    try:
+        async with async_session() as session:
+            total = await session.execute(
+                select(func.count()).select_from(ScrapedProductDB)
+            )
+            total_products = total.scalar() or 0
+
+            stores_stmt = (
+                select(
+                    ScrapedProductDB.store,
+                    func.count().label("count"),
+                    func.max(ScrapedProductDB.scraped_at).label("last_scraped"),
+                )
+                .group_by(ScrapedProductDB.store)
+            )
+            stores_result = await session.execute(stores_stmt)
+            stores = {}
+            oldest_scrape = None
+            for row in stores_result.all():
+                scraped_at = row.last_scraped
+                if scraped_at:
+                    scraped_at_utc = scraped_at.replace(tzinfo=tz.utc) if scraped_at.tzinfo is None else scraped_at
+                    age_minutes = int((datetime.now(tz.utc) - scraped_at_utc).total_seconds() / 60)
+                    if oldest_scrape is None or age_minutes > oldest_scrape:
+                        oldest_scrape = age_minutes
+                else:
+                    age_minutes = None
+
+                stores[row.store] = {
+                    "product_count": row.count,
+                    "last_scraped": scraped_at.isoformat() if scraped_at else None,
+                    "age_minutes": age_minutes,
+                }
+
+            status_stmt = (
+                select(CatalogScrapeStatusDB)
+                .order_by(desc(CatalogScrapeStatusDB.started_at))
+                .limit(5)
+            )
+            status_result = await session.execute(status_stmt)
+            recent_runs = [
+                {
+                    "scraper_key": s.scraper_key,
+                    "status": s.status,
+                    "total_products": s.total_products,
+                    "duration_seconds": s.duration_seconds,
+                    "started_at": s.started_at.isoformat() if s.started_at else None,
+                    "finished_at": s.finished_at.isoformat() if s.finished_at else None,
+                    "error": s.error_message,
+                }
+                for s in status_result.scalars().all()
+            ]
+
+        return {
+            "total_products": total_products,
+            "stores": stores,
+            "is_scraping": is_running(),
+            "catalog_age_minutes": oldest_scrape,
+            "recent_runs": recent_runs,
+        }
+    except Exception as e:
+        logger.error(f"Catalog status error: {e}")
+        return {"total_products": 0, "stores": {}, "is_scraping": False, "error": str(e)}
+
+
+@router.post("/search/trigger-scrape")
+async def trigger_catalog_scrape():
+    """Dispara manualmente o scraping do catálogo completo."""
+    from app.services.catalog_scraper import run_catalog_scrape, is_running
+
+    if is_running():
+        return {"status": "already_running", "message": "Scraping já está em execução"}
+
+    asyncio.create_task(run_catalog_scrape())
+    return {"status": "started", "message": "Scraping do catálogo iniciado em background"}
 
 
 @router.get("/health")

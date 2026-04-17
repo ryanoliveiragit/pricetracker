@@ -115,6 +115,54 @@ class UserDB(Base):
     )
 
 
+class ScrapedProductDB(Base):
+    """Produtos pré-scraped do catálogo local — busca instantânea."""
+    __tablename__ = "scraped_products"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    store: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    product_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    product_name_normalized: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    price: Mapped[float] = mapped_column(Float, default=0.0)
+    currency: Mapped[str] = mapped_column(String(16), default="BRL")
+    product_url: Mapped[str] = mapped_column(Text, nullable=False)
+    add_to_cart_url: Mapped[str] = mapped_column(Text, nullable=True)
+    availability: Mapped[str] = mapped_column(String(64), default="em_estoque")
+    sku: Mapped[str] = mapped_column(String(128), nullable=True, index=True)
+    image_url: Mapped[str] = mapped_column(Text, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    brand: Mapped[str] = mapped_column(String(128), nullable=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    source_query: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    scraper_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scraped_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+
+class CatalogScrapeStatusDB(Base):
+    """Status da última execução do scraping do catálogo."""
+    __tablename__ = "catalog_scrape_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    scraper_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    total_products: Mapped[int] = mapped_column(Integer, default=0)
+    total_queries: Mapped[int] = mapped_column(Integer, default=0)
+    duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    error_message: Mapped[str] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    finished_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
 class SavedOfferDB(Base):
     """Ofertas salvas (favoritas) pelos usuários."""
     __tablename__ = "saved_offers"

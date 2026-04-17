@@ -41,7 +41,8 @@
       "Bash(cd C:/Users/rodolfo linhares/Documents/pricetracker/backend)",
       "Bash(python3 test_superabc.py)",
       "Bash(dir)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(pip list *)"
     ],
     "deny": [],
     "ask": []

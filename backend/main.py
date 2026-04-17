@@ -19,10 +19,40 @@ async def lifespan(_app: FastAPI):
     """Startup / shutdown events."""
     from app.database import create_tables
     from app.services.seed import seed_defaults
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from app.services.catalog_scraper import run_catalog_scrape
+
     await create_tables()
     await seed_defaults()
-    logger.info("🚀 ConstruPrice API pronta")
+
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        run_catalog_scrape,
+        "interval",
+        hours=2,
+        id="catalog_scrape",
+        name="Pre-scrape catalog products",
+        misfire_grace_time=300,
+    )
+    scheduler.start()
+    logger.info("🚀 ConstruPrice API pronta (scheduler ativo — scraping a cada 2h)")
+
+    # Auto-trigger: se catálogo vazio, dispara primeiro scraping
+    import asyncio
+    from sqlalchemy import select, func
+    from app.database import async_session
+    from app.models.db_models import ScrapedProductDB
+    async with async_session() as session:
+        count = await session.execute(
+            select(func.count()).select_from(ScrapedProductDB)
+        )
+        if (count.scalar() or 0) == 0:
+            logger.info("📦 Catálogo vazio — disparando primeiro scraping automaticamente")
+            asyncio.create_task(run_catalog_scrape())
+
     yield
+
+    scheduler.shutdown(wait=False)
     logger.info("👋 ConstruPrice API encerrando")
 
 

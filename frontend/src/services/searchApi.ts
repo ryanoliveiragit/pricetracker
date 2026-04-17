@@ -157,3 +157,94 @@ function buildResponse(items: string[], allOffers: ApiOffer[], stores: string[])
 export async function searchMaterials(payload: SearchRequest): Promise<SearchResponse> {
   return searchMaterialsStream(payload, () => {});
 }
+
+/**
+ * Busca instantânea no catálogo pré-scraped (~50ms).
+ * Se não houver catálogo, faz fallback automático para busca normal no backend.
+ */
+export async function searchInstant(payload: SearchRequest): Promise<SearchResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/search/instant`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items: payload.items }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro na busca instantânea: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const catalogAgeMinutes = data.estimated_wait_seconds?.catalog_age_minutes ?? null;
+
+  const mapped = (data.items ?? []).map((item: { raw_query: string; normalized_query?: string; offers: ApiOffer[] }) => ({
+    rawQuery: item.raw_query,
+    normalizedQuery: item.normalized_query,
+    offers: item.offers.map((o: ApiOffer) => mapOffer(o, item.offers)),
+  }));
+
+  return {
+    items: mapped,
+    totalItems: data.total_items ?? mapped.length,
+    stores: data.stores ?? [],
+    generatedAt: data.generated_at ?? new Date().toISOString(),
+    catalogAgeMinutes,
+    isFromCatalog: true,
+  };
+}
+
+/**
+ * Atualiza preços sob demanda — re-scrapa e retorna resultados frescos.
+ */
+export async function searchRefresh(payload: SearchRequest): Promise<SearchResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/search/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items: payload.items }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro ao atualizar preços: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  const mapped = (data.items ?? []).map((item: { raw_query: string; normalized_query?: string; offers: ApiOffer[] }) => ({
+    rawQuery: item.raw_query,
+    normalizedQuery: item.normalized_query,
+    offers: item.offers.map((o: ApiOffer) => mapOffer(o, item.offers)),
+  }));
+
+  return {
+    items: mapped,
+    totalItems: data.total_items ?? mapped.length,
+    stores: data.stores ?? [],
+    generatedAt: data.generated_at ?? new Date().toISOString(),
+    catalogAgeMinutes: 0,
+    isFromCatalog: false,
+  };
+}
+
+export interface CatalogStatus {
+  totalProducts: number;
+  stores: Record<string, { product_count: number; last_scraped: string | null; age_minutes: number | null }>;
+  isScraping: boolean;
+  catalogAgeMinutes: number | null;
+}
+
+export async function getCatalogStatus(): Promise<CatalogStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/search/catalog-status`);
+  if (!response.ok) throw new Error("Erro ao buscar status do catálogo");
+  const data = await response.json();
+  return {
+    totalProducts: data.total_products,
+    stores: data.stores,
+    isScraping: data.is_scraping,
+    catalogAgeMinutes: data.catalog_age_minutes,
+  };
+}
+
+export async function triggerCatalogScrape(): Promise<{ status: string; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/search/trigger-scrape`, { method: "POST" });
+  if (!response.ok) throw new Error("Erro ao iniciar scraping");
+  return response.json();
+}

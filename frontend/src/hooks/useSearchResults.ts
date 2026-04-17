@@ -1,6 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { searchMaterialsStream, type StoreState } from "../services/searchApi";
+import {
+  searchInstant,
+  searchRefresh,
+  searchMaterialsStream,
+  type StoreState,
+} from "../services/searchApi";
 import {
   getCachedSearch,
   setCachedSearch,
@@ -12,20 +17,24 @@ import type { SearchResponse, SortOption } from "../types/search";
 export function useSearchResults() {
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cacheAgeMinutes, setCacheAgeMinutes] = useState<number | null>(null);
+  const [catalogAgeMinutes, setCatalogAgeMinutes] = useState<number | null>(null);
+  const [isFromCatalog, setIsFromCatalog] = useState(false);
   const [selectedStore, setSelectedStore] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("best_price");
   const [storeStates, setStoreStates] = useState<StoreState[]>([]);
 
   const search = useCallback(
     async (items: string[], forceRefresh = false) => {
-      // Hit cache first (unless forcing a refresh)
       if (!forceRefresh) {
         const cached = getCachedSearch(items);
         if (cached) {
           setResult(cached);
           setCacheAgeMinutes(getCacheAgeMinutes(items));
+          setCatalogAgeMinutes(cached.catalogAgeMinutes ?? null);
+          setIsFromCatalog(cached.isFromCatalog ?? false);
           return;
         }
       } else {
@@ -38,16 +47,46 @@ export function useSearchResults() {
       setStoreStates([]);
 
       try {
+        // Try instant search first (from pre-scraped catalog)
+        const instantData = await searchInstant({ items });
+        const totalOffers = instantData.items.reduce(
+          (sum, item) => sum + item.offers.length, 0,
+        );
+
+        if (totalOffers > 0) {
+          setResult(instantData);
+          setCatalogAgeMinutes(instantData.catalogAgeMinutes ?? null);
+          setIsFromCatalog(true);
+          setCacheAgeMinutes(0);
+          setCachedSearch(items, instantData);
+          setLoading(false);
+          toast.success(
+            `${totalOffers} oferta${totalOffers !== 1 ? "s" : ""} (catálogo local)`,
+          );
+          return;
+        }
+      } catch {
+        // Instant search failed or no catalog — fall through to streaming
+      }
+
+      // Fallback: live streaming search
+      try {
         const data = await searchMaterialsStream({ items }, (partial, stores) => {
           setResult(partial);
           setStoreStates(stores);
         });
         setResult(data);
-        const totalOffers = data.items.reduce((sum, item) => sum + item.offers.length, 0);
+        setIsFromCatalog(false);
+        setCatalogAgeMinutes(null);
+        const totalOffers = data.items.reduce(
+          (sum, item) => sum + item.offers.length, 0,
+        );
         if (totalOffers > 0) {
           setCachedSearch(items, data);
           setCacheAgeMinutes(0);
-          toast.success(`${totalOffers} oferta${totalOffers !== 1 ? "s" : ""} encontrada${totalOffers !== 1 ? "s" : ""}`);
+          toast.success(
+            `${totalOffers} oferta${totalOffers !== 1 ? "s" : ""} encontrada${totalOffers !== 1 ? "s" : ""}`,
+          );
         } else {
           toast.warning("Nenhuma oferta encontrada");
         }
@@ -59,7 +98,39 @@ export function useSearchResults() {
         setLoading(false);
       }
     },
-    []
+    [],
+  );
+
+  const refreshPrices = useCallback(
+    async (items: string[]) => {
+      setRefreshing(true);
+      try {
+        const data = await searchRefresh({ items });
+        const totalOffers = data.items.reduce(
+          (sum, item) => sum + item.offers.length, 0,
+        );
+
+        if (totalOffers > 0) {
+          setResult(data);
+          setIsFromCatalog(false);
+          setCatalogAgeMinutes(0);
+          setCacheAgeMinutes(0);
+          invalidateCachedSearch(items);
+          setCachedSearch(items, data);
+          toast.success(
+            `${totalOffers} preço${totalOffers !== 1 ? "s" : ""} atualizado${totalOffers !== 1 ? "s" : ""}`,
+          );
+        } else {
+          toast.warning("Nenhum resultado na atualização");
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro ao atualizar preços";
+        toast.error(msg);
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [],
   );
 
   const filteredItems = useMemo(() => {
@@ -83,14 +154,18 @@ export function useSearchResults() {
   return {
     result,
     loading,
+    refreshing,
     error,
     cacheAgeMinutes,
+    catalogAgeMinutes,
+    isFromCatalog,
     selectedStore,
     setSelectedStore,
     sortBy,
     setSortBy,
     filteredItems,
     search,
+    refreshPrices,
     storeStates,
   };
 }

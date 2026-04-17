@@ -5,6 +5,7 @@ import { Search, Plus, X, ArrowRight, Sparkles, Package } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useProductCatalog } from "../context/ProductCatalogContext";
+import { CatalogStatusPanel } from "../components/CatalogStatusPanel";
 
 export default function ModernSearch() {
   const router = useRouter();
@@ -59,6 +60,9 @@ export default function ModernSearch() {
           Selecione os produtos do catálogo para realizar uma cotação de preços
         </p>
       </motion.div>
+
+      {/* Catalog status */}
+      <CatalogStatusPanel />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
         {/* Product Selection */}

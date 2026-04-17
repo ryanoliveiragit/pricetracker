@@ -39,6 +39,8 @@ export interface SearchResponse {
   totalItems: number;
   stores: string[];
   generatedAt?: string;
+  catalogAgeMinutes?: number | null;
+  isFromCatalog?: boolean;
 }
 
 export type SortOption = "best_price" | "alphabetical";
