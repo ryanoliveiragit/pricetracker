@@ -11,7 +11,7 @@ import asyncio
 import logging
 import time
 from typing import List, Dict, Optional, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from app.models.product import ProductOffer
 from app.services.cache import db_cache_get, db_cache_set, record_scrape_time_db
 from app.utils.text_normalizer import normalize_text
@@ -178,10 +178,9 @@ class ScraperManager:
             if credentials and 'username' in credentials:
                 username = credentials.get('username')
                 password = credentials.get('password')
-                region = credentials.get('region', 'sp')
 
                 if username and password:
-                    login_ok = scraper.login(username, password, region=region)
+                    login_ok = scraper.login(username, password)
                     if not login_ok:
                         error = scraper.login_error or "Login falhou — credenciais inválidas"
                         return [], error
