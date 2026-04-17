@@ -144,8 +144,6 @@ class MegalesteScraper(BaseScraper):
         except Exception as e:
             logger.error(f"❌ Erro no login Selenium fallback: {e}")
             return False
-        finally:
-            self._close_driver()
 
     def _fetch_page(self, query: str, page: int = 1) -> Optional[BeautifulSoup]:
         """Busca uma página de resultados usando requests."""
@@ -346,7 +344,5 @@ class MegalesteScraper(BaseScraper):
         except Exception as e:
             logger.error(f"❌ Erro crítico em {self.store_name}: {e}", exc_info=True)
             invalidate(CACHE_KEY)
-        finally:
-            self._close_driver()
 
         return offers
