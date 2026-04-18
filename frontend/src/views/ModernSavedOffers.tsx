@@ -187,7 +187,7 @@ export default function ModernSavedOffers() {
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest text-[#A0A09A]">Filtros</span>
         {hasActiveFilters && (
-          <button onClick={clearFilters} className="text-[11px] font-medium text-[#84CC16] hover:underline">
+          <button onClick={clearFilters} className="text-[11px] font-medium text-[rgb(var(--primary-500))] hover:underline">
             Limpar tudo
           </button>
         )}
@@ -197,25 +197,25 @@ export default function ModernSavedOffers() {
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5">
           {onlyInStock && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#84CC16]/15 border border-[#84CC16]/30 px-2.5 py-1 text-[11px] font-medium text-[#3d6600]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-2.5 py-1 text-[11px] font-medium text-[rgb(var(--primary-600))]">
               Em estoque
               <button onClick={() => setOnlyInStock(false)}><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {cardSearch && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#84CC16]/15 border border-[#84CC16]/30 px-2.5 py-1 text-[11px] font-medium text-[#3d6600]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-2.5 py-1 text-[11px] font-medium text-[rgb(var(--primary-600))]">
               &ldquo;{cardSearch}&rdquo;
               <button onClick={() => setCardSearch("")}><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {Array.from(activeUnits).map(u => (
-            <span key={u} className="inline-flex items-center gap-1 rounded-full bg-[#84CC16]/15 border border-[#84CC16]/30 px-2.5 py-1 text-[11px] font-medium text-[#3d6600]">
+            <span key={u} className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-2.5 py-1 text-[11px] font-medium text-[rgb(var(--primary-600))]">
               {u}
               <button onClick={() => toggleUnit(u)}><X className="h-2.5 w-2.5" /></button>
             </span>
           ))}
           {Array.from(activeSuppliers).map(s => (
-            <span key={s} className="inline-flex items-center gap-1 rounded-full bg-[#84CC16]/15 border border-[#84CC16]/30 px-2.5 py-1 text-[11px] font-medium text-[#3d6600]">
+            <span key={s} className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-2.5 py-1 text-[11px] font-medium text-[rgb(var(--primary-600))]">
               {s}
               <button onClick={() => toggleSupplier(s)}><X className="h-2.5 w-2.5" /></button>
             </span>
@@ -232,7 +232,7 @@ export default function ModernSavedOffers() {
             value={cardSearch}
             onChange={(e) => setCardSearch(e.target.value)}
             placeholder="Nome, marca..."
-            className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] py-2.5 pl-9 pr-8 text-sm text-[#1A1A18] placeholder-[#C0C0BA] focus:border-[#84CC16] focus:outline-none focus:bg-white transition-colors"
+            className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] py-2.5 pl-9 pr-8 text-sm text-[#1A1A18] placeholder-[#C0C0BA] focus:border-[rgb(var(--primary-500))] focus:outline-none focus:bg-white transition-colors"
           />
         </div>
       </div>
@@ -245,12 +245,12 @@ export default function ModernSavedOffers() {
           className={cn(
             "w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors border",
             onlyInStock
-              ? "border-[#84CC16]/40 bg-[#84CC16]/10 text-[#1A1A18]"
+              ? "border-[rgb(var(--primary-500))]/40 bg-[rgb(var(--primary-500))]/10 text-[#1A1A18]"
               : "border-transparent bg-[#F7F7F5] text-[#6B6B63] hover:bg-[#EFEFEB]"
           )}
         >
           <span className="font-medium text-xs">Apenas em estoque</span>
-          <div className={cn("h-4 w-7 rounded-full transition-colors relative flex-shrink-0", onlyInStock ? "bg-[#84CC16]" : "bg-[#D0D0CA]")}>
+          <div className={cn("h-4 w-7 rounded-full transition-colors relative flex-shrink-0", onlyInStock ? "bg-[rgb(var(--primary-500))]" : "bg-[#D0D0CA]")}>
             <div className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform", onlyInStock ? "translate-x-3.5" : "translate-x-0.5")} />
           </div>
         </button>
@@ -264,13 +264,13 @@ export default function ModernSavedOffers() {
             type="number"
             value={priceMin}
             onChange={(e) => setPriceMin(Number(e.target.value))}
-            className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#1A1A18] focus:border-[#84CC16] focus:outline-none"
+            className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#1A1A18] focus:border-[rgb(var(--primary-500))] focus:outline-none"
           />
           <input
             type="number"
             value={priceMax}
             onChange={(e) => setPriceMax(Number(e.target.value))}
-            className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#1A1A18] focus:border-[#84CC16] focus:outline-none"
+            className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#1A1A18] focus:border-[rgb(var(--primary-500))] focus:outline-none"
           />
         </div>
       </div>
@@ -281,10 +281,10 @@ export default function ModernSavedOffers() {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">Lojas</p>
           <div className="space-y-0.5">
             {allSuppliers.map((s) => (
-              <label key={s} className={cn("flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 transition-colors", activeSuppliers.has(s) ? "bg-[#84CC16]/10" : "hover:bg-[#F7F7F5]")}>
+              <label key={s} className={cn("flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 transition-colors", activeSuppliers.has(s) ? "bg-[rgb(var(--primary-500))]/10" : "hover:bg-[#F7F7F5]")}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <input type="checkbox" checked={activeSuppliers.has(s)} onChange={() => toggleSupplier(s)} className="sr-only" />
-                  <div className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center", activeSuppliers.has(s) ? "bg-[#84CC16] border-[#84CC16]" : "border-[#D0D0CA]")}>
+                  <div className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center", activeSuppliers.has(s) ? "bg-[rgb(var(--primary-500))] border-[rgb(var(--primary-500))]" : "border-[#D0D0CA]")}>
                     {activeSuppliers.has(s) && <span className="h-2 w-2 bg-[#1A1A18] rounded-[1px]" />}
                   </div>
                   <span className="truncate text-xs">{s}</span>
@@ -301,10 +301,10 @@ export default function ModernSavedOffers() {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">Marcas</p>
           <div className="space-y-0.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
             {allBrands.map((b) => (
-              <label key={b} className={cn("flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 transition-colors", activeBrands.has(b) ? "bg-[#84CC16]/10" : "hover:bg-[#F7F7F5]")}>
+              <label key={b} className={cn("flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 transition-colors", activeBrands.has(b) ? "bg-[rgb(var(--primary-500))]/10" : "hover:bg-[#F7F7F5]")}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <input type="checkbox" checked={activeBrands.has(b)} onChange={() => toggleBrand(b)} className="sr-only" />
-                  <div className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center", activeBrands.has(b) ? "bg-[#84CC16] border-[#84CC16]" : "border-[#D0D0CA]")}>
+                  <div className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center", activeBrands.has(b) ? "bg-[rgb(var(--primary-500))] border-[rgb(var(--primary-500))]" : "border-[#D0D0CA]")}>
                     {activeBrands.has(b) && <span className="h-2 w-2 bg-[#1A1A18] rounded-[1px]" />}
                   </div>
                   <span className="truncate text-xs">{b}</span>
@@ -329,7 +329,7 @@ export default function ModernSavedOffers() {
           <p className="mb-8 text-sm text-[#6B6B63]">Salve produtos durante suas buscas para compará-los e acessá-los facilmente aqui.</p>
           <Link
             href="/search"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#84CC16] px-8 py-3 text-sm font-bold text-[#1A1A18] transition-all hover:bg-[#78b814] shadow-sm"
+            className="inline-flex items-center gap-2 rounded-xl bg-[rgb(var(--primary-500))] px-8 py-3 text-sm font-bold text-[#1A1A18] transition-all hover:bg-[rgb(var(--primary-600))] shadow-sm"
           >
             Começar Cotação
           </Link>
@@ -356,7 +356,7 @@ export default function ModernSavedOffers() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button onClick={() => setMobileFiltersOpen(true)} className="xl:hidden flex items-center gap-1.5 rounded-lg border border-[#E8E8E4] bg-white px-3 py-1.5 text-xs font-medium text-[#6B6B63]">
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            {activeFilterCount > 0 && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#84CC16] text-[9px] font-bold text-[#1A1A18]">{activeFilterCount}</span>}
+            {activeFilterCount > 0 && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[rgb(var(--primary-500))] text-[9px] font-bold text-[#1A1A18]">{activeFilterCount}</span>}
             <span className="hidden sm:inline">Filtros</span>
           </button>
           
@@ -412,7 +412,7 @@ export default function ModernSavedOffers() {
                     <p className="text-[11px] font-semibold uppercase tracking-widest">{label}</p>
                     <Icon className="h-4 w-4" />
                   </div>
-                  <p className={cn("text-2xl font-bold", accent ? "text-[#84CC16]" : "text-[#1A1A18]")}>{value}</p>
+                  <p className={cn("text-2xl font-bold", accent ? "text-[rgb(var(--primary-500))]" : "text-[#1A1A18]")}>{value}</p>
                   <p className="text-xs text-[#A0A09A] mt-0.5">{sub}</p>
                 </div>
               ))}
@@ -427,12 +427,12 @@ export default function ModernSavedOffers() {
 
               <div className="flex items-center gap-2">
                 <div className="hidden sm:flex items-center gap-0.5 rounded-lg border border-[#E8E8E4] bg-white p-0.5">
-                  <button onClick={() => setViewMode("grid")} className={cn("rounded-md p-1.5", viewMode === "grid" ? "bg-[#84CC16] text-white" : "text-[#A0A09A]")}><Grid3X3 className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setViewMode("list")} className={cn("rounded-md p-1.5", viewMode === "list" ? "bg-[#84CC16] text-[#1A1A18]" : "text-[#A0A09A]")}><List className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode("grid")} className={cn("rounded-md p-1.5", viewMode === "grid" ? "bg-[rgb(var(--primary-500))] text-white" : "text-[#A0A09A]")}><Grid3X3 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode("list")} className={cn("rounded-md p-1.5", viewMode === "list" ? "bg-[rgb(var(--primary-500))] text-[#1A1A18]" : "text-[#A0A09A]")}><List className="h-3.5 w-3.5" /></button>
                 </div>
                 <div className="flex items-center gap-0.5 rounded-lg border border-[#E8E8E4] bg-white p-0.5">
                   {[["best_price", "Menor Preço"], ["alphabetical", "A-Z"]].map(([val, label]) => (
-                    <button key={val} onClick={() => setSortBy(val as any)} className={cn("rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors", sortBy === val ? "bg-[#84CC16] text-white" : "text-[#6B6B63]")}>{label}</button>
+                    <button key={val} onClick={() => setSortBy(val as any)} className={cn("rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors", sortBy === val ? "bg-[rgb(var(--primary-500))] text-white" : "text-[#6B6B63]")}>{label}</button>
                   ))}
                 </div>
               </div>
@@ -441,7 +441,7 @@ export default function ModernSavedOffers() {
             {/* Content */}
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24 gap-3 text-[#A0A09A]">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#84CC16] border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[rgb(var(--primary-500))] border-t-transparent" />
                 <p className="text-sm">Sincronizando favoritos...</p>
               </div>
             ) : filtered.length === 0 ? (
@@ -449,7 +449,7 @@ export default function ModernSavedOffers() {
                 <Search className="mx-auto mb-4 h-10 w-10 text-[#D0D0CA]" />
                 <h3 className="mb-2 text-base font-semibold text-[#1A1A18]">Nenhum favorito encontrado</h3>
                 <p className="mb-5 text-sm text-[#6B6B63]">Tente ajustar os filtros ou pesquisar por outro termo.</p>
-                <button onClick={clearFilters} className="text-[#84CC16] font-bold text-sm hover:underline">Limpar filtros</button>
+                <button onClick={clearFilters} className="text-[rgb(var(--primary-500))] font-bold text-sm hover:underline">Limpar filtros</button>
               </div>
             ) : (
               <>
@@ -469,7 +469,7 @@ export default function ModernSavedOffers() {
                         />
                         {isPending && (
                           <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 z-20">
-                            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#84CC16] border-t-transparent" />
+                            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgb(var(--primary-500))] border-t-transparent" />
                           </div>
                         )}
                       </div>
@@ -482,7 +482,7 @@ export default function ModernSavedOffers() {
                   <div className="mt-8 flex items-center justify-center gap-1.5">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-9 w-9 rounded-lg border border-[#E8E8E4] flex items-center justify-center bg-white disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                      <button key={p} onClick={() => setPage(p)} className={cn("h-9 w-9 rounded-lg text-sm font-bold", page === p ? "bg-[#84CC16] text-[#1A1A18]" : "bg-white border border-[#E8E8E4] text-[#6B6B63]")}>{p}</button>
+                      <button key={p} onClick={() => setPage(p)} className={cn("h-9 w-9 rounded-lg text-sm font-bold", page === p ? "bg-[rgb(var(--primary-500))] text-[#1A1A18]" : "bg-white border border-[#E8E8E4] text-[#6B6B63]")}>{p}</button>
                     ))}
                     <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="h-9 w-9 rounded-lg border border-[#E8E8E4] flex items-center justify-center bg-white disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
                   </div>

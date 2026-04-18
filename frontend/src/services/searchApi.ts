@@ -1,6 +1,12 @@
-import type { Offer, SearchRequest, SearchResponse } from "../types/search";
+import type {
+  Offer,
+  SearchRequest,
+  SearchResponse,
+  SupplierSearchSelection,
+} from "../types/search";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 interface ApiOffer {
   store: string;
@@ -17,7 +23,12 @@ interface ApiOffer {
   brand?: string;
 }
 
-export type StoreStatus = "pending" | "searching" | "done" | "error" | "login_error";
+export type StoreStatus =
+  | "pending"
+  | "searching"
+  | "done"
+  | "error"
+  | "login_error";
 
 export interface StoreState {
   name: string;
@@ -50,7 +61,9 @@ interface StreamEnd {
 }
 
 function mapOffer(apiOffer: ApiOffer, allOffers: ApiOffer[]): Offer {
-  const minPrice = Math.min(...allOffers.filter((o) => o.price > 0).map((o) => o.price));
+  const minPrice = Math.min(
+    ...allOffers.filter((o) => o.price > 0).map((o) => o.price),
+  );
   return {
     store: apiOffer.store,
     productName: apiOffer.product_name,
@@ -58,7 +71,10 @@ function mapOffer(apiOffer: ApiOffer, allOffers: ApiOffer[]): Offer {
     currency: apiOffer.currency,
     productUrl: apiOffer.product_url,
     addToCartUrl: apiOffer.add_to_cart_url,
-    availability: apiOffer.availability as "em_estoque" | "por_encomenda" | "indisponivel",
+    availability: apiOffer.availability as
+      | "em_estoque"
+      | "por_encomenda"
+      | "indisponivel",
     isBestPrice: apiOffer.price === minPrice,
     score: apiOffer.score,
     sku: apiOffer.sku,
@@ -70,12 +86,17 @@ function mapOffer(apiOffer: ApiOffer, allOffers: ApiOffer[]): Offer {
 
 export async function searchMaterialsStream(
   payload: SearchRequest,
-  onChunk: (partial: SearchResponse, stores: StoreState[]) => void
+  onChunk: (partial: SearchResponse, stores: StoreState[]) => void,
 ): Promise<SearchResponse> {
+  const selectedStores = normalizeStores(payload.stores);
   const response = await fetch(`${API_BASE_URL}/api/search/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items: payload.items, force_refresh: payload.force_refresh ?? false }),
+    body: JSON.stringify({
+      items: payload.items,
+      stores: selectedStores,
+      force_refresh: payload.force_refresh ?? false,
+    }),
   });
 
   if (!response.ok || !response.body) {
@@ -109,8 +130,14 @@ export async function searchMaterialsStream(
         }
         // Marca a primeira como "searching"
         const first = parsed.pending_stores[0];
-        if (first) storeStates.set(first, { ...storeStates.get(first)!, status: "searching" });
-        onChunk(buildResponse(payload.items, allOffers, []), [...storeStates.values()]);
+        if (first)
+          storeStates.set(first, {
+            ...storeStates.get(first)!,
+            status: "searching",
+          });
+        onChunk(buildResponse(payload.items, allOffers, []), [
+          ...storeStates.values(),
+        ]);
         continue;
       }
 
@@ -126,20 +153,29 @@ export async function searchMaterialsStream(
         // Próxima loja passa para "searching"
         const next = parsed.pending_stores[0];
         if (next && storeStates.get(next)?.status === "pending") {
-          storeStates.set(next, { ...storeStates.get(next)!, status: "searching" });
+          storeStates.set(next, {
+            ...storeStates.get(next)!,
+            status: "searching",
+          });
         }
-        const stores = [...new Set(allOffers.map((o) => o.store))];
-        onChunk(buildResponse(payload.items, allOffers, stores), [...storeStates.values()]);
+        const responseStores = [...new Set(allOffers.map((o) => o.store))];
+        onChunk(buildResponse(payload.items, allOffers, responseStores), [
+          ...storeStates.values(),
+        ]);
         continue;
       }
     }
   }
 
-  const stores = [...new Set(allOffers.map((o) => o.store))];
-  return buildResponse(payload.items, allOffers, stores);
+  const responseStores = [...new Set(allOffers.map((o) => o.store))];
+  return buildResponse(payload.items, allOffers, responseStores);
 }
 
-function buildResponse(items: string[], allOffers: ApiOffer[], stores: string[]): SearchResponse {
+function buildResponse(
+  items: string[],
+  allOffers: ApiOffer[],
+  stores: string[],
+): SearchResponse {
   const mapped = allOffers.map((o) => mapOffer(o, allOffers));
   return {
     items: items.map((rawQuery) => ({
@@ -154,7 +190,9 @@ function buildResponse(items: string[], allOffers: ApiOffer[], stores: string[])
 }
 
 // Mantém compatibilidade com código legado
-export async function searchMaterials(payload: SearchRequest): Promise<SearchResponse> {
+export async function searchMaterials(
+  payload: SearchRequest,
+): Promise<SearchResponse> {
   return searchMaterialsStream(payload, () => {});
 }
 
@@ -162,11 +200,14 @@ export async function searchMaterials(payload: SearchRequest): Promise<SearchRes
  * Busca instantânea no catálogo pré-scraped (~50ms).
  * Se não houver catálogo, faz fallback automático para busca normal no backend.
  */
-export async function searchInstant(payload: SearchRequest): Promise<SearchResponse> {
+export async function searchInstant(
+  payload: SearchRequest,
+): Promise<SearchResponse> {
+  const stores = normalizeStores(payload.stores);
   const response = await fetch(`${API_BASE_URL}/api/search/instant`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items: payload.items }),
+    body: JSON.stringify({ items: payload.items, stores }),
   });
 
   if (!response.ok) {
@@ -174,13 +215,20 @@ export async function searchInstant(payload: SearchRequest): Promise<SearchRespo
   }
 
   const data = await response.json();
-  const catalogAgeMinutes = data.estimated_wait_seconds?.catalog_age_minutes ?? null;
+  const catalogAgeMinutes =
+    data.estimated_wait_seconds?.catalog_age_minutes ?? null;
 
-  const mapped = (data.items ?? []).map((item: { raw_query: string; normalized_query?: string; offers: ApiOffer[] }) => ({
-    rawQuery: item.raw_query,
-    normalizedQuery: item.normalized_query,
-    offers: item.offers.map((o: ApiOffer) => mapOffer(o, item.offers)),
-  }));
+  const mapped = (data.items ?? []).map(
+    (item: {
+      raw_query: string;
+      normalized_query?: string;
+      offers: ApiOffer[];
+    }) => ({
+      rawQuery: item.raw_query,
+      normalizedQuery: item.normalized_query,
+      offers: item.offers.map((o: ApiOffer) => mapOffer(o, item.offers)),
+    }),
+  );
 
   return {
     items: mapped,
@@ -195,11 +243,14 @@ export async function searchInstant(payload: SearchRequest): Promise<SearchRespo
 /**
  * Atualiza preços sob demanda — re-scrapa e retorna resultados frescos.
  */
-export async function searchRefresh(payload: SearchRequest): Promise<SearchResponse> {
+export async function searchRefresh(
+  payload: SearchRequest,
+): Promise<SearchResponse> {
+  const stores = normalizeStores(payload.stores);
   const response = await fetch(`${API_BASE_URL}/api/search/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items: payload.items }),
+    body: JSON.stringify({ items: payload.items, stores }),
   });
 
   if (!response.ok) {
@@ -208,11 +259,17 @@ export async function searchRefresh(payload: SearchRequest): Promise<SearchRespo
 
   const data = await response.json();
 
-  const mapped = (data.items ?? []).map((item: { raw_query: string; normalized_query?: string; offers: ApiOffer[] }) => ({
-    rawQuery: item.raw_query,
-    normalizedQuery: item.normalized_query,
-    offers: item.offers.map((o: ApiOffer) => mapOffer(o, item.offers)),
-  }));
+  const mapped = (data.items ?? []).map(
+    (item: {
+      raw_query: string;
+      normalized_query?: string;
+      offers: ApiOffer[];
+    }) => ({
+      rawQuery: item.raw_query,
+      normalizedQuery: item.normalized_query,
+      offers: item.offers.map((o: ApiOffer) => mapOffer(o, item.offers)),
+    }),
+  );
 
   return {
     items: mapped,
@@ -226,7 +283,14 @@ export async function searchRefresh(payload: SearchRequest): Promise<SearchRespo
 
 export interface CatalogStatus {
   totalProducts: number;
-  stores: Record<string, { product_count: number; last_scraped: string | null; age_minutes: number | null }>;
+  stores: Record<
+    string,
+    {
+      product_count: number;
+      last_scraped: string | null;
+      age_minutes: number | null;
+    }
+  >;
   isScraping: boolean;
   catalogAgeMinutes: number | null;
 }
@@ -243,8 +307,30 @@ export async function getCatalogStatus(): Promise<CatalogStatus> {
   };
 }
 
-export async function triggerCatalogScrape(): Promise<{ status: string; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/search/trigger-scrape`, { method: "POST" });
+export async function triggerCatalogScrape(): Promise<{
+  status: string;
+  message: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/search/trigger-scrape`, {
+    method: "POST",
+  });
   if (!response.ok) throw new Error("Erro ao iniciar scraping");
   return response.json();
+}
+
+function normalizeStores(
+  stores?: SupplierSearchSelection[],
+): SupplierSearchSelection[] | undefined {
+  if (!stores || stores.length === 0) {
+    return undefined;
+  }
+
+  return stores
+    .map((store) => ({
+      store_name: store.store_name.trim(),
+      username: store.username?.trim(),
+      password: store.password?.trim(),
+      is_active: store.is_active,
+    }))
+    .filter((store) => store.store_name.length > 0);
 }

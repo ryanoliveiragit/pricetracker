@@ -1,4 +1,7 @@
-export type AvailabilityStatus = "em_estoque" | "indisponivel" | "por_encomenda";
+export type AvailabilityStatus =
+  | "em_estoque"
+  | "indisponivel"
+  | "por_encomenda";
 
 export interface StoreCredential {
   store_name: string;
@@ -7,9 +10,16 @@ export interface StoreCredential {
   is_active: boolean;
 }
 
+export interface SupplierSearchSelection {
+  store_name: string;
+  username?: string;
+  password?: string;
+  is_active: boolean;
+}
+
 export interface SearchRequest {
   items: string[];
-  stores?: StoreCredential[];
+  stores?: SupplierSearchSelection[];
   force_refresh?: boolean;
 }
 

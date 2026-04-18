@@ -87,14 +87,14 @@ export function CatalogStatusPanel() {
               ? "bg-amber-50 border border-amber-200"
               : isScraping
                 ? "bg-blue-50 border border-blue-200"
-                : "bg-[#84CC16]/10 border border-[#84CC16]/20"
+                : "bg-[rgb(var(--primary-500))]/10 border border-[rgb(var(--primary-500))]/20"
           )}>
             {isScraping ? (
               <Loader2 className="h-4.5 w-4.5 animate-spin text-blue-500" />
             ) : isEmpty ? (
               <AlertCircle className="h-4.5 w-4.5 text-amber-500" />
             ) : (
-              <Database className="h-4.5 w-4.5 text-[#84CC16]" />
+              <Database className="h-4.5 w-4.5 text-[rgb(var(--primary-500))]" />
             )}
           </div>
           <div className="min-w-0">
@@ -136,7 +136,7 @@ export function CatalogStatusPanel() {
             className={cn(
               "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
               isEmpty
-                ? "bg-[#84CC16] text-[#1A1A18] hover:bg-[#78b814]"
+                ? "bg-[rgb(var(--primary-500))] text-[#1A1A18] hover:bg-[rgb(var(--primary-600))]"
                 : "border border-[#E8E8E4] bg-white text-[#6B6B63] hover:bg-[#F7F7F5] hover:text-[#1A1A18]",
               (isScraping || triggering) && "opacity-50 cursor-not-allowed"
             )}
@@ -179,7 +179,7 @@ export function CatalogStatusPanel() {
                       {formatAge(info.age_minutes)}
                     </div>
                     {info.age_minutes !== null && info.age_minutes < 10 ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-[#84CC16]" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[rgb(var(--primary-500))]" />
                     ) : (
                       <Clock className="h-3.5 w-3.5 text-amber-400" />
                     )}

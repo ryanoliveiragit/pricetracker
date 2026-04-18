@@ -20,18 +20,20 @@ export default function ModernSearch() {
       (p) =>
         p.name.toLowerCase().includes(query) ||
         p.category.toLowerCase().includes(query) ||
-        (p.brand ?? "").toLowerCase().includes(query)
+        (p.brand ?? "").toLowerCase().includes(query),
     );
   }, [products, searchQuery]);
 
   const selectedProducts = useMemo(
     () => products.filter((p) => selectedProductIds.includes(p.id)),
-    [products, selectedProductIds]
+    [products, selectedProductIds],
   );
 
   function toggleProduct(productId: string) {
     setSelectedProductIds((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId],
     );
   }
 
@@ -39,7 +41,11 @@ export default function ModernSearch() {
     if (selectedProducts.length === 0) return;
 
     const items = selectedProducts.map((p) => p.name);
-    localStorage.setItem("construprice-last-search-items", JSON.stringify(items));
+    localStorage.setItem(
+      "construprice-last-search-items",
+      JSON.stringify(items),
+    );
+    localStorage.removeItem("construprice-last-search-suppliers");
     router.push("/results");
   }
 
@@ -52,8 +58,10 @@ export default function ModernSearch() {
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center gap-2 mb-2">
-          <Search className="h-5 w-5 text-[#84CC16]" />
-          <span className="text-sm font-medium text-[#3d6600]">Buscar Produtos</span>
+          <Search className="h-5 w-5 text-[rgb(var(--primary-500))]" />
+          <span className="text-sm font-medium text-[rgb(var(--primary-600))]">
+            Buscar Produtos
+          </span>
         </div>
         <h1 className="text-3xl font-bold text-[#1A1A18] mb-2">Nova Cotação</h1>
         <p className="text-[#A0A09A]">
@@ -80,7 +88,7 @@ export default function ModernSearch() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar por nome, categoria ou marca..."
-              className="w-full rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] py-3 pl-12 pr-4 text-sm text-[#1A1A18] placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:border-[#84CC16] focus:outline-none focus:ring-2 focus:ring-lime-500/20"
+              className="w-full rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] py-3 pl-12 pr-4 text-sm text-[#1A1A18] placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:border-[rgb(var(--primary-500))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--primary-500))/0.20]"
             />
           </div>
 
@@ -98,7 +106,9 @@ export default function ModernSearch() {
                   <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F7F7F5] border border-[#E8E8E4]">
                     <Search className="h-6 w-6 text-[#A0A09A]" />
                   </div>
-                  <p className="text-sm text-[#A0A09A]">Nenhum produto encontrado</p>
+                  <p className="text-sm text-[#A0A09A]">
+                    Nenhum produto encontrado
+                  </p>
                 </div>
               ) : (
                 filteredProducts.map((product) => {
@@ -112,7 +122,7 @@ export default function ModernSearch() {
                         group w-full rounded-lg border p-4 text-left transition-all
                         ${
                           isSelected
-                            ? "border-[#84CC16]/50 bg-[#84CC16]/15 border border-[#84CC16]/30"
+                            ? "border-[rgb(var(--primary-500))]/50 bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30"
                             : "border-[#E8E8E4] bg-white hover:border-[#D0D0CA] hover:bg-[#F7F7F5]"
                         }
                       `}
@@ -153,12 +163,14 @@ export default function ModernSearch() {
                             flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors
                             ${
                               isSelected
-                                ? "border-[#84CC16] bg-lime-500"
+                                ? "border-[rgb(var(--primary-500))] bg-[rgb(var(--primary-500))]"
                                 : "border-[#D0D0CA] group-hover:border-[#A0A09A] group-hover:dark:border-neutral-500"
                             }
                           `}
                         >
-                          {isSelected && <Plus className="h-3 w-3 rotate-45 text-white" />}
+                          {isSelected && (
+                            <Plus className="h-3 w-3 rotate-45 text-white" />
+                          )}
                         </div>
                       </div>
                     </button>
@@ -178,7 +190,7 @@ export default function ModernSearch() {
         >
           <div className="rounded-xl border border-[#E8E8E4] bg-white p-6 shadow-card lg:sticky lg:top-4">
             <div className="mb-4 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#84CC16]" />
+              <Sparkles className="h-5 w-5 text-[rgb(var(--primary-500))]" />
               <h2 className="text-lg font-semibold text-[#1A1A18]">
                 Produtos Selecionados
               </h2>
@@ -217,7 +229,9 @@ export default function ModernSearch() {
                           <p className="text-sm font-medium text-[#1A1A18] truncate">
                             {product.name}
                           </p>
-                          <p className="text-xs text-[#A0A09A]">{product.category}</p>
+                          <p className="text-xs text-[#A0A09A]">
+                            {product.category}
+                          </p>
                         </div>
                       </div>
                       <button
@@ -240,13 +254,13 @@ export default function ModernSearch() {
 
                   <button
                     onClick={handleSearch}
-                    className="group relative w-full overflow-hidden rounded-lg bg-lime-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-lime-600 hover:shadow-md"
+                    className="group relative w-full overflow-hidden rounded-lg bg-[rgb(var(--primary-500))] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[rgb(var(--primary-600))] hover:shadow-md"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       Iniciar Cotação
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>
-                    <div className="absolute inset-0 bg-lime-600 opacity-0 transition-opacity group-hover:opacity-100" />
+                    <div className="absolute inset-0 bg-[rgb(var(--primary-600))] opacity-0 transition-opacity group-hover:opacity-100" />
                   </button>
                 </div>
               </>

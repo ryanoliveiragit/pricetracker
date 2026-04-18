@@ -1,33 +1,41 @@
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import StreamingResponse
-from typing import List, Dict, Type
 import asyncio
 import json
 import logging
+import os
 import time
 from datetime import datetime
+from typing import Dict, List, Type
+
 import httpx
-from app.models.product import (
-    SearchRequest, SearchResponse, SearchItemResult, ProductOffer,
-    ProductSearchBySupplierRequest, ProductSearchBySupplierResponse
-)
-from app.utils.text_normalizer import normalize_text, filter_results_by_query
-from app.services.synonyms import get_synonyms
-from app.scrapers.base_scraper import BaseScraper
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
+
 from app.database import async_session
 from app.models.db_models import ProductDB
-from sqlalchemy import select
-from app.scrapers.megaleste_scraper import MegalesteScraper
+from app.models.product import (
+    ProductOffer,
+    ProductSearchBySupplierRequest,
+    ProductSearchBySupplierResponse,
+    SearchItemResult,
+    SearchRequest,
+    SearchResponse,
+)
+from app.scrapers.base_scraper import BaseScraper
 from app.scrapers.cofema_scraper import CofemaScraper
 from app.scrapers.estoque_atacadista_scraper import EstoqueAtacadistaScraper
+from app.scrapers.megaleste_scraper import MegalesteScraper
 from app.scrapers.superabc_scraper import SuperABCScraper
-from app.services.credentials_manager import get_credentials_manager
 from app.services.cache import (
-    db_cache_get, db_cache_clear,
-    get_estimated_wait_db, get_all_estimates_db,
+    db_cache_clear,
+    db_cache_get,
+    get_all_estimates_db,
+    get_estimated_wait_db,
 )
+from app.services.credentials_manager import get_credentials_manager
 from app.services.scraper_manager import get_scraper_manager
-import os
+from app.services.synonyms import get_synonyms
+from app.utils.text_normalizer import filter_results_by_query, normalize_text
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -48,7 +56,9 @@ async def get_db_variants(query: str) -> List[str]:
             result = await session.execute(select(ProductDB))
             for product in result.scalars().all():
                 name_lower = product.name.strip().lower()
-                all_variants = [v.strip().lower() for v in (product.variants or []) if v.strip()]
+                all_variants = [
+                    v.strip().lower() for v in (product.variants or []) if v.strip()
+                ]
                 all_terms = [name_lower] + all_variants
                 # Match exato primeiro
                 if q in all_terms:
@@ -64,9 +74,11 @@ async def get_db_variants(query: str) -> List[str]:
     return [query]
 
 
-
-
-async def search_all_stores(query: str, force_refresh: bool = False) -> List[ProductOffer]:
+async def search_all_stores(
+    query: str,
+    force_refresh: bool = False,
+    allowed_store_names: List[str] | None = None,
+) -> List[ProductOffer]:
     """
     Busca em todas as lojas em paralelo com:
     - Cache PostgreSQL com TTL
@@ -92,14 +104,31 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
                 return cls
         return None
 
+    allowed_normalized = {
+        store_name.lower().strip()
+        for store_name in (allowed_store_names or [])
+        if store_name and store_name.strip()
+    }
+
     logger.info("Buscando fornecedores ativos do banco de dados...")
     all_suppliers = await get_all_suppliers_from_db()
     active_suppliers = [s for s in all_suppliers if s.is_active]
 
+    if allowed_normalized:
+        active_suppliers = [
+            supplier
+            for supplier in active_suppliers
+            if supplier.name.lower().strip() in allowed_normalized
+        ]
+        logger.info(
+            f"Filtro de fornecedores aplicado: {[supplier.name for supplier in active_suppliers]}"
+        )
+
     scrapers_with_creds = []
     if not active_suppliers:
         logger.warning("⚠️  Nenhum fornecedor ativo encontrado")
-        scrapers_with_creds = [(MegalesteScraper, None, "megaleste")]
+        if not allowed_normalized:
+            scrapers_with_creds = [(MegalesteScraper, None, "megaleste")]
     else:
         seen_scrapers = set()
         for supplier in active_suppliers:
@@ -110,21 +139,29 @@ async def search_all_stores(query: str, force_refresh: bool = False) -> List[Pro
                 continue
 
             seen_scrapers.add(scraper_class)
-            scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
+            scraper_key = (
+                scraper_class.__name__.lower().replace("scraper", "").strip("_")
+            )
             credentials = {
-                'url': supplier.url or '',
-                'region': supplier.region or 'sp',
+                "url": supplier.url or "",
+                "region": supplier.region or "sp",
             }
             if supplier.requires_login and supplier.username and supplier.password:
-                credentials['username'] = supplier.username
-                credentials['password'] = supplier.password
+                credentials["username"] = supplier.username
+                credentials["password"] = supplier.password
             scrapers_with_creds.append((scraper_class, credentials, scraper_key))
 
         logger.info(f"✅ {len(scrapers_with_creds)} scrapers resolvidos")
 
+    if not scrapers_with_creds:
+        logger.info("Nenhum scraper selecionado para a busca atual")
+        return []
+
     # Usar ScraperManager para execução paralela com timeout, cache e circuit breaker
     manager = get_scraper_manager()
-    offers = await manager.scrape_all_stores_parallel(scrapers_with_creds, query, force_refresh=force_refresh)
+    offers = await manager.scrape_all_stores_parallel(
+        scrapers_with_creds, query, force_refresh=force_refresh
+    )
 
     # Salvar no catálogo local
     if offers:
@@ -153,6 +190,7 @@ async def search_stream(request: SearchRequest):
     Streaming SSE: envia resultados por fornecedor assim que cada um termina.
     Usa ScraperManager para execução com timeout 10s, cache e circuit breaker.
     """
+
     async def generate():
         from app.api.routes.suppliers import get_all_suppliers_from_db
         from app.services.catalog_scraper import store_scraped_results
@@ -165,21 +203,43 @@ async def search_stream(request: SearchRequest):
             "superabc": SuperABCScraper,
         }
 
+        allowed_store_names = [
+            store.store_name
+            for store in (request.stores or [])
+            if store.is_active and store.store_name.strip()
+        ]
+        allowed_normalized = {
+            store_name.lower().strip() for store_name in allowed_store_names
+        }
+
         all_suppliers = await get_all_suppliers_from_db()
         active_suppliers = [s for s in all_suppliers if s.is_active]
+        if allowed_normalized:
+            active_suppliers = [
+                supplier
+                for supplier in active_suppliers
+                if supplier.name.lower().strip() in allowed_normalized
+            ]
+
         scrapers = []
 
         if not active_suppliers:
-            scrapers = [(MegalesteScraper, None, "Megaleste", "megaleste")]
+            if not allowed_normalized:
+                scrapers = [(MegalesteScraper, None, "Megaleste", "megaleste")]
         else:
             seen = set()
             for supplier in active_suppliers:
                 normalized = supplier.name.lower().strip()
-                scraper_class = next((cls for kw, cls in keyword_mapping.items() if kw in normalized), None)
+                scraper_class = next(
+                    (cls for kw, cls in keyword_mapping.items() if kw in normalized),
+                    None,
+                )
                 if not scraper_class or scraper_class in seen:
                     continue
                 seen.add(scraper_class)
-                scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
+                scraper_key = (
+                    scraper_class.__name__.lower().replace("scraper", "").strip("_")
+                )
                 creds = {"url": supplier.url or "", "region": supplier.region or "sp"}
                 if supplier.requires_login and supplier.username and supplier.password:
                     creds["username"] = supplier.username
@@ -215,13 +275,19 @@ async def search_stream(request: SearchRequest):
 
                     # Usar manager para scraping com timeout, cache e circuit breaker
                     offers, duration, _, error_msg = await manager.scrape_store_async(
-                        scraper_class, sq_norm, scraper_key, credentials, force_refresh=request.force_refresh
+                        scraper_class,
+                        sq_norm,
+                        scraper_key,
+                        credentials,
+                        force_refresh=request.force_refresh,
                     )
 
                     if error_msg:
                         store_error_msg = error_msg
                         logger.error(f"Stream [{store_name}]: {error_msg}")
-                        status = "login_error" if "login" in error_msg.lower() else "error"
+                        status = (
+                            "login_error" if "login" in error_msg.lower() else "error"
+                        )
                         break  # Erro — não adianta tentar outros termos
 
                     if offers:
@@ -251,16 +317,20 @@ async def search_stream(request: SearchRequest):
                         seen_final.add(k)
                         deduped.append(o)
                 store_offers = deduped
-                payload = json.dumps({
-                    "event": "store_done",
-                    "store": store_name,
-                    "status": status,
-                    "duration_ms": int((time.time() - t0) * 1000),
-                    "offers": [o.model_dump() for o in store_offers],
-                    "pending_stores": [s for s in all_store_names if s not in completed],
-                    "done": False,
-                    **({"error": store_error_msg} if store_error_msg else {}),
-                })
+                payload = json.dumps(
+                    {
+                        "event": "store_done",
+                        "store": store_name,
+                        "status": status,
+                        "duration_ms": int((time.time() - t0) * 1000),
+                        "offers": [o.model_dump() for o in store_offers],
+                        "pending_stores": [
+                            s for s in all_store_names if s not in completed
+                        ],
+                        "done": False,
+                        **({"error": store_error_msg} if store_error_msg else {}),
+                    }
+                )
                 yield f"data: {payload}\n\n"
 
             except Exception as e:
@@ -270,16 +340,26 @@ async def search_stream(request: SearchRequest):
 
         yield f"data: {json.dumps({'event': 'end', 'done': True})}\n\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream", headers={
-        "Cache-Control": "no-cache",
-        "X-Accel-Buffering": "no",
-    })
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 async def _search_products_inner(request: SearchRequest) -> SearchResponse:
     try:
         t_total = time.time()
         results = []
+
+        allowed_store_names = [
+            store.store_name
+            for store in (request.stores or [])
+            if store.is_active and store.store_name.strip()
+        ]
 
         for item in request.items:
             normalized_query = normalize_text(item)
@@ -291,10 +371,14 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
             db_terms = await get_db_variants(normalized_query)
             if len(db_terms) > 1:
                 synonym_queries = db_terms
-                logger.info(f"Variantes do DB para '{normalized_query}': {synonym_queries}")
+                logger.info(
+                    f"Variantes do DB para '{normalized_query}': {synonym_queries}"
+                )
             else:
                 synonym_queries = get_synonyms(normalized_query)
-                logger.info(f"Sinônimos estáticos para '{normalized_query}': {synonym_queries}")
+                logger.info(
+                    f"Sinônimos estáticos para '{normalized_query}': {synonym_queries}"
+                )
 
             all_offers: List[ProductOffer] = []
             seen: set[str] = set()
@@ -310,14 +394,24 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                             all_offers.append(offer)
 
             # Buscar termo principal primeiro — se já tiver resultados, sinônimos rodam em paralelo
-            main_offers = await search_all_stores(normalized_query, force_refresh=request.force_refresh)
+            main_offers = await search_all_stores(
+                normalized_query,
+                force_refresh=request.force_refresh,
+                allowed_store_names=allowed_store_names,
+            )
             _merge([main_offers])
 
             # Sinônimos extras (excluindo o principal que já foi buscado)
-            extra_queries = [sq for sq in synonym_queries if normalize_text(sq) != normalized_query]
+            extra_queries = [
+                sq for sq in synonym_queries if normalize_text(sq) != normalized_query
+            ]
             if extra_queries:
                 tasks = [
-                    search_all_stores(normalize_text(sq), force_refresh=request.force_refresh)
+                    search_all_stores(
+                        normalize_text(sq),
+                        force_refresh=request.force_refresh,
+                        allowed_store_names=allowed_store_names,
+                    )
                     for sq in extra_queries
                 ]
                 extra_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -334,12 +428,14 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                     if offer.price == min_price:
                         offer.product_name = f"✓ {offer.product_name}"
 
-            results.append(SearchItemResult(
-                raw_query=item,
-                normalized_query=normalized_query,
-                offers=offers,
-                search_duration_ms=item_ms,
-            ))
+            results.append(
+                SearchItemResult(
+                    raw_query=item,
+                    normalized_query=normalized_query,
+                    offers=offers,
+                    search_duration_ms=item_ms,
+                )
+            )
 
         all_stores = set()
         for result in results:
@@ -358,7 +454,9 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
 
     except Exception as e:
         logger.error(f"Erro na busca: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao processar busca: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao processar busca: {str(e)}"
+        )
 
 
 @router.post("/search-by-supplier", response_model=ProductSearchBySupplierResponse)
@@ -371,11 +469,13 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
         if not request.product_name or len(request.product_name.strip()) < 2:
             raise HTTPException(
                 status_code=400,
-                detail="Nome do produto deve ter pelo menos 2 caracteres"
+                detail="Nome do produto deve ter pelo menos 2 caracteres",
             )
 
         normalized_query = normalize_text(request.product_name)
-        logger.info(f"Buscando '{request.product_name}' em {request.supplier_name} (ID: {request.supplier_id})")
+        logger.info(
+            f"Buscando '{request.product_name}' em {request.supplier_name} (ID: {request.supplier_id})"
+        )
 
         scraper_mapping: Dict[str, Type[BaseScraper]] = {
             "Estoque Megaleste": MegalesteScraper,
@@ -390,14 +490,14 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
 
         scraper_class = scraper_mapping.get(
             request.supplier_name,
-            scraper_mapping.get(request.supplier_name.lower().replace(" ", "_"))
+            scraper_mapping.get(request.supplier_name.lower().replace(" ", "_")),
         )
 
         if not scraper_class:
             raise HTTPException(
                 status_code=404,
                 detail=f"Fornecedor '{request.supplier_name}' não possui scraper implementado. "
-                       f"Fornecedores disponíveis: {', '.join(set(scraper_mapping.keys()))}"
+                f"Fornecedores disponíveis: {', '.join(set(scraper_mapping.keys()))}",
             )
 
         # Buscar credenciais
@@ -408,21 +508,22 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
         if not username or not password:
             logger.info(f"Buscando credenciais do sistema para {request.supplier_name}")
             creds = credentials_manager.get_credentials(
-                request.supplier_id,
-                request.supplier_name
+                request.supplier_id, request.supplier_name
             )
             if creds:
                 username = creds.get("username")
                 password = creds.get("password")
                 logger.info(f"Credenciais encontradas para {request.supplier_name}")
             else:
-                logger.warning(f"Nenhuma credencial encontrada para {request.supplier_name}")
+                logger.warning(
+                    f"Nenhuma credencial encontrada para {request.supplier_name}"
+                )
 
         if username and password:
             if not credentials_manager.validate_credentials(username, password):
                 raise HTTPException(
                     status_code=400,
-                    detail="Credenciais inválidas (usuário ou senha muito curtos)"
+                    detail="Credenciais inválidas (usuário ou senha muito curtos)",
                 )
 
         # ── Executar com ScraperManager (trata cache, timeout, circuit breaker) ──
@@ -430,7 +531,9 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
         estimated = await get_estimated_wait_db(scraper_key)
 
         if not request.force_refresh:
-            cached_data = await db_cache_get(scraper_key, normalized_query, ttl_seconds=CACHE_TTL)
+            cached_data = await db_cache_get(
+                scraper_key, normalized_query, ttl_seconds=CACHE_TTL
+            )
             if cached_data is not None:
                 offers = [ProductOffer(**item) for item in cached_data]
                 return ProductSearchBySupplierResponse(
@@ -445,7 +548,9 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
                 )
 
         if request.force_refresh:
-            logger.info(f"🔄 Force refresh solicitado — ignorando cache de {scraper_key}:{normalized_query}")
+            logger.info(
+                f"🔄 Force refresh solicitado — ignorando cache de {scraper_key}:{normalized_query}"
+            )
 
         t0 = time.time()
         manager = get_scraper_manager()
@@ -454,20 +559,30 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
             credentials = {"username": username, "password": password}
 
         offers, duration, _, error_msg = await manager.scrape_store_async(
-            scraper_class, normalized_query, scraper_key, credentials, force_refresh=request.force_refresh
+            scraper_class,
+            normalized_query,
+            scraper_key,
+            credentials,
+            force_refresh=request.force_refresh,
         )
         duration_ms = int((time.time() - t0) * 1000)
 
         if error_msg:
             logger.error(f"Erro na busca por fornecedor: {error_msg}")
-            raise HTTPException(status_code=400, detail=f"Erro ao buscar em {request.supplier_name}: {error_msg}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Erro ao buscar em {request.supplier_name}: {error_msg}",
+            )
 
         # Salvar no catálogo local
         if offers:
             from app.services.catalog_scraper import store_scraped_results
+
             await store_scraped_results(offers, scraper_key, normalized_query)
 
-        logger.info(f"Busca concluída: {len(offers)} produtos em {request.supplier_name} ({duration_ms}ms)")
+        logger.info(
+            f"Busca concluída: {len(offers)} produtos em {request.supplier_name} ({duration_ms}ms)"
+        )
 
         return ProductSearchBySupplierResponse(
             product_name=request.product_name,
@@ -485,8 +600,7 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
     except Exception as e:
         logger.error(f"Erro na busca por fornecedor: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao processar busca: {str(e)}"
+            status_code=500, detail=f"Erro ao processar busca: {str(e)}"
         )
 
 
@@ -520,11 +634,15 @@ async def market_price_proxy(
         results = []
         for card in cards[:limit]:
             try:
-                title_el = card.select_one(".poly-component__title, .ui-search-item__title")
+                title_el = card.select_one(
+                    ".poly-component__title, .ui-search-item__title"
+                )
                 fraction_el = card.select_one(".andes-money-amount__fraction")
                 cents_el = card.select_one(".andes-money-amount__cents")
                 link_el = card.select_one("a.poly-component__title, a.ui-search-link")
-                img_el = card.select_one("img.poly-component__picture, img.ui-search-result-image__element")
+                img_el = card.select_one(
+                    "img.poly-component__picture, img.ui-search-result-image__element"
+                )
 
                 if not title_el or not fraction_el:
                     continue
@@ -541,16 +659,18 @@ async def market_price_proxy(
                 if img_el:
                     thumbnail = img_el.get("data-src") or img_el.get("src") or ""
 
-                results.append({
-                    "id": f"MLB-{len(results)}",
-                    "title": title,
-                    "price": price,
-                    "thumbnail": thumbnail,
-                    "permalink": link,
-                    "condition": "new",
-                    "available_quantity": 1,
-                    "seller": {"nickname": "Mercado Livre"},
-                })
+                results.append(
+                    {
+                        "id": f"MLB-{len(results)}",
+                        "title": title,
+                        "price": price,
+                        "thumbnail": thumbnail,
+                        "permalink": link,
+                        "condition": "new",
+                        "available_quantity": 1,
+                        "seller": {"nickname": "Mercado Livre"},
+                    }
+                )
             except Exception:
                 continue
 
@@ -560,10 +680,14 @@ async def market_price_proxy(
         }
 
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Mercado Livre não respondeu a tempo.")
+        raise HTTPException(
+            status_code=504, detail="Mercado Livre não respondeu a tempo."
+        )
     except Exception as e:
         logger.error(f"ML scrape error: {e}")
-        raise HTTPException(status_code=502, detail=f"Erro ao consultar Mercado Livre: {e}")
+        raise HTTPException(
+            status_code=502, detail=f"Erro ao consultar Mercado Livre: {e}"
+        )
 
 
 @router.get("/search/stats")
@@ -582,7 +706,9 @@ async def search_stats():
         "cache_ttl_seconds": CACHE_TTL,
         "scraper_avg_seconds": estimates,
         "total_estimated_seconds": total_estimated,
-        "hint": "Sem histórico ainda — as primeiras buscas calibram a estimativa" if not estimates else None,
+        "hint": "Sem histórico ainda — as primeiras buscas calibram a estimativa"
+        if not estimates
+        else None,
     }
 
 
@@ -600,12 +726,21 @@ async def search_instant(request: SearchRequest):
     Retorna em <100ms usando dados do PostgreSQL.
     Se não houver dados pré-scraped, faz fallback para busca normal.
     """
-    from app.models.db_models import ScrapedProductDB, CatalogScrapeStatusDB
     from sqlalchemy import func, or_
+
+    from app.models.db_models import CatalogScrapeStatusDB, ScrapedProductDB
 
     t0 = time.time()
     results = []
     has_catalog_data = False
+    allowed_store_names = [
+        store.store_name
+        for store in (request.stores or [])
+        if store.is_active and store.store_name.strip()
+    ]
+    allowed_normalized = {
+        store_name.lower().strip() for store_name in allowed_store_names
+    }
 
     try:
         async with async_session() as session:
@@ -633,6 +768,9 @@ async def search_instant(request: SearchRequest):
                 if conditions:
                     query = query.where(*conditions)
 
+                if allowed_normalized:
+                    query = query.where(ScrapedProductDB.store.in_(allowed_store_names))
+
                 query = query.order_by(ScrapedProductDB.price.asc()).limit(200)
                 result = await session.execute(query)
                 rows = result.scalars().all()
@@ -644,20 +782,22 @@ async def search_instant(request: SearchRequest):
                 if key in seen:
                     continue
                 seen.add(key)
-                offers.append(ProductOffer(
-                    store=row.store,
-                    product_name=row.product_name,
-                    price=row.price,
-                    currency=row.currency,
-                    product_url=row.product_url,
-                    add_to_cart_url=row.add_to_cart_url,
-                    availability=row.availability,
-                    sku=row.sku,
-                    image_url=row.image_url,
-                    description=row.description,
-                    brand=row.brand,
-                    score=row.score,
-                ))
+                offers.append(
+                    ProductOffer(
+                        store=row.store,
+                        product_name=row.product_name,
+                        price=row.price,
+                        currency=row.currency,
+                        product_url=row.product_url,
+                        add_to_cart_url=row.add_to_cart_url,
+                        availability=row.availability,
+                        sku=row.sku,
+                        image_url=row.image_url,
+                        description=row.description,
+                        brand=row.brand,
+                        score=row.score,
+                    )
+                )
 
             offers = filter_results_by_query(item, offers)
 
@@ -668,13 +808,15 @@ async def search_instant(request: SearchRequest):
                     if o.price == min_price:
                         o.product_name = f"✓ {o.product_name}"
 
-            results.append(SearchItemResult(
-                raw_query=item,
-                normalized_query=normalized,
-                offers=offers,
-                search_duration_ms=int((time.time() - t0) * 1000),
-                cached=True,
-            ))
+            results.append(
+                SearchItemResult(
+                    raw_query=item,
+                    normalized_query=normalized,
+                    offers=offers,
+                    search_duration_ms=int((time.time() - t0) * 1000),
+                    cached=True,
+                )
+            )
 
         all_stores = set()
         for r in results:
@@ -685,6 +827,7 @@ async def search_instant(request: SearchRequest):
         catalog_age_minutes = None
         async with async_session() as session:
             from sqlalchemy import desc
+
             stmt = (
                 select(ScrapedProductDB.scraped_at)
                 .order_by(desc(ScrapedProductDB.scraped_at))
@@ -694,6 +837,7 @@ async def search_instant(request: SearchRequest):
             latest = result.scalar()
             if latest:
                 from datetime import timezone as tz
+
                 age = datetime.now(tz.utc) - latest.replace(tzinfo=tz.utc)
                 catalog_age_minutes = int(age.total_seconds() / 60)
 
@@ -702,7 +846,9 @@ async def search_instant(request: SearchRequest):
             total_items=len(results),
             stores=sorted(list(all_stores)),
             total_duration_ms=int((time.time() - t0) * 1000),
-            estimated_wait_seconds={"catalog_age_minutes": catalog_age_minutes} if catalog_age_minutes is not None else None,
+            estimated_wait_seconds={"catalog_age_minutes": catalog_age_minutes}
+            if catalog_age_minutes is not None
+            else None,
         )
 
     except Exception as e:
@@ -720,11 +866,26 @@ async def search_refresh(request: SearchRequest):
 
     t0 = time.time()
     fresh_offers = await refresh_products(request.items)
+    allowed_store_names = [
+        store.store_name
+        for store in (request.stores or [])
+        if store.is_active and store.store_name.strip()
+    ]
+    allowed_normalized = {
+        store_name.lower().strip() for store_name in allowed_store_names
+    }
 
     results = []
     for item in request.items:
         normalized = normalize_text(item)
         item_offers = filter_results_by_query(item, fresh_offers)
+
+        if allowed_normalized:
+            item_offers = [
+                offer
+                for offer in item_offers
+                if offer.store.lower().strip() in allowed_normalized
+            ]
 
         prices_with_value = [o.price for o in item_offers if o.price > 0]
         if item_offers and prices_with_value:
@@ -733,13 +894,15 @@ async def search_refresh(request: SearchRequest):
                 if o.price == min_price:
                     o.product_name = f"✓ {o.product_name}"
 
-        results.append(SearchItemResult(
-            raw_query=item,
-            normalized_query=normalized,
-            offers=item_offers,
-            search_duration_ms=int((time.time() - t0) * 1000),
-            cached=False,
-        ))
+        results.append(
+            SearchItemResult(
+                raw_query=item,
+                normalized_query=normalized,
+                offers=item_offers,
+                search_duration_ms=int((time.time() - t0) * 1000),
+                cached=False,
+            )
+        )
 
     all_stores = set()
     for r in results:
@@ -762,10 +925,12 @@ async def catalog_status():
     - Quando foi a última atualização por loja
     - Se o scraping está rodando agora
     """
-    from app.models.db_models import ScrapedProductDB, CatalogScrapeStatusDB
-    from app.services.catalog_scraper import is_running
-    from sqlalchemy import func, desc
     from datetime import timezone as tz
+
+    from sqlalchemy import desc, func
+
+    from app.models.db_models import CatalogScrapeStatusDB, ScrapedProductDB
+    from app.services.catalog_scraper import is_running
 
     try:
         async with async_session() as session:
@@ -774,22 +939,25 @@ async def catalog_status():
             )
             total_products = total.scalar() or 0
 
-            stores_stmt = (
-                select(
-                    ScrapedProductDB.store,
-                    func.count().label("count"),
-                    func.max(ScrapedProductDB.scraped_at).label("last_scraped"),
-                )
-                .group_by(ScrapedProductDB.store)
-            )
+            stores_stmt = select(
+                ScrapedProductDB.store,
+                func.count().label("count"),
+                func.max(ScrapedProductDB.scraped_at).label("last_scraped"),
+            ).group_by(ScrapedProductDB.store)
             stores_result = await session.execute(stores_stmt)
             stores = {}
             oldest_scrape = None
             for row in stores_result.all():
                 scraped_at = row.last_scraped
                 if scraped_at:
-                    scraped_at_utc = scraped_at.replace(tzinfo=tz.utc) if scraped_at.tzinfo is None else scraped_at
-                    age_minutes = int((datetime.now(tz.utc) - scraped_at_utc).total_seconds() / 60)
+                    scraped_at_utc = (
+                        scraped_at.replace(tzinfo=tz.utc)
+                        if scraped_at.tzinfo is None
+                        else scraped_at
+                    )
+                    age_minutes = int(
+                        (datetime.now(tz.utc) - scraped_at_utc).total_seconds() / 60
+                    )
                     if oldest_scrape is None or age_minutes > oldest_scrape:
                         oldest_scrape = age_minutes
                 else:
@@ -829,19 +997,27 @@ async def catalog_status():
         }
     except Exception as e:
         logger.error(f"Catalog status error: {e}")
-        return {"total_products": 0, "stores": {}, "is_scraping": False, "error": str(e)}
+        return {
+            "total_products": 0,
+            "stores": {},
+            "is_scraping": False,
+            "error": str(e),
+        }
 
 
 @router.post("/search/trigger-scrape")
 async def trigger_catalog_scrape():
     """Dispara manualmente o scraping do catálogo completo."""
-    from app.services.catalog_scraper import run_catalog_scrape, is_running
+    from app.services.catalog_scraper import is_running, run_catalog_scrape
 
     if is_running():
         return {"status": "already_running", "message": "Scraping já está em execução"}
 
     asyncio.create_task(run_catalog_scrape())
-    return {"status": "started", "message": "Scraping do catálogo iniciado em background"}
+    return {
+        "status": "started",
+        "message": "Scraping do catálogo iniciado em background",
+    }
 
 
 @router.get("/health")

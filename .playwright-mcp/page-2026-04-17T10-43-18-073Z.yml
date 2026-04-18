@@ -1,0 +1,556 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - text: fale conosco
+          - strong [ref=e7]: (011) 4472-4477
+        - list [ref=e8]:
+          - listitem [ref=e9]:
+            - link "Promoções" [ref=e10] [cursor=pointer]:
+              - /url: ""
+              - img [ref=e11]
+              - generic [ref=e16]: Promoções
+          - listitem [ref=e17]:
+            - link "Refazer pedido" [ref=e18] [cursor=pointer]:
+              - /url: ""
+              - img [ref=e19]
+              - generic [ref=e23]: Refazer pedido
+      - generic [ref=e25]:
+        - link "Super ABC Distribuidora" [ref=e28] [cursor=pointer]:
+          - /url: https://superabcdistribuidora.com.br/
+          - img "Super ABC Distribuidora" [ref=e29]
+        - generic [ref=e31]:
+          - textbox "Busca" [ref=e32]
+          - button "" [ref=e34] [cursor=pointer]:
+            - generic [ref=e35]: 
+        - link "Entre ou cadastre-se" [ref=e37] [cursor=pointer]:
+          - /url: https://superabcdistribuidora.com.br/conta/acessar
+          - img [ref=e38]
+          - generic [ref=e40]:
+            - strong [ref=e41]: Entre
+            - text: ou
+            - strong [ref=e42]: cadastre-se
+        - button "0" [ref=e45] [cursor=pointer]:
+          - generic [ref=e47]:
+            - img [ref=e48]
+            - paragraph [ref=e50]: "0"
+        - text: 
+      - navigation [ref=e51]:
+        - list [ref=e53]:
+          - listitem [ref=e54]:
+            - link "Elétrica" [ref=e55] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/eletrica
+              - text: Elétrica
+              - img [ref=e56]
+            - generic:
+              - generic:
+                - link "Elétrica" [ref=e58] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/eletrica
+                - list [ref=e59]:
+                  - listitem [ref=e60]:
+                    - link "A" [ref=e61] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_8
+                  - listitem [ref=e62]:
+                    - link "B" [ref=e63] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_9
+                  - listitem [ref=e64]:
+                    - link "C" [ref=e65] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_10
+                  - listitem [ref=e66]:
+                    - link "D" [ref=e67] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_11
+                  - listitem [ref=e68]:
+                    - link "E" [ref=e69] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_12
+                  - listitem [ref=e70]:
+                    - link "F" [ref=e71] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_13
+                  - listitem [ref=e72]:
+                    - link "G" [ref=e73] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_22
+                  - listitem [ref=e74]:
+                    - link "H" [ref=e75] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_1755
+                  - listitem [ref=e76]:
+                    - link "I" [ref=e77] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_14
+                  - listitem [ref=e78]:
+                    - link "K" [ref=e79] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_24
+                  - listitem [ref=e80]:
+                    - link "L" [ref=e81] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_15
+                  - listitem [ref=e82]:
+                    - link "M" [ref=e83] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_16
+                  - listitem [ref=e84]:
+                    - link "N" [ref=e85] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_23
+                  - listitem [ref=e86]:
+                    - link "O" [ref=e87] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_1554
+                  - listitem [ref=e88]:
+                    - link "P" [ref=e89] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_17
+                  - listitem [ref=e90]:
+                    - link "R" [ref=e91] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_18
+                  - listitem [ref=e92]:
+                    - link "S" [ref=e93] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_19
+                  - listitem [ref=e94]:
+                    - link "T" [ref=e95] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1_20
+          - listitem [ref=e96]:
+            - link "Ferragens" [ref=e97] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/ferragens
+              - text: Ferragens
+              - img [ref=e98]
+            - generic:
+              - generic:
+                - link "Ferragens" [ref=e100] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/ferragens
+                - list [ref=e101]:
+                  - listitem [ref=e102]:
+                    - link "A" [ref=e103] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_25
+                  - listitem [ref=e104]:
+                    - link "B" [ref=e105] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_26
+                  - listitem [ref=e106]:
+                    - link "C" [ref=e107] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_27
+                  - listitem [ref=e108]:
+                    - link "D" [ref=e109] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_28
+                  - listitem [ref=e110]:
+                    - link "E" [ref=e111] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_29
+                  - listitem [ref=e112]:
+                    - link "F" [ref=e113] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_30
+                  - listitem [ref=e114]:
+                    - link "G" [ref=e115] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_31
+                  - listitem [ref=e116]:
+                    - link "H" [ref=e117] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_43
+                  - listitem [ref=e118]:
+                    - link "I" [ref=e119] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_44
+                  - listitem [ref=e120]:
+                    - link "J" [ref=e121] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_33
+                  - listitem [ref=e122]:
+                    - link "K" [ref=e123] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_42
+                  - listitem [ref=e124]:
+                    - link "L" [ref=e125] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_32
+                  - listitem [ref=e126]:
+                    - link "M" [ref=e127] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_34
+                  - listitem [ref=e128]:
+                    - link "N" [ref=e129] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_35
+                  - listitem [ref=e130]:
+                    - link "O" [ref=e131] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_36
+                  - listitem [ref=e132]:
+                    - link "P" [ref=e133] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_37
+                  - listitem [ref=e134]:
+                    - link "R" [ref=e135] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_38
+                  - listitem [ref=e136]:
+                    - link "S" [ref=e137] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_39
+                  - listitem [ref=e138]:
+                    - link "T" [ref=e139] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_40
+                  - listitem [ref=e140]:
+                    - link "U" [ref=e141] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_45
+                  - listitem [ref=e142]:
+                    - link "V" [ref=e143] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=2_41
+          - listitem [ref=e144]:
+            - link "Hidráulica" [ref=e145] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/hidraulica
+              - text: Hidráulica
+              - img [ref=e146]
+            - generic:
+              - generic:
+                - link "Hidráulica" [ref=e148] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/hidraulica
+                - list [ref=e149]:
+                  - listitem [ref=e150]:
+                    - link "A" [ref=e151] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_46
+                  - listitem [ref=e152]:
+                    - link "B" [ref=e153] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_47
+                  - listitem [ref=e154]:
+                    - link "C" [ref=e155] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_58
+                  - listitem [ref=e156]:
+                    - link "D" [ref=e157] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_56
+                  - listitem [ref=e158]:
+                    - link "E" [ref=e159] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_48
+                  - listitem [ref=e160]:
+                    - link "F" [ref=e161] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_57
+                  - listitem [ref=e162]:
+                    - link "G" [ref=e163] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_49
+                  - listitem [ref=e164]:
+                    - link "J" [ref=e165] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_61
+                  - listitem [ref=e166]:
+                    - link "K" [ref=e167] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_59
+                  - listitem [ref=e168]:
+                    - link "L" [ref=e169] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_60
+                  - listitem [ref=e170]:
+                    - link "M" [ref=e171] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_50
+                  - listitem [ref=e172]:
+                    - link "N" [ref=e173] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_62
+                  - listitem [ref=e174]:
+                    - link "O" [ref=e175] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_1381
+                  - listitem [ref=e176]:
+                    - link "P" [ref=e177] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_51
+                  - listitem [ref=e178]:
+                    - link "R" [ref=e179] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_52
+                  - listitem [ref=e180]:
+                    - link "S" [ref=e181] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_53
+                  - listitem [ref=e182]:
+                    - link "T" [ref=e183] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_54
+                  - listitem [ref=e184]:
+                    - link "U" [ref=e185] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_63
+                  - listitem [ref=e186]:
+                    - link "V" [ref=e187] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=3_55
+          - listitem [ref=e188]:
+            - link "Pintura" [ref=e189] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/pintura
+              - text: Pintura
+              - img [ref=e190]
+            - generic:
+              - generic:
+                - link "Pintura" [ref=e192] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/pintura
+                - list [ref=e193]:
+                  - listitem [ref=e194]:
+                    - link "A" [ref=e195] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_75
+                  - listitem [ref=e196]:
+                    - link "T" [ref=e197] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_74
+                  - listitem [ref=e198]:
+                    - link "S" [ref=e199] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_73
+                  - listitem [ref=e200]:
+                    - link "F" [ref=e201] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_82
+                  - listitem [ref=e202]:
+                    - link "N" [ref=e203] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_81
+                  - listitem [ref=e204]:
+                    - link "D" [ref=e205] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_80
+                  - listitem [ref=e206]:
+                    - link "O" [ref=e207] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_79
+                  - listitem [ref=e208]:
+                    - link "V" [ref=e209] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_78
+                  - listitem [ref=e210]:
+                    - link "Q" [ref=e211] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_77
+                  - listitem [ref=e212]:
+                    - link "L" [ref=e213] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_76
+                  - listitem [ref=e214]:
+                    - link "B" [ref=e215] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_64
+                  - listitem [ref=e216]:
+                    - link "R" [ref=e217] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_72
+                  - listitem [ref=e218]:
+                    - link "P" [ref=e219] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_71
+                  - listitem [ref=e220]:
+                    - link "M" [ref=e221] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_70
+                  - listitem [ref=e222]:
+                    - link "K" [ref=e223] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_69
+                  - listitem [ref=e224]:
+                    - link "I" [ref=e225] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_68
+                  - listitem [ref=e226]:
+                    - link "G" [ref=e227] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_67
+                  - listitem [ref=e228]:
+                    - link "E" [ref=e229] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_66
+                  - listitem [ref=e230]:
+                    - link "C" [ref=e231] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=4_65
+          - listitem [ref=e232]:
+            - link "Piscina & Lazer" [ref=e233] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/piscina-lazer
+              - text: Piscina & Lazer
+              - img [ref=e234]
+            - generic:
+              - generic:
+                - link "Piscina & Lazer" [ref=e236] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/piscina-lazer
+                - list [ref=e237]:
+                  - listitem [ref=e238]:
+                    - link "A" [ref=e239] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1382
+                  - listitem [ref=e240]:
+                    - link "B" [ref=e241] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1390
+                  - listitem [ref=e242]:
+                    - link "C" [ref=e243] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1384
+                  - listitem [ref=e244]:
+                    - link "D" [ref=e245] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1385
+                  - listitem [ref=e246]:
+                    - link "D" [ref=e247] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1388
+                  - listitem [ref=e248]:
+                    - link "E" [ref=e249] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1383
+                  - listitem [ref=e250]:
+                    - link "F" [ref=e251] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1389
+                  - listitem [ref=e252]:
+                    - link "G" [ref=e253] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1393
+                  - listitem [ref=e254]:
+                    - link "K" [ref=e255] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1604
+                  - listitem [ref=e256]:
+                    - link "M" [ref=e257] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1386
+                  - listitem [ref=e258]:
+                    - link "P" [ref=e259] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1387
+                  - listitem [ref=e260]:
+                    - link "R" [ref=e261] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=1380_1391
+          - listitem [ref=e262]:
+            - link "Queima de Estoque" [ref=e263] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/queima-de-estoque
+              - text: Queima de Estoque
+              - img [ref=e264]
+            - generic:
+              - generic:
+                - link "Queima de Estoque" [ref=e266] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/queima-de-estoque
+                - list [ref=e267]:
+                  - listitem [ref=e268]:
+                    - link "Elétrica" [ref=e269] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=6_87
+                  - listitem [ref=e270]:
+                    - link "Ferragens" [ref=e271] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=6_88
+                  - listitem [ref=e272]:
+                    - link "Hidráulica" [ref=e273] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=6_90
+                  - listitem [ref=e274]:
+                    - link "Pintura" [ref=e275] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=6_89
+          - listitem [ref=e276]:
+            - link "Utensílios domésticos" [ref=e277] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/utensilios-domesticos
+              - text: Utensílios domésticos
+              - img [ref=e278]
+            - generic:
+              - generic:
+                - link "Utensílios domésticos" [ref=e280] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/utensilios-domesticos
+                - list [ref=e281]:
+                  - listitem [ref=e282]:
+                    - link "A" [ref=e283] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_91
+                  - listitem [ref=e284]:
+                    - link "B" [ref=e285] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_97
+                  - listitem [ref=e286]:
+                    - link "C" [ref=e287] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_92
+                  - listitem [ref=e288]:
+                    - link "D" [ref=e289] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_104
+                  - listitem [ref=e290]:
+                    - link "E" [ref=e291] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_98
+                  - listitem [ref=e292]:
+                    - link "F" [ref=e293] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_99
+                  - listitem [ref=e294]:
+                    - link "G" [ref=e295] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_96
+                  - listitem [ref=e296]:
+                    - link "J" [ref=e297] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_100
+                  - listitem [ref=e298]:
+                    - link "K" [ref=e299] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_101
+                  - listitem [ref=e300]:
+                    - link "L" [ref=e301] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_102
+                  - listitem [ref=e302]:
+                    - link "M" [ref=e303] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_106
+                  - listitem [ref=e304]:
+                    - link "N" [ref=e305] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_1756
+                  - listitem [ref=e306]:
+                    - link "P" [ref=e307] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_93
+                  - listitem [ref=e308]:
+                    - link "R" [ref=e309] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_105
+                  - listitem [ref=e310]:
+                    - link "S" [ref=e311] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_94
+                  - listitem [ref=e312]:
+                    - link "T" [ref=e313] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_95
+                  - listitem [ref=e314]:
+                    - link "V" [ref=e315] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_103
+                  - listitem [ref=e316]:
+                    - link "V" [ref=e317] [cursor=pointer]:
+                      - /url: https://superabcdistribuidora.com.br/index.php?route=product/category&path=7_1392
+    - list [ref=e320]:
+      - listitem [ref=e321]:
+        - link "" [ref=e322] [cursor=pointer]:
+          - /url: https://superabcdistribuidora.com.br/
+          - generic [ref=e323]: 
+      - listitem [ref=e324]:
+        - text: ">"
+        - link "Resultados da pesquisa" [ref=e325] [cursor=pointer]:
+          - /url: https://superabcdistribuidora.com.br/busca
+    - generic [ref=e326]:
+      - generic [ref=e329]:
+        - generic [ref=e330]:
+          - heading "Resultados da pesquisa" [level=1] [ref=e331]
+          - generic [ref=e332]:
+            - button "Pesquisa avançada" [ref=e333] [cursor=pointer]
+            - text: 
+        - paragraph [ref=e334]: Não há produtos que correspondam aos critérios da pesquisa.
+      - button "" [ref=e337] [cursor=pointer]:
+        - generic [ref=e338]: 
+      - contentinfo [ref=e339]:
+        - list [ref=e341]:
+          - listitem [ref=e342]:
+            - link "Precisa de ajuda?" [ref=e343] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e344]
+              - generic [ref=e347]: Precisa de ajuda?
+          - listitem [ref=e348]:
+            - link "Sobre nós" [ref=e349] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e350]
+              - generic [ref=e353]: Sobre nós
+          - listitem [ref=e354]:
+            - link "Trabalhe conosco" [ref=e355] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e356]
+              - generic [ref=e359]: Trabalhe conosco
+          - listitem [ref=e360]:
+            - link "Termos & condições" [ref=e361] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e362]
+              - generic [ref=e365]: Termos & condições
+          - listitem [ref=e366]:
+            - link "Mapa do site" [ref=e367] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/mapa-site
+              - img [ref=e368]
+              - generic [ref=e371]: Mapa do site
+          - listitem [ref=e372]:
+            - link "Produtos por marca" [ref=e373] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/marcas
+              - img [ref=e374]
+              - generic [ref=e377]: Produtos por marca
+          - listitem [ref=e378]:
+            - link "Produtos em promoção" [ref=e379] [cursor=pointer]:
+              - /url: https://superabcdistribuidora.com.br/promocoes
+              - img [ref=e380]
+              - generic [ref=e383]: Produtos em promoção
+        - generic [ref=e385]:
+          - generic [ref=e386]:
+            - list [ref=e388]:
+              - listitem [ref=e389]:
+                - link [ref=e390] [cursor=pointer]:
+                  - /url: https://www.instagram.com/superabcoficial/
+                  - img [ref=e391]
+              - listitem [ref=e394]:
+                - link [ref=e395] [cursor=pointer]:
+                  - /url: https://www.youtube.com/c/SuperABCDistribuidoraEscola/videos
+                  - img [ref=e396]
+              - listitem [ref=e399]:
+                - link [ref=e400] [cursor=pointer]:
+                  - /url: https://pt-br.facebook.com/superabcoficial/
+                  - img [ref=e401]
+            - generic [ref=e404]:
+              - link [ref=e405] [cursor=pointer]:
+                - /url: https://apps.apple.com/br/app/superabc-distribuidora/id1625476501
+                - img [ref=e406]
+              - link [ref=e414] [cursor=pointer]:
+                - /url: https://play.google.com/store/apps/details?id=com.superabcapp
+                - img [ref=e415]
+          - generic [ref=e422]:
+            - heading "Contato" [level=5] [ref=e423]
+            - paragraph [ref=e424]:
+              - img [ref=e425]
+              - text: (11) 4472-4477
+            - paragraph [ref=e427]:
+              - img [ref=e428]
+              - generic [ref=e430]: (11) 4472-4242
+            - paragraph [ref=e431]:
+              - img [ref=e432]
+              - text: contato@superabcdistribuidora.com.br
+            - paragraph [ref=e434]:
+              - img [ref=e435]
+              - text: segunda a sexta das 8h às 18h
+            - generic [ref=e437]:
+              - link "Entre em contato" [ref=e438] [cursor=pointer]:
+                - /url: https://superabcdistribuidora.com.br/contato
+              - link [ref=e439] [cursor=pointer]:
+                - /url: https://superabcdistribuidora.com.br/contato
+                - img [ref=e440]
+          - generic [ref=e446]:
+            - heading "Minha conta" [level=5] [ref=e447]
+            - list [ref=e448]:
+              - listitem [ref=e449]:
+                - link "Minha conta" [ref=e450] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/conta
+              - listitem [ref=e451]:
+                - link "Histórico de pedidos" [ref=e452] [cursor=pointer]:
+                  - /url: https://superabcdistribuidora.com.br/conta/pedidos
+    - generic [ref=e454]:
+      - paragraph [ref=e455]: Super ABC Distribuidora © 2026 - Todos os direitos reservados.
+      - generic [ref=e456]:
+        - text: plataforma
+        - img [ref=e457]
+  - status [ref=e458]

@@ -65,7 +65,7 @@ export default function SettingsPage() {
                     className={cn(
                       "w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left",
                       activeTab === item.id
-                        ? "bg-[#84CC16] text-[#1A1A18]"
+                        ? "bg-[rgb(var(--primary-500))] text-[#1A1A18]"
                         : "text-[#6B6B63] hover:bg-[#F7F7F5] hover:text-[#1A1A18]"
                     )}
                   >
@@ -101,7 +101,7 @@ export default function SettingsPage() {
                 className={cn(
                   "flex-shrink-0 flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
                   activeTab === item.id
-                    ? "bg-[#84CC16] border-[#84CC16] text-[#1A1A18]"
+                    ? "bg-[rgb(var(--primary-500))] border-[rgb(var(--primary-500))] text-[#1A1A18]"
                     : "border-[#E8E8E4] bg-white text-[#6B6B63] hover:text-[#1A1A18]"
                 )}
               >
@@ -166,7 +166,7 @@ function ProfileTab({ user }: { user: any }) {
           <div className="flex flex-col items-center gap-2 flex-shrink-0">
             <div className="group relative w-24 h-24 rounded-xl overflow-hidden bg-[#F7F7F5] border border-[#E8E8E4] flex items-center justify-center cursor-pointer">
               <span className="text-3xl font-bold text-[#1A1A18]">{form.nome?.[0]?.toUpperCase() || "U"}</span>
-              <div className="absolute inset-0 bg-[#84CC16]/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 bg-[rgb(var(--primary-500))]/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <UserCircle className="h-6 w-6 text-[#1A1A18]" />
               </div>
             </div>
@@ -176,19 +176,19 @@ function ProfileTab({ user }: { user: any }) {
           {/* Name + Email */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
             <Field label="Nome Completo" required>
-              <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} type="text" required className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+              <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} type="text" required className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
             </Field>
             <Field label="E-mail">
               <input value={form.email} disabled type="email" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#A0A09A] cursor-not-allowed outline-none" />
             </Field>
             <Field label="Telefone">
-              <input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} type="text" placeholder="(DD) 90000-0000" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+              <input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} type="text" placeholder="(DD) 90000-0000" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
             </Field>
             <Field label="Cargo / Função">
-              <input value={form.cargo} onChange={e => setForm({ ...form, cargo: e.target.value })} type="text" placeholder="Ex: Comprador, Engenheiro..." className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+              <input value={form.cargo} onChange={e => setForm({ ...form, cargo: e.target.value })} type="text" placeholder="Ex: Comprador, Engenheiro..." className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
             </Field>
             <Field label="Empresa" className="sm:col-span-2">
-              <input value={form.empresa} onChange={e => setForm({ ...form, empresa: e.target.value })} type="text" placeholder="Nome da empresa ou construtora" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+              <input value={form.empresa} onChange={e => setForm({ ...form, empresa: e.target.value })} type="text" placeholder="Nome da empresa ou construtora" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
             </Field>
           </div>
         </div>
@@ -202,10 +202,10 @@ function ProfileTab({ user }: { user: any }) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Nova Senha">
-            <input value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} type="password" placeholder="••••••••" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+            <input value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} type="password" placeholder="••••••••" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
           </Field>
           <Field label="Confirmar Nova Senha">
-            <input value={form.confirmaSenha} onChange={e => setForm({ ...form, confirmaSenha: e.target.value })} type="password" placeholder="••••••••" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+            <input value={form.confirmaSenha} onChange={e => setForm({ ...form, confirmaSenha: e.target.value })} type="password" placeholder="••••••••" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
           </Field>
         </div>
       </div>
@@ -213,14 +213,14 @@ function ProfileTab({ user }: { user: any }) {
       {/* Actions */}
       <div className="flex justify-end items-center gap-3">
         {isSaved && (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-[#3d6600]">
-            <CheckCircle2 className="h-4 w-4 text-[#84CC16]" /> Alterações salvas com sucesso
+          <span className="flex items-center gap-1.5 text-xs font-medium text-[rgb(var(--primary-600))]">
+            <CheckCircle2 className="h-4 w-4 text-[rgb(var(--primary-500))]" /> Alterações salvas com sucesso
           </span>
         )}
         <button
           type="submit"
           disabled={isSaving}
-          className="flex items-center gap-2 rounded-lg bg-[#84CC16] px-5 py-2.5 text-sm font-semibold text-[#1A1A18] transition-all hover:bg-[#78b814] disabled:opacity-60 shadow-sm"
+          className="flex items-center gap-2 rounded-lg bg-[rgb(var(--primary-500))] px-5 py-2.5 text-sm font-semibold text-[#1A1A18] transition-all hover:bg-[rgb(var(--primary-600))] disabled:opacity-60 shadow-sm"
         >
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
           Salvar Alterações
@@ -298,7 +298,7 @@ function TeamTab({ user }: { user: any }) {
           <RoleGuard roles={["admin", "gestor", "usuario"]}>
             <button
               onClick={() => { setEditEmployee(null); setShowModal(true); }}
-              className="flex items-center gap-1.5 rounded-lg bg-[#84CC16] px-4 py-2.5 text-sm font-semibold text-[#1A1A18] transition-all hover:bg-[#78b814] shadow-sm"
+              className="flex items-center gap-1.5 rounded-lg bg-[rgb(var(--primary-500))] px-4 py-2.5 text-sm font-semibold text-[#1A1A18] transition-all hover:bg-[rgb(var(--primary-600))] shadow-sm"
             >
               <Plus className="h-4 w-4" /> Cadastrar Funcionário
             </button>
@@ -344,7 +344,7 @@ function TeamTab({ user }: { user: any }) {
               {loading && (
                 <tr>
                   <td colSpan={5} className="px-5 py-16 text-center text-[#A0A09A]">
-                    <Loader2 className="mx-auto h-6 w-6 mb-3 animate-spin text-[#84CC16]" />
+                    <Loader2 className="mx-auto h-6 w-6 mb-3 animate-spin text-[rgb(var(--primary-500))]" />
                     <p className="text-sm font-medium">Buscando quadro de funcionários...</p>
                   </td>
                 </tr>
@@ -385,7 +385,7 @@ function TeamTab({ user }: { user: any }) {
                   </td>
                   <td className="px-5 py-4">
                     {emp.is_active ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[#84CC16]/15 border border-[#84CC16]/30 px-2.5 py-1 text-[11px] font-medium text-[#3d6600]">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-2.5 py-1 text-[11px] font-medium text-[rgb(var(--primary-600))]">
                         ● Ativo
                       </span>
                     ) : (
@@ -493,28 +493,28 @@ function EmployeeModal({ employee, onClose, onSave }: {
         </div>
         <div className="px-6 py-5 space-y-4">
           <Field label="Nome Completo" required>
-            <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} type="text" required placeholder="Nome do funcionário" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+            <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} type="text" required placeholder="Nome do funcionário" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
           </Field>
           <Field label="E-mail" required>
-            <input disabled={!!employee} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} type="email" required placeholder="email@empresa.com" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed" />
+            <input disabled={!!employee} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} type="email" required placeholder="email@empresa.com" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed" />
           </Field>
           <Field label="Empresa">
-            <input value={form.empresa} onChange={e => setForm({ ...form, empresa: e.target.value })} type="text" placeholder="Filial ou unidade" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+            <input value={form.empresa} onChange={e => setForm({ ...form, empresa: e.target.value })} type="text" placeholder="Filial ou unidade" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
           </Field>
           <Field label="Nível de Acesso">
-            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors">
+            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors">
               <option value="funcionario">Funcionário</option>
               <option value="usuario">Usuário</option>
               <option value="gestor">Gestor</option>
             </select>
           </Field>
           <Field label={employee ? "Nova Senha (opcional)" : "Senha de Acesso"} required={!employee}>
-            <input value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} minLength={4} required={!employee} type="password" placeholder="Definir senha provisória" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[#84CC16] focus:bg-white focus:outline-none transition-colors" />
+            <input value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} minLength={4} required={!employee} type="password" placeholder="Definir senha provisória" className="w-full rounded-lg border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2.5 text-sm text-[#1A1A18] placeholder-[#A0A09A] focus:border-[rgb(var(--primary-500))] focus:bg-white focus:outline-none transition-colors" />
           </Field>
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-[#E8E8E4] bg-[#F7F7F5] rounded-b-xl">
           <button type="button" onClick={onClose} disabled={isSaving} className="rounded-lg border border-[#E8E8E4] bg-white px-4 py-2 text-sm font-medium text-[#6B6B63] hover:bg-[#EFEFEA] transition-colors disabled:opacity-50">Cancelar</button>
-          <button type="submit" disabled={isSaving} className="flex items-center gap-2 rounded-lg bg-[#84CC16] px-4 py-2 text-sm font-semibold text-[#1A1A18] hover:bg-[#78b814] transition-colors shadow-sm disabled:opacity-50">
+          <button type="submit" disabled={isSaving} className="flex items-center gap-2 rounded-lg bg-[rgb(var(--primary-500))] px-4 py-2 text-sm font-semibold text-[#1A1A18] hover:bg-[rgb(var(--primary-600))] transition-colors shadow-sm disabled:opacity-50">
             {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
             {employee ? "Salvar Alterações" : "Cadastrar"}
           </button>
@@ -540,7 +540,7 @@ function PlanTab() {
           <p className="text-xl font-bold text-[#1A1A18]">Profissional</p>
           <p className="text-sm text-[#6B6B63] mt-1">Relatórios ilimitados · Busca turbo · Múltiplos usuários</p>
         </div>
-        <span className="rounded-full bg-[#84CC16]/15 border border-[#84CC16]/30 px-3 py-1 text-xs font-semibold text-[#3d6600]">Ativo</span>
+        <span className="rounded-full bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-3 py-1 text-xs font-semibold text-[rgb(var(--primary-600))]">Ativo</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
@@ -566,7 +566,7 @@ function Field({ label, children, required, className }: { label: string; childr
   return (
     <div className={cn("space-y-1.5", className)}>
       <p className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
-        {label}{required && <span className="text-[#84CC16] ml-0.5">*</span>}
+        {label}{required && <span className="text-[rgb(var(--primary-500))] ml-0.5">*</span>}
       </p>
       {children}
     </div>

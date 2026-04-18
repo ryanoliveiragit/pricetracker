@@ -13,6 +13,7 @@
     "backend": "cd ../backend && python main.py"
   },
   "dependencies": {
+    "@assistant-ui/react": "^0.12.25",
     "@fontsource-variable/geist": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@nextui-org/react": "^2.6.11",

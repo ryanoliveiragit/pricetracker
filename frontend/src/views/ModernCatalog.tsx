@@ -54,7 +54,7 @@ function inputCls(hasError?: boolean) {
   return `w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#1A1A18] placeholder-slate-400 dark:placeholder-neutral-500 transition-colors focus:outline-none focus:ring-2 ${
     hasError
       ? "border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-500/20"
-      : "border-[#E8E8E4] bg-[#F7F7F5] focus:border-[#84CC16] focus:ring-[#84CC16]/20"
+      : "border-[#E8E8E4] bg-[#F7F7F5] focus:border-[rgb(var(--primary-500))] focus:ring-[rgb(var(--primary-500))]/20"
   }`;
 }
 
@@ -317,7 +317,7 @@ export default function ModernCatalog() {
           </button>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 rounded-lg bg-[#84CC16] px-3.5 py-2 text-sm font-medium text-[#1A1A18] transition-colors hover:bg-[#78b814]"
+            className="flex items-center gap-2 rounded-lg bg-[rgb(var(--primary-500))] px-3.5 py-2 text-sm font-medium text-[#1A1A18] transition-colors hover:bg-[rgb(var(--primary-600))]"
           >
             <Plus className="h-4 w-4" />
             Novo Produto
@@ -333,9 +333,9 @@ export default function ModernCatalog() {
         className="grid grid-cols-2 gap-3 sm:grid-cols-4"
       >
         {[
-          { label: "Produtos", value: totalProducts, icon: Package, color: "text-[#84CC16]" },
+          { label: "Produtos", value: totalProducts, icon: Package, color: "text-[rgb(var(--primary-500))]" },
           { label: "Categorias", value: totalCategories, icon: LayoutGrid, color: "text-blue-500" },
-          { label: "Marcas", value: totalBrands, icon: Box, color: "text-[#84CC16]" },
+          { label: "Marcas", value: totalBrands, icon: Box, color: "text-[rgb(var(--primary-500))]" },
           { label: "Com Foto", value: productsWithImage, icon: ImageIcon, color: "text-amber-500" },
         ].map((stat) => (
           <div
@@ -365,7 +365,7 @@ export default function ModernCatalog() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] py-2 pl-10 pr-4 text-sm text-[#1A1A18] placeholder-slate-400 dark:placeholder-neutral-500 focus:border-[#84CC16] focus:outline-none focus:ring-1 focus:ring-[#84CC16]/20"
+            className="w-full rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] py-2 pl-10 pr-4 text-sm text-[#1A1A18] placeholder-slate-400 dark:placeholder-neutral-500 focus:border-[rgb(var(--primary-500))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--primary-500))]/20"
             placeholder="Buscar por nome, categoria, marca ou SKU..."
           />
         </div>
@@ -374,7 +374,7 @@ export default function ModernCatalog() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#6B6B63] focus:border-[#84CC16] focus:outline-none focus:ring-1 focus:ring-[#84CC16]/20"
+          className="rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#6B6B63] focus:border-[rgb(var(--primary-500))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--primary-500))]/20"
         >
           <option value="all">Categoria ({availableCategories.length})</option>
           {availableCategories.map((c) => (
@@ -386,7 +386,7 @@ export default function ModernCatalog() {
         <select
           value={brandFilter}
           onChange={(e) => setBrandFilter(e.target.value)}
-          className="rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#6B6B63] focus:border-[#84CC16] focus:outline-none focus:ring-1 focus:ring-[#84CC16]/20"
+          className="rounded-xl border border-[#E8E8E4] bg-[#F7F7F5] px-3 py-2 text-sm text-[#6B6B63] focus:border-[rgb(var(--primary-500))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--primary-500))]/20"
         >
           <option value="all">Marca ({availableBrands.length})</option>
           {availableBrands.map((b) => (
@@ -409,9 +409,9 @@ export default function ModernCatalog() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-[#A0A09A]">Filtros ativos:</span>
           {searchQuery && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-[#84CC16]/15 border border-[#84CC16]/30 px-2 py-0.5 text-xs text-[#3d6600]">
+            <span className="inline-flex items-center gap-1 rounded-md bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-2 py-0.5 text-xs text-[rgb(var(--primary-600))]">
               &quot;{searchQuery}&quot;
-              <button onClick={() => setSearchQuery("")} className="ml-0.5 hover:text-lime-800">&times;</button>
+              <button onClick={() => setSearchQuery("")} className="ml-0.5 hover:text-[rgb(var(--primary-600))]">&times;</button>
             </span>
           )}
           {categoryFilter !== "all" && (
@@ -421,9 +421,9 @@ export default function ModernCatalog() {
             </span>
           )}
           {brandFilter !== "all" && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-[#84CC16]/15 border border-[#84CC16]/30 px-2 py-0.5 text-xs text-[#3d6600]">
+            <span className="inline-flex items-center gap-1 rounded-md bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30 px-2 py-0.5 text-xs text-[rgb(var(--primary-600))]">
               {brandFilter}
-              <button onClick={() => setBrandFilter("all")} className="ml-0.5 hover:text-lime-800">&times;</button>
+              <button onClick={() => setBrandFilter("all")} className="ml-0.5 hover:text-[rgb(var(--primary-600))]">&times;</button>
             </span>
           )}
         </div>
@@ -473,7 +473,7 @@ export default function ModernCatalog() {
                       {hasActiveFilters && (
                         <button
                           onClick={clearFilters}
-                          className="mt-1 text-xs text-[#84CC16] hover:text-[#3d6600]"
+                          className="mt-1 text-xs text-[rgb(var(--primary-500))] hover:text-[rgb(var(--primary-600))]"
                         >
                           Limpar filtros
                         </button>
@@ -648,7 +648,7 @@ export default function ModernCatalog() {
                       onClick={() => setCurrentPage(item)}
                       className={`flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors ${
                         item === safePage
-                          ? "bg-[#84CC16] font-medium text-[#1A1A18]"
+                          ? "bg-[rgb(var(--primary-500))] font-medium text-[#1A1A18]"
                           : "text-[#A0A09A] hover:bg-[#EFEFEA] hover:text-[#1A1A18]"
                       }`}
                     >
@@ -697,8 +697,8 @@ export default function ModernCatalog() {
               {/* Modal header */}
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-neutral-800 bg-white px-6 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#84CC16]/15 border border-[#84CC16]/30">
-                    <Package className="h-5 w-5 text-[#84CC16]" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgb(var(--primary-500))]/15 border border-[rgb(var(--primary-500))]/30">
+                    <Package className="h-5 w-5 text-[rgb(var(--primary-500))]" />
                   </div>
                   <div>
                     <h2 className="text-base font-semibold text-[#1A1A18]">
@@ -725,7 +725,7 @@ export default function ModernCatalog() {
                   {/* ── Section: Identificação ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <div className="h-1 w-5 rounded-full bg-[rgb(var(--primary-500))]" />
                       <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Identificação
                       </span>
@@ -759,7 +759,7 @@ export default function ModernCatalog() {
                   {/* ── Section: Classificação ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <div className="h-1 w-5 rounded-full bg-[rgb(var(--primary-500))]" />
                       <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Classificação
                       </span>
@@ -781,7 +781,7 @@ export default function ModernCatalog() {
                   {/* ── Section: Imagem ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <div className="h-1 w-5 rounded-full bg-[rgb(var(--primary-500))]" />
                       <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Imagem
                       </span>
@@ -817,7 +817,7 @@ export default function ModernCatalog() {
                   {/* ── Section: Observações ── */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-1 w-5 rounded-full bg-[#84CC16]" />
+                      <div className="h-1 w-5 rounded-full bg-[rgb(var(--primary-500))]" />
                       <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A]">
                         Observações
                       </span>
@@ -916,7 +916,7 @@ export default function ModernCatalog() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 rounded-xl bg-[#84CC16] py-2.5 text-sm font-semibold text-[#1A1A18] transition-colors hover:bg-[#78b814]"
+                    className="flex-1 rounded-xl bg-[rgb(var(--primary-500))] py-2.5 text-sm font-semibold text-[#1A1A18] transition-colors hover:bg-[rgb(var(--primary-600))]"
                   >
                     {editingId ? "Salvar Alterações" : "Adicionar Produto"}
                   </button>

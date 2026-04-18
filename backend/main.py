@@ -1,14 +1,15 @@
+import logging
 from contextlib import asynccontextmanager
+
+from app.api.routes import agent, auth, products, saves, search, suppliers, users
+from app.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import logging
-from app.config import settings
-from app.api.routes import search, auth, suppliers, products, users, saves
 
 # Configurar logging
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
 logger = logging.getLogger(__name__)
@@ -18,9 +19,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(_app: FastAPI):
     """Startup / shutdown events."""
     from app.database import create_tables
+    from app.services.catalog_scraper import run_catalog_scrape
     from app.services.seed import seed_defaults
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from app.services.catalog_scraper import run_catalog_scrape
 
     await create_tables()
     await seed_defaults()
@@ -39,15 +40,19 @@ async def lifespan(_app: FastAPI):
 
     # Auto-trigger: se catálogo vazio, dispara primeiro scraping
     import asyncio
-    from sqlalchemy import select, func
+
     from app.database import async_session
     from app.models.db_models import ScrapedProductDB
+    from sqlalchemy import func, select
+
     async with async_session() as session:
         count = await session.execute(
             select(func.count()).select_from(ScrapedProductDB)
         )
         if (count.scalar() or 0) == 0:
-            logger.info("📦 Catálogo vazio — disparando primeiro scraping automaticamente")
+            logger.info(
+                "📦 Catálogo vazio — disparando primeiro scraping automaticamente"
+            )
             asyncio.create_task(run_catalog_scrape())
 
     yield
@@ -82,11 +87,14 @@ app.include_router(suppliers.router, prefix="/api", tags=["suppliers"])
 app.include_router(products.router, prefix="/api", tags=["products"])
 app.include_router(users.router, prefix="/api", tags=["users"])
 app.include_router(saves.router, prefix="/api/saves", tags=["saves"])
+app.include_router(agent.router, prefix="/api", tags=["agent"])
+
 
 @app.post("/api/admin/reseed-suppliers")
 async def reseed_suppliers():
     """Force recreate all suppliers with default credentials. Use when DB has wrong/empty creds."""
     from app.services.seed import force_reseed_suppliers
+
     count = await force_reseed_suppliers()
     return {"status": "ok", "suppliers_recreated": count}
 
@@ -101,14 +109,11 @@ async def root():
     return {
         "message": "ConstruPrice API - Sistema de Comparação de Preços",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
     }
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host=settings.API_HOST,
-        port=settings.API_PORT,
-        reload=True
-    )
+
+    uvicorn.run("main:app", host=settings.API_HOST, port=settings.API_PORT, reload=True)

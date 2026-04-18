@@ -83,7 +83,7 @@
 }
 
 .driver-popover.driverjs-construprice .driver-popover-next-btn:hover {
-  background-color: #78b814 !important;
+  background-color: rgb(var(--primary-600)) !important;
   border-color: #6a9c12 !important;
 }
 

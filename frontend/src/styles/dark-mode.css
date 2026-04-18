@@ -1,0 +1,168 @@
+/* ══════════════════════════════════════════════════════════════
+   dark-mode.css
+   Overrides para cores hexadecimais hardcoded usadas nas views.
+   Ativadas apenas quando .dark está no <html>.
+══════════════════════════════════════════════════════════════ */
+
+/* ── Backgrounds de página ────────────────────────────────── */
+.dark .bg-\[#F7F7F5\],
+.dark .bg-\[#FAFAF8\],
+.dark .bg-\[#F5F5F3\],
+.dark .bg-\[#EFEFED\],
+.dark .bg-\[#EFEFEA\],
+.dark .bg-\[#F0F0EA\] {
+  background-color: #0a0a0a !important;
+}
+
+/* ── Surfaces (cards, painéis, sidebars) ─────────────────── */
+.dark .bg-white {
+  background-color: #171717 !important;
+}
+
+.dark .bg-\[#fafafa\],
+.dark .bg-\[#fafaf7\] {
+  background-color: #111111 !important;
+}
+
+/* ── Borders ─────────────────────────────────────────────── */
+.dark .border-\[#E8E8E4\],
+.dark .border-\[#DEDED8\],
+.dark .border-\[#D0D0CA\],
+.dark .border-\[#e5e7eb\],
+.dark .border-\[#f0f0ee\],
+.dark .border-\[#f3f4f6\] {
+  border-color: #262626 !important;
+}
+
+/* ── Texto primário ───────────────────────────────────────── */
+.dark .text-\[#1A1A18\],
+.dark .text-\[#111827\],
+.dark .text-\[#111110\],
+.dark .text-\[#0F0F0E\] {
+  color: #f5f5f5 !important;
+}
+
+/* ── Texto secundário ─────────────────────────────────────── */
+.dark .text-\[#6B6B63\],
+.dark .text-\[#5C5C55\],
+.dark .text-\[#4A4A44\],
+.dark .text-\[#374151\] {
+  color: #a3a3a3 !important;
+}
+
+/* ── Texto muted / placeholder ────────────────────────────── */
+.dark .text-\[#A0A09A\],
+.dark .text-\[#C0C0BA\],
+.dark .text-\[#B8B8B2\],
+.dark .text-\[#9ca3af\] {
+  color: #737373 !important;
+}
+
+/* ── Placeholder color ────────────────────────────────────── */
+.dark .placeholder-\[#C0C0BA\]::placeholder,
+.dark .placeholder-\[#A0A09A\]::placeholder,
+.dark .placeholder-\[#9ca3af\]::placeholder {
+  color: #525252 !important;
+}
+
+/* ── Hover backgrounds ────────────────────────────────────── */
+.dark .hover\:bg-\[#F7F7F5\]:hover,
+.dark .hover\:bg-\[#FAFAF8\]:hover,
+.dark .hover\:bg-\[#EFEFED\]:hover,
+.dark .hover\:bg-\[#EFEFEA\]:hover,
+.dark .hover\:bg-\[#f9fafb\]:hover {
+  background-color: #1c1c1c !important;
+}
+
+.dark .hover\:bg-\[#1A1A18\]:hover {
+  background-color: #2a2a2a !important;
+}
+
+/* ── Focus backgrounds ────────────────────────────────────── */
+.dark .focus\:bg-white:focus {
+  background-color: #1c1c1c !important;
+}
+
+/* ── Inputs e textareas ───────────────────────────────────── */
+.dark input.bg-\[#FAFAF8\],
+.dark input.bg-\[#F7F7F5\],
+.dark input.bg-\[#f9fafb\],
+.dark textarea.bg-\[#FAFAF8\],
+.dark textarea.bg-\[#F7F7F5\],
+.dark textarea.bg-\[#f9fafb\] {
+  background-color: #1c1c1c !important;
+  color: #f5f5f5 !important;
+  border-color: #262626 !important;
+}
+
+/* ── Botões com fundo escuro (#1A1A18) viram mais claros ─── */
+.dark .bg-\[#1A1A18\] {
+  background-color: #f5f5f5 !important;
+  color: #1a1a18 !important;
+}
+
+.dark .hover\:bg-\[#1A1A18\]:hover {
+  background-color: #e5e5e5 !important;
+  color: #1a1a18 !important;
+}
+
+/* ── Textos sobre fundo accent mantêm contraste ──────────── */
+.dark .bg-\[rgb(var(--primary-500))\] .text-\[#1A1A18\],
+.dark .text-\[#1A1A18\].bg-\[rgb(var(--primary-500))\] {
+  color: #fff !important;
+}
+
+/* ── Status badge text on primary bg ─────────────────────── */
+.dark .text-\[rgb(var(--primary-600))\] {
+  color: rgb(var(--primary-500)) !important;
+}
+
+/* ── Ring / outline ───────────────────────────────────────── */
+.dark .ring-\[#E8E8E4\] {
+  --tw-ring-color: #262626 !important;
+}
+
+/* ── Divide lines ─────────────────────────────────────────── */
+.dark .divide-\[#E8E8E4\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #262626 !important;
+}
+
+.dark .divide-\[#F0F0EC\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1f1f1f !important;
+}
+
+/* ── Toggle switch ────────────────────────────────────────── */
+.dark .bg-\[#D0D0CA\] {
+  background-color: #404040 !important;
+}
+
+/* ── Skeleton / loading placeholders ─────────────────────── */
+.dark .bg-\[#F0F0EC\],
+.dark .bg-\[#E8E8E4\],
+.dark .bg-\[#f3f4f6\] {
+  background-color: #262626 !important;
+}
+
+/* ── Table hover ──────────────────────────────────────────── */
+.dark .hover\:bg-\[#F7F7F5\]:hover {
+  background-color: #1a1a1a !important;
+}
+
+/* ── Accent-bg active badges text color ───────────────────── */
+.dark .bg-\[rgb(var(--primary-500))\/15\] {
+  background-color: rgb(var(--primary-500) / 0.12) !important;
+}
+
+/* ── Backdrop em modals/overlays ─────────────────────────── */
+.dark .bg-\[#1A1A18\]\/50 {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ── Transição suave ao trocar de tema ───────────────────── */
+.dark,
+.dark * {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.15s ease !important;
+}
