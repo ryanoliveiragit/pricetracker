@@ -8,40 +8,59 @@ import { useState, useRef, useEffect } from "react";
 export function DarkModeToggle() {
   const { mode, setMode, isDark } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   const modes = [
-    { value: "light" as const, label: "Claro", icon: Sun },
-    { value: "dark" as const, label: "Escuro", icon: Moon },
+    { value: "light"  as const, label: "Claro",   icon: Sun    },
+    { value: "dark"   as const, label: "Escuro",  icon: Moon   },
     { value: "system" as const, label: "Sistema", icon: Laptop },
   ];
 
+  function handleToggle() {
+    if (!isOpen && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setIsOpen(prev => !prev);
+  }
+
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+    function onClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        btnRef.current && !btnRef.current.contains(target) &&
+        dropRef.current && !dropRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
-    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    if (isOpen) document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
   }, [isOpen]);
 
   const CurrentIcon = isDark ? Moon : mode === "system" ? Laptop : Sun;
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
-        onClick={() => setIsOpen((prev) => !prev)}
+        ref={btnRef}
+        onClick={handleToggle}
         title="Alternar tema"
         className="
           flex items-center justify-center
-          h-9 w-9 rounded-xl
-          border border-slate-200 dark:border-neutral-700
-          bg-white dark:bg-neutral-800
-          text-slate-600 dark:text-neutral-400
-          hover:bg-slate-100 dark:hover:bg-neutral-700
-          hover:text-slate-900 dark:hover:text-neutral-200
-          transition-colors cursor-pointer shadow-sm
+          h-8 w-8 rounded-lg
+          border border-slate-200/80 dark:border-neutral-700/60
+          bg-white/80 dark:bg-neutral-900/80
+          text-slate-500 dark:text-neutral-400
+          hover:border-slate-300 dark:hover:border-neutral-600
+          hover:text-slate-700 dark:hover:text-neutral-200
+          hover:shadow-sm
+          transition-all cursor-pointer
         "
       >
         <AnimatePresence mode="wait">
@@ -53,7 +72,7 @@ export function DarkModeToggle() {
             transition={{ duration: 0.18 }}
             className="flex items-center justify-center"
           >
-            <CurrentIcon size={17} />
+            <CurrentIcon size={15} />
           </motion.div>
         </AnimatePresence>
       </button>
@@ -61,48 +80,45 @@ export function DarkModeToggle() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 6 }}
+            ref={dropRef}
+            initial={{ opacity: 0, scale: 0.95, y: -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 6 }}
+            exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.13 }}
+            style={{
+              position: "fixed",
+              top: dropPos.top,
+              right: dropPos.right,
+              zIndex: 99999,
+            }}
             className="
-              absolute top-11 right-0
               w-44
               rounded-xl overflow-hidden
               border border-slate-200 dark:border-neutral-700
               bg-white dark:bg-neutral-900
-              shadow-xl dark:shadow-2xl
-              z-[9999]
+              shadow-xl dark:shadow-black/40
             "
           >
             <div className="p-1.5 space-y-0.5">
-              {modes.map((m) => {
+              {modes.map(m => {
                 const Icon = m.icon;
-                const isActive = mode === m.value;
-
+                const active = mode === m.value;
                 return (
                   <button
                     key={m.value}
-                    onClick={() => {
-                      setMode(m.value);
-                      setIsOpen(false);
-                    }}
+                    onClick={() => { setMode(m.value); setIsOpen(false); }}
                     className={`
                       w-full flex items-center gap-2.5 px-3 py-2
-                      rounded-lg transition-colors text-left
-                      text-[13px] font-medium
-                      ${
-                        isActive
-                          ? "bg-slate-100 dark:bg-neutral-800 text-[rgb(var(--primary-500))] font-semibold"
-                          : "text-slate-700 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-neutral-200"
+                      rounded-lg transition-colors text-left text-[13px] font-medium
+                      ${active
+                        ? "bg-slate-100 dark:bg-neutral-800 text-[rgb(var(--primary-500))]"
+                        : "text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-neutral-100"
                       }
                     `}
                   >
-                    <Icon size={15} className="flex-shrink-0" />
+                    <Icon size={14} className="flex-shrink-0" />
                     <span className="flex-1">{m.label}</span>
-                    {isActive && (
-                      <div className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--primary-500))]" />
-                    )}
+                    {active && <div className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--primary-500))]" />}
                   </button>
                 );
               })}
@@ -110,6 +126,6 @@ export function DarkModeToggle() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

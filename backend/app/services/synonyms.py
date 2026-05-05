@@ -6,6 +6,8 @@ A expansão é bidirecional: buscar "cola" também busca "adesivo" e vice-versa.
 from __future__ import annotations
 from typing import Optional
 
+from app.utils.text_normalizer import QUERY_STOP_WORDS, normalize_text
+
 # Grupos de sinônimos — todos os termos do grupo são equivalentes
 SYNONYM_GROUPS: list[list[str]] = [
     ["cola", "adesivo", "selante", "vedante", "silicone"],
@@ -60,22 +62,78 @@ for group in SYNONYM_GROUPS:
         _INDEX[term.lower()] = group
 
 
+def expand_query_for_scrape(query: str, *, max_variants: int = 14) -> list[str]:
+    """
+    Gera termos a enviar aos scrapers.
+
+    - Uma palavra em grupo de sinônimos: expande para todo o grupo (ex.: "cola").
+    - Várias palavras: preserva âncoras (ex.: marca "tigre") e substitui só a
+      primeira palavra que pertence a um grupo (ex.: "cola tigre" → também
+      "adesivo tigre", "selante tigre", …) para achar "Adesivo PVC Tigre".
+    """
+    raw = (query or "").strip()
+    if not raw:
+        return []
+    qn = normalize_text(raw)
+    words = [w for w in qn.split() if w and len(w) >= 2 and w not in QUERY_STOP_WORDS]
+    if not words:
+        return [raw]
+
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def add(s: str) -> None:
+        if len(out) >= max_variants:
+            return
+        t = s.strip()
+        if not t:
+            return
+        k = normalize_text(t)
+        if k not in seen:
+            seen.add(k)
+            out.append(t)
+
+    if len(words) == 1:
+        w0 = words[0]
+        if w0 in _INDEX:
+            for s in _INDEX[w0]:
+                add(s)
+        else:
+            add(raw)
+        return out
+
+    add(raw)
+    add(qn)
+    if len(words) == 2:
+        add(" ".join(reversed(words)))
+
+    expand_idx = None
+    for i, w in enumerate(words):
+        if w in _INDEX:
+            expand_idx = i
+            break
+    if expand_idx is None:
+        return out[:max_variants]
+
+    group = [
+        s
+        for s in _INDEX[words[expand_idx]]
+        if " " not in s and len(s.strip()) >= 2
+    ]
+    for syn in group:
+        subst = list(words)
+        subst[expand_idx] = syn.strip().lower()
+        add(" ".join(subst))
+
+    return out[:max_variants]
+
+
 def get_synonyms(query: str) -> list[str]:
     """
-    Retorna lista de termos de busca expandidos para uma query.
-    Ex: "cola" → ["cola", "adesivo", "selante", "vedante", "silicone"]
-    Se não há sinônimos, retorna [query].
+    Compatível com código legado: equivalente a ``expand_query_for_scrape``
+    para uma única lista de termos.
     """
-    q = query.strip().lower()
-    # Busca exata
-    if q in _INDEX:
-        return list(_INDEX[q])
-    # Busca parcial: verifica se alguma palavra da query bate com um sinônimo
-    words = q.split()
-    for word in words:
-        if word in _INDEX:
-            return [q] + [s for s in _INDEX[word] if s != word]
-    return [query]
+    return expand_query_for_scrape(query)
 
 
 def canonical_for(query: str) -> str:

@@ -39,11 +39,24 @@ export interface ApiSearchResult {
   }>;
 }
 
+export class LoginError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LoginError";
+  }
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    if (response.status === 422) {
+      const body = await response.json().catch(() => null);
+      const detail = body?.detail;
+      if (detail?.login_error) {
+        throw new LoginError(detail.message ?? "Login falhou — verifique as credenciais");
+      }
+    }
     throw new Error(`API error ${response.status}`);
   }
-
   return (await response.json()) as T;
 }
 
@@ -148,6 +161,21 @@ export const productsApi = {
 };
 
 // Busca de produtos agora é feita via searchApi.ts (chama o backend Python diretamente)
+
+// Search Suggestions API
+export interface SearchSuggestion {
+  name: string;
+  brand: string;
+  category: string;
+}
+
+export const searchApi = {
+  async suggestions(q: string): Promise<{ products: SearchSuggestion[]; synonyms: string[]; has_match: boolean }> {
+    const response = await fetch(`${API_BASE_URL}/api/search/suggestions?q=${encodeURIComponent(q)}`);
+    if (!response.ok) return { products: [], synonyms: [], has_match: false };
+    return response.json();
+  },
+};
 
 // Auth API
 export const authApi = {

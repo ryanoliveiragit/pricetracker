@@ -28,7 +28,7 @@ import {
   useState,
 } from "react";
 import { useTheme } from "../context/ThemeContext";
-import { suppliersApi } from "../services/api";
+import { searchApi, suppliersApi, type SearchSuggestion } from "../services/api";
 import {
   buildSupplierSearchPayload,
   sendAgentMessage,
@@ -468,13 +468,37 @@ function HeroCommandBar({ onSend }: HeroProps) {
   const [focused, setFocused] = useState(false);
   const [mode, setMode] = useState<SearchMode>("padrao");
   const [supplierNames, setSupplierNames] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [synonymSuggestions, setSynonymSuggestions] = useState<string[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [noMatch, setNoMatch] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     suppliersApi.getAll()
       .then(list => setSupplierNames(list.filter(s => s.isActive).map(s => s.name)))
       .catch(() => {/* silently ignore if backend offline */});
   }, []);
+
+  useEffect(() => {
+    if (mode !== "avancada" || text.trim().length < 2) {
+      setSuggestions([]);
+      setSynonymSuggestions([]);
+      setShowDropdown(false);
+      setNoMatch(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      searchApi.suggestions(text.trim()).then(res => {
+        setSuggestions(res.products);
+        setSynonymSuggestions(res.synonyms);
+        setNoMatch(!res.has_match && text.trim().length >= 3);
+        setShowDropdown(res.products.length > 0 || (res.synonyms.length > 0 && !res.has_match));
+      }).catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [text, mode]);
 
   const { display: placeholder, isScrambling } = useCrypticPlaceholder(3600);
   const scrambledCotar = useScramble("cotar", 900, 500);
@@ -557,6 +581,7 @@ function HeroCommandBar({ onSend }: HeroProps) {
 
         {/* ── Input card ── */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.48 }}>
+          <div style={{ position: "relative" }}>
           <div style={{
             background: "var(--bg2)",
             border: `1px solid ${focused ? "var(--acc)" : "var(--ln2)"}`,
@@ -582,7 +607,7 @@ function HeroCommandBar({ onSend }: HeroProps) {
                   value={text}
                   onChange={e => setText(e.target.value)}
                   onFocus={() => setFocused(true)}
-                  onBlur={() => setFocused(false)}
+                  onBlur={() => { setFocused(false); setTimeout(() => setShowDropdown(false), 150); }}
                   onKeyDown={e => { if (e.key === "Enter") submit(); }}
                   style={{
                     width: "100%", padding: "15px 0", fontSize: 15,
@@ -668,15 +693,108 @@ function HeroCommandBar({ onSend }: HeroProps) {
             </div>
           </div>
 
-          {/* Mode hint */}
+          {/* Suggestions dropdown */}
+          <AnimatePresence>
+            {showDropdown && mode === "avancada" && (
+              <motion.div
+                ref={dropdownRef}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0, right: 0,
+                  background: "var(--bg2)",
+                  border: "1px solid var(--ln2)",
+                  borderRadius: 12,
+                  boxShadow: "0 12px 32px -8px rgba(0,0,0,0.18)",
+                  zIndex: 50,
+                  overflow: "hidden",
+                }}
+              >
+                {suggestions.length > 0 && (
+                  <>
+                    <div style={{ padding: "8px 14px 4px", fontSize: 10, color: "var(--t3)", letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "1px solid var(--ln)" }}>
+                      Produtos no catálogo
+                    </div>
+                    {suggestions.slice(0, 6).map(s => (
+                      <button
+                        key={s.name}
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); setText(s.name); setShowDropdown(false); setNoMatch(false); }}
+                        style={{
+                          width: "100%", padding: "9px 14px",
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          textAlign: "left", background: "none", border: "none",
+                          cursor: "pointer", color: "var(--t0)", fontFamily: "inherit",
+                          transition: "background 120ms",
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg3)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{s.name}</div>
+                          <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>
+                            {s.category}{s.brand ? ` · ${s.brand}` : ""}
+                          </div>
+                        </div>
+                        <ArrowRight size={12} style={{ color: "var(--t3)", flexShrink: 0 }} />
+                      </button>
+                    ))}
+                  </>
+                )}
+                {synonymSuggestions.length > 0 && suggestions.length === 0 && (
+                  <>
+                    <div style={{ padding: "8px 14px 4px", fontSize: 10, color: "var(--t3)", letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "1px solid var(--ln)" }}>
+                      Você quis dizer?
+                    </div>
+                    {synonymSuggestions.slice(0, 5).map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); setText(s); setShowDropdown(false); setNoMatch(false); }}
+                        style={{
+                          width: "100%", padding: "9px 14px",
+                          display: "flex", alignItems: "center", gap: 8,
+                          textAlign: "left", background: "none", border: "none",
+                          cursor: "pointer", color: "var(--t1)", fontFamily: "inherit",
+                          fontSize: 13, transition: "background 120ms",
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg3)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                      >
+                        <Sparkles size={11} style={{ color: "var(--acc)", flexShrink: 0 }} />
+                        {s}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          </div>
+
+          {/* Mode hint / no-match warning */}
           <AnimatePresence mode="wait">
-            <motion.p key={mode}
-              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18 }}
-              style={{ textAlign: "center", fontSize: 12, color: "var(--t3)", marginTop: 10 }}
-            >
-              {MODE_CONFIG[mode].hint}
-            </motion.p>
+            {noMatch && mode === "avancada" ? (
+              <motion.p key="no-match"
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18 }}
+                style={{ textAlign: "center", fontSize: 12, color: "var(--t3)", marginTop: 10 }}
+              >
+                ⚠️ Produto não encontrado no catálogo — o agente tentará refinar sua busca.
+              </motion.p>
+            ) : (
+              <motion.p key={mode}
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18 }}
+                style={{ textAlign: "center", fontSize: 12, color: "var(--t3)", marginTop: 10 }}
+              >
+                {MODE_CONFIG[mode].hint}
+              </motion.p>
+            )}
           </AnimatePresence>
         </motion.div>
 

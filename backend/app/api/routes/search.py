@@ -34,8 +34,12 @@ from app.services.cache import (
 )
 from app.services.credentials_manager import get_credentials_manager
 from app.services.scraper_manager import get_scraper_manager
-from app.services.synonyms import get_synonyms
-from app.utils.text_normalizer import filter_results_by_query, normalize_text
+from app.services.synonyms import expand_query_for_scrape
+from app.utils.text_normalizer import (
+    calculate_similarity,
+    filter_results_by_query,
+    normalize_text,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -251,7 +255,7 @@ async def search_stream(request: SearchRequest):
         for item in request.items:
             normalized = normalize_text(item)
             db_terms = await get_db_variants(normalized)
-            terms = db_terms if len(db_terms) > 1 else get_synonyms(normalized)
+            terms = db_terms if len(db_terms) > 1 else expand_query_for_scrape(item)
             all_queries.extend(terms)
 
         manager = get_scraper_manager()
@@ -293,7 +297,11 @@ async def search_stream(request: SearchRequest):
                     if offers:
                         await store_scraped_results(offers, scraper_key, sq_norm)
 
-                    for offer in offers:
+                    # Filter by THIS synonym before pooling — prevents cross-contamination.
+                    # e.g. "adesivo tigre" results are judged against "adesivo tigre",
+                    # not the original "cola tigre", so relevant synonymous products are kept.
+                    relevant = filter_results_by_query(sq, offers)
+                    for offer in relevant:
                         key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
                         if key not in seen_keys:
                             seen_keys.add(key)
@@ -303,20 +311,14 @@ async def search_stream(request: SearchRequest):
                     status = "done"
 
                 completed.append(store_name)
-                # Filtrar para retornar apenas produtos que contenham todos os termos da busca original
-                original_queries = [normalize_text(item) for item in request.items]
-                filtered_offers = []
-                for orig in original_queries:
-                    filtered_offers.extend(filter_results_by_query(orig, store_offers))
-                # Deduplicar após filtro
-                seen_final: set[str] = set()
-                deduped: list[ProductOffer] = []
-                for o in filtered_offers:
-                    k = f"{o.store}:{o.sku or o.product_name[:30].lower()}"
-                    if k not in seen_final:
-                        seen_final.add(k)
-                        deduped.append(o)
-                store_offers = deduped
+                for o in store_offers:
+                    o.score = max(
+                        calculate_similarity(it, o.product_name)
+                        for it in request.items
+                    )
+                store_offers.sort(
+                    key=lambda x: (-x.score, x.price if x.price > 0 else float("inf"))
+                )
                 payload = json.dumps(
                     {
                         "event": "store_done",
@@ -375,9 +377,9 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                     f"Variantes do DB para '{normalized_query}': {synonym_queries}"
                 )
             else:
-                synonym_queries = get_synonyms(normalized_query)
+                synonym_queries = expand_query_for_scrape(item)
                 logger.info(
-                    f"Sinônimos estáticos para '{normalized_query}': {synonym_queries}"
+                    f"Termos de scraping para '{normalized_query}': {synonym_queries}"
                 )
 
             all_offers: List[ProductOffer] = []
@@ -393,15 +395,16 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                             seen.add(key)
                             all_offers.append(offer)
 
-            # Buscar termo principal primeiro — se já tiver resultados, sinônimos rodam em paralelo
+            # Buscar termo principal e filtrar por ele antes de adicionar ao pool
             main_offers = await search_all_stores(
                 normalized_query,
                 force_refresh=request.force_refresh,
                 allowed_store_names=allowed_store_names,
             )
-            _merge([main_offers])
+            _merge([filter_results_by_query(normalized_query, main_offers)])
 
-            # Sinônimos extras (excluindo o principal que já foi buscado)
+            # Sinônimos extras: cada um filtrado pelo seu próprio termo antes de unir
+            # Isso evita que resultados de "adesivo tigre" sejam filtrados por "cola tigre"
             extra_queries = [
                 sq for sq in synonym_queries if normalize_text(sq) != normalized_query
             ]
@@ -415,9 +418,15 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                     for sq in extra_queries
                 ]
                 extra_results = await asyncio.gather(*tasks, return_exceptions=True)
-                _merge(extra_results)
+                for sq, sq_result in zip(extra_queries, extra_results):
+                    if isinstance(sq_result, Exception):
+                        continue
+                    _merge([filter_results_by_query(sq, sq_result)])
 
-            offers = filter_results_by_query(item, all_offers)
+            offers = all_offers
+            offers.sort(
+                key=lambda x: (-getattr(x, "score", 0), x.price if x.price > 0 else float("inf"))
+            )
             item_ms = int((time.time() - t_item) * 1000)
 
             # Marcar melhor preço
@@ -536,12 +545,16 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
             )
             if cached_data is not None:
                 offers = [ProductOffer(**item) for item in cached_data]
+                ranked = filter_results_by_query(request.product_name, offers)
+                ranked.sort(
+                    key=lambda x: (-x.score, x.price if x.price > 0 else float("inf"))
+                )
                 return ProductSearchBySupplierResponse(
                     product_name=request.product_name,
                     supplier_id=request.supplier_id,
                     supplier_name=request.supplier_name,
-                    total_results=len(offers),
-                    results=offers,
+                    total_results=len(ranked),
+                    results=ranked,
                     search_duration_ms=0,
                     cached=True,
                     estimated_wait_seconds=estimated,
@@ -558,38 +571,59 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
         if username and password:
             credentials = {"username": username, "password": password}
 
-        offers, duration, _, error_msg = await manager.scrape_store_async(
-            scraper_class,
-            normalized_query,
-            scraper_key,
-            credentials,
-            force_refresh=request.force_refresh,
-        )
+        from app.services.catalog_scraper import store_scraped_results
+
+        scrape_queries = expand_query_for_scrape(request.product_name)
+        offers: List[ProductOffer] = []
+        seen_offer: set[str] = set()
+        last_error: str | None = None
+        for sq in scrape_queries:
+            sub_norm = normalize_text(sq)
+            part, duration, _, error_msg = await manager.scrape_store_async(
+                scraper_class,
+                sub_norm,
+                scraper_key,
+                credentials,
+                force_refresh=request.force_refresh,
+            )
+            if error_msg:
+                last_error = error_msg
+                logger.warning(
+                    "Busca por fornecedor (%r) falhou — tentando próximo termo: %s",
+                    sq,
+                    error_msg,
+                )
+                continue
+            if part:
+                await store_scraped_results(part, scraper_key, sub_norm)
+                for o in part:
+                    key = f"{o.store}:{o.sku or o.product_name[:40].lower()}"
+                    if key not in seen_offer:
+                        seen_offer.add(key)
+                        offers.append(o)
         duration_ms = int((time.time() - t0) * 1000)
 
-        if error_msg:
-            logger.error(f"Erro na busca por fornecedor: {error_msg}")
+        if last_error and not offers:
             raise HTTPException(
                 status_code=400,
-                detail=f"Erro ao buscar em {request.supplier_name}: {error_msg}",
+                detail=f"Erro ao buscar em {request.supplier_name}: {last_error}",
             )
-
-        # Salvar no catálogo local
-        if offers:
-            from app.services.catalog_scraper import store_scraped_results
-
-            await store_scraped_results(offers, scraper_key, normalized_query)
 
         logger.info(
             f"Busca concluída: {len(offers)} produtos em {request.supplier_name} ({duration_ms}ms)"
+        )
+
+        ranked = filter_results_by_query(request.product_name, offers)
+        ranked.sort(
+            key=lambda x: (-x.score, x.price if x.price > 0 else float("inf"))
         )
 
         return ProductSearchBySupplierResponse(
             product_name=request.product_name,
             supplier_id=request.supplier_id,
             supplier_name=request.supplier_name,
-            total_results=len(offers),
-            results=offers,
+            total_results=len(ranked),
+            results=ranked,
             search_duration_ms=duration_ms,
             cached=False,
             estimated_wait_seconds=estimated,
@@ -719,6 +753,68 @@ async def clear_search_cache():
     return {"status": "cache_cleared", "entries_removed": count}
 
 
+@router.get("/search/suggestions")
+async def get_search_suggestions(
+    q: str = Query(default="", description="Termo de busca"),
+    limit: int = Query(default=8, ge=1, le=20),
+):
+    """
+    Autocomplete para a busca avançada.
+    Retorna produtos do catálogo que correspondem ao termo e sinônimos conhecidos.
+    """
+    term = (q or "").strip()
+    if len(term) < 2:
+        return {"products": [], "synonyms": [], "has_match": False}
+
+    normalized = normalize_text(term)
+    matches: list[dict] = []
+    seen: set[str] = set()
+
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(ProductDB))
+            for product in result.scalars().all():
+                name_n = normalize_text(product.name)
+                brand_n = normalize_text(product.brand or "")
+                cat_n = normalize_text(product.category or "")
+                variants_n = [normalize_text(v) for v in (product.variants or [])]
+
+                score = 0
+                if name_n.startswith(normalized):
+                    score = 100
+                elif normalized in name_n:
+                    score = 85
+                elif any(normalized in v for v in variants_n):
+                    score = 75
+                elif normalized in brand_n:
+                    score = 60
+                elif normalized in cat_n:
+                    score = 40
+
+                if score > 0 and product.name not in seen:
+                    seen.add(product.name)
+                    matches.append({
+                        "name": product.name,
+                        "brand": product.brand or "",
+                        "category": product.category or "",
+                        "score": score,
+                    })
+    except Exception as e:
+        logger.warning(f"Erro ao buscar sugestões: {e}")
+
+    matches.sort(key=lambda x: -x["score"])
+
+    synonym_terms = expand_query_for_scrape(term, max_variants=6)
+    # Remove o próprio termo e o normalizado da lista de sinônimos
+    synonym_terms = [s for s in synonym_terms if normalize_text(s) != normalized]
+
+    return {
+        "products": [{"name": m["name"], "brand": m["brand"], "category": m["category"]} for m in matches[:limit]],
+        "synonyms": synonym_terms[:5],
+        "has_match": len(matches) > 0,
+    }
+
+
 @router.post("/search/instant", response_model=SearchResponse)
 async def search_instant(request: SearchRequest):
     """
@@ -759,21 +855,25 @@ async def search_instant(request: SearchRequest):
 
             async with async_session() as session:
                 query = select(ScrapedProductDB)
-                conditions = []
-                for token in tokens:
-                    if len(token) >= 2:
-                        conditions.append(
-                            ScrapedProductDB.product_name_normalized.ilike(f"%{token}%")
+                token_conds = [
+                    ScrapedProductDB.product_name_normalized.ilike(f"%{t}%")
+                    for t in tokens
+                    if len(t) >= 2
+                ]
+                if not token_conds:
+                    rows = []
+                else:
+                    # OR: traz "Adesivo Tigre" mesmo sem a palavra "cola" no nome normalizado
+                    query = query.where(or_(*token_conds))
+
+                    if allowed_normalized:
+                        query = query.where(
+                            ScrapedProductDB.store.in_(allowed_store_names)
                         )
-                if conditions:
-                    query = query.where(*conditions)
 
-                if allowed_normalized:
-                    query = query.where(ScrapedProductDB.store.in_(allowed_store_names))
-
-                query = query.order_by(ScrapedProductDB.price.asc()).limit(200)
-                result = await session.execute(query)
-                rows = result.scalars().all()
+                    query = query.limit(1200)
+                    result = await session.execute(query)
+                    rows = result.scalars().all()
 
             offers = []
             seen = set()
@@ -800,6 +900,9 @@ async def search_instant(request: SearchRequest):
                 )
 
             offers = filter_results_by_query(item, offers)
+            offers.sort(
+                key=lambda x: (-x.score, x.price if x.price > 0 else float("inf"))
+            )
 
             prices_with_value = [o.price for o in offers if o.price > 0]
             if offers and prices_with_value:
@@ -879,6 +982,9 @@ async def search_refresh(request: SearchRequest):
     for item in request.items:
         normalized = normalize_text(item)
         item_offers = filter_results_by_query(item, fresh_offers)
+        item_offers.sort(
+            key=lambda x: (-x.score, x.price if x.price > 0 else float("inf"))
+        )
 
         if allowed_normalized:
             item_offers = [

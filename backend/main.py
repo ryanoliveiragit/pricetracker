@@ -90,6 +90,39 @@ app.include_router(saves.router, prefix="/api/saves", tags=["saves"])
 app.include_router(agent.router, prefix="/api", tags=["agent"])
 
 
+@app.get("/api/admin/scraper-sessions")
+async def list_scraper_sessions():
+    """Lista todas as sessões de scraper persistidas no banco."""
+    from app.services.session_persistence import list_sessions
+    import asyncio
+    sessions = await asyncio.to_thread(list_sessions)
+    return {"sessions": sessions, "total": len(sessions)}
+
+
+@app.delete("/api/admin/scraper-sessions/{scraper_key}")
+async def delete_scraper_session(scraper_key: str):
+    """Remove sessão persistida e força novo login na próxima busca."""
+    from app.services.session_persistence import delete_session
+    from app.services.session_cache import invalidate
+    import asyncio
+    deleted = await asyncio.to_thread(delete_session, scraper_key)
+    invalidate(scraper_key)
+    return {"deleted": deleted, "scraper_key": scraper_key}
+
+
+@app.delete("/api/admin/scraper-sessions")
+async def clear_all_scraper_sessions():
+    """Remove todas as sessões persistidas. Todos os scrapers farão login na próxima busca."""
+    from app.services.session_persistence import list_sessions, delete_session
+    from app.services.session_cache import invalidate
+    import asyncio
+    sessions = await asyncio.to_thread(list_sessions)
+    for s in sessions:
+        await asyncio.to_thread(delete_session, s["scraper_key"])
+        invalidate(s["scraper_key"])
+    return {"deleted": len(sessions)}
+
+
 @app.post("/api/admin/reseed-suppliers")
 async def reseed_suppliers():
     """Force recreate all suppliers with default credentials. Use when DB has wrong/empty creds."""
