@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from "react-image-crop";
+import { useCallback, useRef, useState } from "react";
+import ReactCrop, {
+  centerCrop,
+  makeAspectCrop,
+  type Crop,
+  type PixelCrop,
+} from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { Upload, X, Check } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Check, ImagePlus, Trash2, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface ImageUploadCropProps {
   value?: string;
@@ -13,205 +18,202 @@ interface ImageUploadCropProps {
   className?: string;
 }
 
-export default function ImageUploadCrop({ 
-  value, 
-  onChange, 
+export default function ImageUploadCrop({
+  value,
+  onChange,
   aspect = 1,
-  className = "" 
+  className = "",
 }: ImageUploadCropProps) {
-  const [imgSrc, setImgSrc] = useState<string>("");
+  const [imgSrc, setImgSrc] = useState("");
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [hovering, setHovering] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function onImageLoad(event: React.SyntheticEvent<HTMLImageElement>) {
-    if (!aspect) return;
-    const { width, height } = event.currentTarget;
-    const nextCrop = centerCrop(
-      makeAspectCrop(
-        {
-          unit: "%",
-          width: 80
-        },
-        aspect,
-        width,
-        height
-      ),
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { width, height } = e.currentTarget;
+    const next = centerCrop(
+      makeAspectCrop({ unit: "%", width: 80 }, aspect, width, height),
       width,
       height
     );
-    setCrop(nextCrop);
-    setCompletedCrop({
-      x: nextCrop.x ?? 0,
-      y: nextCrop.y ?? 0,
-      width: nextCrop.width ?? width,
-      height: nextCrop.height ?? height,
-      unit: "px"
-    });
+    setCrop(next);
+    setCompletedCrop({ x: next.x ?? 0, y: next.y ?? 0, width: next.width ?? width, height: next.height ?? height, unit: "px" });
   }
 
   function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      
-      // Validar tamanho (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Imagem muito grande. Máximo 5MB.");
-        return;
-      }
-      
-      // Validar tipo
-      if (!file.type.startsWith("image/")) {
-        alert("Apenas imagens são permitidas.");
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.addEventListener("load", () => {
-        setImgSrc(reader.result?.toString() || "");
-      });
-      reader.readAsDataURL(file);
-    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("Máximo 5 MB."); return; }
+    if (!file.type.startsWith("image/")) { alert("Apenas imagens."); return; }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => setImgSrc(reader.result?.toString() || ""));
+    reader.readAsDataURL(file);
   }
 
-  const getCroppedImg = useCallback(() => {
+  const confirmCrop = useCallback(() => {
     if (!completedCrop || !imgRef.current) return;
-
     const canvas = document.createElement("canvas");
-    const image = imgRef.current;
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    const pixelRatio = window.devicePixelRatio || 1;
-
-    canvas.width = Math.floor(completedCrop.width * pixelRatio);
-    canvas.height = Math.floor(completedCrop.height * pixelRatio);
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) return;
-
-    ctx.scale(pixelRatio, pixelRatio);
+    const img = imgRef.current;
+    const scaleX = img.naturalWidth / img.width;
+    const scaleY = img.naturalHeight / img.height;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(completedCrop.width * dpr);
+    canvas.height = Math.floor(completedCrop.height * dpr);
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
     ctx.imageSmoothingQuality = "high";
-
-    ctx.drawImage(
-      image,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0,
-      0,
-      completedCrop.width,
-      completedCrop.height
-    );
-
-    const base64Image = canvas.toDataURL("image/jpeg", 0.9);
-    onChange(base64Image);
+    ctx.drawImage(img, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, completedCrop.width, completedCrop.height);
+    onChange(canvas.toDataURL("image/jpeg", 0.92));
     setImgSrc("");
   }, [completedCrop, onChange]);
 
-  function handleRemove() {
+  function handleRemove(e: React.MouseEvent) {
+    e.stopPropagation();
     onChange("");
     setImgSrc("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
     <div className={className}>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={onSelectFile}
-        className="hidden"
-      />
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={onSelectFile} className="hidden" />
 
-      {!value && !imgSrc && (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="flex h-32 w-full items-center justify-center rounded-lg border-2 border-dashed border-neutral-800 bg-neutral-950/50 transition-colors hover:border-purple-500 hover:bg-neutral-900"
-        >
-          <div className="text-center">
-            <Upload className="mx-auto mb-2 h-8 w-8 text-neutral-500" />
-            <p className="text-sm font-medium text-neutral-300">Upload Logo</p>
-            <p className="text-xs text-neutral-500">Clique para selecionar</p>
+      {/* ── Upload area / Preview ── */}
+      <button
+        type="button"
+        onClick={() => !value && fileInputRef.current?.click()}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+        className="relative w-full aspect-square rounded-xl overflow-hidden transition-all duration-200 cursor-pointer"
+        style={{
+          background: value ? "transparent" : "hsl(var(--muted))",
+          border: `1.5px dashed ${value ? "transparent" : hovering ? "rgb(var(--primary-500))" : "hsl(var(--border))"}`,
+          outline: "none",
+        }}
+        title={value ? "Clique para remover ou trocar" : "Clique para enviar logo"}
+      >
+        {value ? (
+          <>
+            <img
+              src={value}
+              alt="Logo"
+              className="w-full h-full object-contain rounded-xl"
+              style={{ background: "hsl(var(--muted)/0.4)" }}
+            />
+            {/* Overlay ao hover */}
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-xl transition-opacity duration-150"
+              style={{
+                background: "rgba(0,0,0,0.52)",
+                opacity: hovering ? 1 : 0,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold text-white transition-colors"
+                style={{ background: "rgb(var(--primary-500))", border: "none" }}
+              >
+                <ImagePlus size={11} /> Trocar
+              </button>
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold text-white transition-colors"
+                style={{ background: "rgba(239,68,68,0.85)", border: "none" }}
+              >
+                <Trash2 size={11} /> Remover
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-1.5 h-full w-full p-2">
+            <div
+              className="w-8 h-8 rounded-lg grid place-items-center transition-colors"
+              style={{ background: hovering ? "rgb(var(--primary-500) / 0.15)" : "hsl(var(--muted))", color: hovering ? "rgb(var(--primary-500))" : "hsl(var(--muted-foreground))" }}
+            >
+              <ImagePlus size={16} />
+            </div>
+            <p className="text-[10px] font-medium text-muted-foreground leading-tight text-center">
+              {hovering ? "Selecionar" : "Logo"}
+            </p>
           </div>
-        </button>
-      )}
+        )}
+      </button>
 
-      {value && !imgSrc && (
-        <div className="relative">
-          <img
-            src={value}
-            alt="Logo"
-            className="h-32 w-32 rounded-lg border border-neutral-800 object-cover"
-          />
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
+      {/* ── Crop modal ── */}
       <AnimatePresence>
         {imgSrc && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-neutral-900 p-6"
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 24, stiffness: 320 }}
+              className="w-full max-w-lg bg-card border border-border flex flex-col overflow-hidden"
+              style={{ borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.35)", maxHeight: "88dvh" }}
             >
-              <h3 className="mb-4 text-lg font-semibold text-neutral-100">
-                Ajustar Imagem
-              </h3>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Ajustar imagem</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Arraste para reposicionar o recorte</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImgSrc("")}
+                  className="w-7 h-7 rounded-md grid place-items-center bg-muted border border-border cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
 
-              <div className="mb-4 max-h-96 overflow-auto">
+              {/* Crop area */}
+              <div className="overflow-auto flex-1 p-4 flex items-center justify-center bg-muted/30">
                 <ReactCrop
                   crop={crop}
                   onChange={(c) => setCrop(c)}
                   onComplete={(c) => setCompletedCrop(c)}
                   aspect={aspect}
                   keepSelection
-                  minWidth={80}
-                  minHeight={80}
+                  minWidth={60}
+                  minHeight={60}
                 >
                   <img
                     ref={imgRef}
                     src={imgSrc}
-                    alt="Crop"
-                    className="max-w-full"
+                    alt="Crop preview"
+                    className="max-w-full max-h-[50vh] rounded-lg"
                     onLoad={onImageLoad}
                   />
                 </ReactCrop>
               </div>
 
-              <div className="flex gap-3">
+              {/* Footer */}
+              <div className="flex gap-2 px-5 py-3.5 border-t border-border bg-muted/30">
                 <button
                   type="button"
                   onClick={() => setImgSrc("")}
-                  className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2.5 text-sm font-medium text-neutral-300 transition-colors hover:bg-neutral-800"
+                  className="flex-1 px-4 py-2 rounded-lg text-[13px] font-medium text-muted-foreground border border-border bg-card cursor-pointer hover:bg-muted transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
-                  onClick={getCroppedImg}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-glow"
+                  onClick={confirmCrop}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white cursor-pointer transition-opacity hover:opacity-90"
+                  style={{ background: "rgb(var(--primary-500))", border: "none", boxShadow: "0 2px 8px -1px rgb(var(--primary-500)/0.4)" }}
                 >
-                  <Check className="h-4 w-4" />
-                  Confirmar
+                  <Check size={14} /> Confirmar
                 </button>
               </div>
             </motion.div>

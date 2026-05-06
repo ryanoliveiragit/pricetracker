@@ -136,7 +136,12 @@ export function useSearchResults() {
       });
 
       const sortedOffers = [...offers].sort((a, b) => {
-        if (sortBy === "best_price") return a.price - b.price;
+        if (sortBy === "best_price") {
+          const pa = a.price > 0 ? a.price : Number.POSITIVE_INFINITY;
+          const pb = b.price > 0 ? b.price : Number.POSITIVE_INFINITY;
+          if (pa !== pb) return pa - pb;
+          return (b.score ?? 0) - (a.score ?? 0);
+        }
         return a.productName.localeCompare(b.productName);
       });
 

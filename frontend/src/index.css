@@ -357,6 +357,50 @@ a {
     }
 }
 
+/* ── Modal responsive radius ─────────────────────────────────────────────── */
+@media (min-width: 640px) {
+  .supplier-modal-form {
+    border-radius: 16px !important;
+  }
+}
+
+/* ── Supplier form 2-col grid ─────────────────────────────────────────────── */
+.supplier-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "nome"
+    "url"
+    "logo"
+    "sep1"
+    "region"
+    "estado"
+    "sep2"
+    "login"
+    "creds"
+    "sep3"
+    "notes";
+}
+
+@media (min-width: 480px) {
+  .supplier-form-grid {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+    row-gap: 14px;
+    grid-template-areas:
+      "nome  logo"
+      "url   logo"
+      "sep1  sep1"
+      "region estado"
+      "sep2  sep2"
+      "login login"
+      "creds creds"
+      "sep3  sep3"
+      "notes notes";
+  }
+}
+
 /* ── Improved card & table utilities ──────────────────────────────────────── */
 
 @layer components {

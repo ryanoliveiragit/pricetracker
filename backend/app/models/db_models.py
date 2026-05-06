@@ -163,6 +163,27 @@ class CatalogScrapeStatusDB(Base):
     )
 
 
+class ScraperSessionDB(Base):
+    """
+    Cookies de sessão persistidos por scraper.
+    Permite reutilizar login entre restarts do app.
+    """
+    __tablename__ = "scraper_sessions"
+
+    scraper_key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    username: Mapped[str] = mapped_column(String(255), nullable=False)
+    cookies_json: Mapped[str] = mapped_column(Text, nullable=False)
+    saved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    is_valid: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class SavedOfferDB(Base):
     """Ofertas salvas (favoritas) pelos usuários."""
     __tablename__ = "saved_offers"

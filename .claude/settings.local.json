@@ -44,7 +44,8 @@
       "Bash(xargs grep *)",
       "Bash(pip list *)",
       "WebFetch(domain:api.anthropic.com)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute"
     ],
     "deny": [],
     "ask": []

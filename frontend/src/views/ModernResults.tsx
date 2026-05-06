@@ -372,18 +372,18 @@ export default function ModernResults() {
   /* ── empty state ── */
   if (items.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F7F5] dark:bg-neutral-950">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center px-4">
-          <ShoppingBag className="mx-auto mb-4 h-12 w-12 text-[#D0D0CA]" />
-          <h2 className="mb-2 text-xl font-semibold text-[#1A1A18] dark:text-neutral-100">
+          <ShoppingBag className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h2 className="mb-2 text-xl font-semibold text-foreground">
             Nenhuma busca encontrada
           </h2>
-          <p className="mb-6 text-sm text-[#6B6B63] dark:text-neutral-400 max-w-xs mx-auto">
+          <p className="mb-6 text-sm text-muted-foreground max-w-xs mx-auto">
             Volte para a tela de busca e selecione os produtos para cotação
           </p>
           <Link
             href="/search"
-            className="inline-flex items-center gap-2 rounded-xl bg-[rgb(var(--primary-500))] px-5 py-2.5 text-sm font-semibold text-[#1A1A18] dark:text-neutral-100 transition-all hover:bg-[rgb(var(--primary-600))] shadow-sm"
+            className="inline-flex items-center gap-2 rounded-xl bg-[rgb(var(--primary-500))] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[rgb(var(--primary-600))] shadow-sm"
           >
             <Search className="h-4 w-4" />
             Iniciar Nova Busca
@@ -414,7 +414,7 @@ export default function ModernResults() {
     <div className="space-y-5">
       {/* Header + clear */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-neutral-500">
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
           Filtros
         </span>
         {hasActiveFilters && (
@@ -490,17 +490,17 @@ export default function ModernResults() {
       {/* Search within results */}
       <div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#C0C0BA] dark:text-neutral-600" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={cardSearch}
             onChange={(e) => setCardSearch(e.target.value)}
             placeholder="Filtrar resultados..."
-            className="w-full rounded-lg border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-900 py-2 pl-9 pr-8 text-xs text-slate-800 dark:text-neutral-100 placeholder-slate-400 dark:placeholder-neutral-600 focus:border-[rgb(var(--primary-500))] focus:outline-none focus:bg-white dark:focus:bg-neutral-800 transition-colors"
+            className="w-full rounded-lg border border-border bg-muted py-2 pl-9 pr-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-[rgb(var(--primary-500))] focus:outline-none focus:bg-card transition-colors"
           />
           {cardSearch && (
             <button
               onClick={() => setCardSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C0C0BA] dark:text-neutral-600 hover:text-[#6B6B63]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>
@@ -526,15 +526,15 @@ export default function ModernResults() {
             className={cn(
               "w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors",
               value
-                ? "bg-[rgb(var(--primary-500))]/10 text-[#1A1A18] dark:text-neutral-100 font-medium"
-                : "text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800",
+                ? "bg-[rgb(var(--primary-500))]/10 text-foreground font-medium"
+                : "text-muted-foreground hover:bg-muted",
             )}
           >
             <span>{label}</span>
             <div
               className={cn(
                 "h-4 w-7 rounded-full transition-colors relative flex-shrink-0",
-                value ? "bg-[rgb(var(--primary-500))]" : "bg-[#D0D0CA] dark:bg-neutral-700",
+                value ? "bg-[rgb(var(--primary-500))]" : "bg-muted-foreground/25",
               )}
             >
               <div
@@ -550,7 +550,7 @@ export default function ModernResults() {
 
       {/* Price range */}
       <div className="space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-slate-400 dark:text-neutral-500">
+        <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
           Preco
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -558,14 +558,14 @@ export default function ModernResults() {
             type="number"
             value={priceMin}
             onChange={(e) => setPriceMin(Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-900 px-3 py-1.5 text-xs text-slate-800 dark:text-neutral-100 focus:border-[rgb(var(--primary-500))] focus:outline-none"
+            className="w-full rounded-lg border border-border bg-muted px-3 py-1.5 text-xs text-foreground focus:border-[rgb(var(--primary-500))] focus:outline-none"
             placeholder="Min"
           />
           <input
             type="number"
             value={priceMax}
             onChange={(e) => setPriceMax(Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-900 px-3 py-1.5 text-xs text-slate-800 dark:text-neutral-100 focus:border-[rgb(var(--primary-500))] focus:outline-none"
+            className="w-full rounded-lg border border-border bg-muted px-3 py-1.5 text-xs text-foreground focus:border-[rgb(var(--primary-500))] focus:outline-none"
             placeholder="Max"
           />
         </div>
@@ -574,7 +574,7 @@ export default function ModernResults() {
       {/* Product filter (multiple items) */}
       {items.length > 1 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-slate-400 dark:text-neutral-500">
+          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
             Produto
           </p>
           <div className="space-y-0.5">
@@ -583,8 +583,8 @@ export default function ModernResults() {
               className={cn(
                 "w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-colors",
                 activeQuery === null
-                  ? "bg-[#1A1A18] dark:bg-neutral-100 text-white dark:text-neutral-900"
-                  : "text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800",
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted",
               )}
             >
               <span>Todos</span>
@@ -599,8 +599,8 @@ export default function ModernResults() {
                   className={cn(
                     "w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-colors text-left",
                     activeQuery === q
-                      ? "bg-[rgb(var(--primary-500))] text-[#1A1A18] dark:text-neutral-100 font-medium"
-                      : "text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800",
+                      ? "bg-[rgb(var(--primary-500))] text-white font-medium"
+                      : "text-muted-foreground hover:bg-muted",
                   )}
                 >
                   <span className="truncate">{q}</span>
@@ -617,7 +617,7 @@ export default function ModernResults() {
       {/* Units */}
       {allUnits.length > 1 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-slate-400 dark:text-neutral-500">
+          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
             Embalagem
           </p>
           <div className="flex flex-wrap gap-1">
@@ -628,8 +628,8 @@ export default function ModernResults() {
                 className={cn(
                   "rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors",
                   activeUnits.has(u)
-                    ? "bg-[rgb(var(--primary-500))] text-[#1A1A18] dark:text-neutral-100"
-                    : "bg-[#F7F7F5] dark:bg-neutral-950 text-[#6B6B63] dark:text-neutral-400 border border-[#E8E8E4] dark:border-neutral-800 hover:bg-[#EFEFEB] dark:hover:bg-neutral-700",
+                    ? "bg-[rgb(var(--primary-500))] text-white"
+                    : "bg-background text-muted-foreground border border-border hover:bg-muted",
                 )}
               >
                 {u}
@@ -642,7 +642,7 @@ export default function ModernResults() {
       {/* Brands */}
       {allBrands.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-slate-400 dark:text-neutral-500">
+          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
             Marcas
           </p>
           <div className="space-y-0.5 max-h-36 overflow-y-auto">
@@ -656,12 +656,12 @@ export default function ModernResults() {
                   className={cn(
                     "w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-colors text-left",
                     active
-                      ? "bg-[rgb(var(--primary-500))]/10 text-[#1A1A18] dark:text-neutral-100 font-medium"
-                      : "text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800",
+                      ? "bg-[rgb(var(--primary-500))]/10 text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted",
                   )}
                 >
                   <span className="truncate">{brand}</span>
-                  <span className="text-[10px] text-[#A0A09A] dark:text-neutral-500">
+                  <span className="text-[10px] text-muted-foreground">
                     {count}
                   </span>
                 </button>
@@ -674,7 +674,7 @@ export default function ModernResults() {
       {/* Stores */}
       {allSuppliers.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-slate-400 dark:text-neutral-500">
+          <p className="text-[10px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
             Lojas
           </p>
           <div className="space-y-0.5">
@@ -690,12 +690,12 @@ export default function ModernResults() {
                   className={cn(
                     "w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-colors text-left",
                     active
-                      ? "bg-[rgb(var(--primary-500))]/10 text-[#1A1A18] dark:text-neutral-100 font-medium"
-                      : "text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800",
+                      ? "bg-[rgb(var(--primary-500))]/10 text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted",
                   )}
                 >
                   <span className="truncate">{supplier}</span>
-                  <span className="text-[10px] text-[#A0A09A] dark:text-neutral-500">
+                  <span className="text-[10px] text-muted-foreground">
                     {count}
                   </span>
                 </button>
@@ -708,21 +708,21 @@ export default function ModernResults() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-neutral-950">
+    <div className="min-h-screen bg-background">
       {/* ══════ TOP BAR ══════ */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-neutral-950/98 backdrop-blur-xl border-b border-slate-100 dark:border-neutral-800/50">
+      <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-xl border-b border-border/50">
         <div className="h-[54px] px-4 md:px-5 flex items-center gap-3">
           {/* Back */}
           <Link
             href="/search"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-neutral-500 hover:bg-slate-100 dark:hover:bg-neutral-800/80 transition-colors flex-shrink-0"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
 
           {/* Title + inline badge */}
           <div className="flex-1 flex items-center gap-2.5 min-w-0">
-            <h1 className="text-[15px] font-bold text-[#1A1A18] dark:text-neutral-50 truncate tracking-tight">
+            <h1 className="text-[15px] font-bold text-foreground truncate tracking-tight">
               {items.length === 1 ? items[0] : `${items.length} produtos`}
             </h1>
             {!loading && totalOffers > 0 && (
@@ -731,7 +731,7 @@ export default function ModernResults() {
                   <Zap className="h-2.5 w-2.5 text-[rgb(var(--primary-500))]" />
                   <span className="text-[10px] font-semibold text-[rgb(var(--primary-500))]">Instantâneo</span>
                   {dataAge !== null && dataAge > 0 && (
-                    <span className="text-[10px] text-slate-400 dark:text-neutral-500">· {formatAge(dataAge)}</span>
+                    <span className="text-[10px] text-muted-foreground">· {formatAge(dataAge)}</span>
                   )}
                 </div>
               ) : (
@@ -748,7 +748,7 @@ export default function ModernResults() {
             {/* Mobile filter */}
             <button
               onClick={() => setMobileFiltersOpen(true)}
-              className="xl:hidden relative flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 text-xs font-medium text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors"
+              className="xl:hidden relative flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
               {activeFilterCount > 0 && (
@@ -765,7 +765,7 @@ export default function ModernResults() {
                 disabled={refreshing || loading}
                 className={cn(
                   "flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold transition-all shadow-sm active:scale-[0.97]",
-                  "bg-[rgb(var(--primary-500))] text-white hover:bg-[rgb(var(--primary-600))]",
+                  "bg-[rgb(var(--primary-500))] text-white hover:bg-[rgb(var(--primary-600))] active:scale-[0.97]",
                   (refreshing || loading) && "opacity-60 cursor-not-allowed",
                 )}
               >
@@ -795,7 +795,7 @@ export default function ModernResults() {
 
         {/* Store progress bar (when streaming) */}
         {loading && storeStates.length > 0 && (
-          <div className="px-4 md:px-5 pb-2.5 flex items-center gap-2 border-t border-slate-100 dark:border-neutral-800/40 pt-2">
+          <div className="px-4 md:px-5 pb-2.5 flex items-center gap-2 border-t border-border/40 pt-2">
             <div className="flex items-center gap-1.5 overflow-x-auto flex-1">
               {storeStates.map((s) => {
                 const isDone = s.status === "done";
@@ -809,7 +809,7 @@ export default function ModernResults() {
                       isDone && "bg-[rgb(var(--primary-500))]/10 text-[rgb(var(--primary-500))]",
                       isSearching && "bg-amber-50 dark:bg-amber-900/20 text-amber-600",
                       isError && "bg-red-50 dark:bg-red-900/20 text-red-500",
-                      !isDone && !isSearching && !isError && "bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500",
+                      !isDone && !isSearching && !isError && "bg-muted text-muted-foreground",
                     )}
                   >
                     {isSearching && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
@@ -820,8 +820,8 @@ export default function ModernResults() {
                 );
               })}
             </div>
-            <span className="text-[10px] text-slate-400 dark:text-neutral-500 tabular-nums flex-shrink-0">{elapsed}s</span>
-            <div className="w-14 h-1 rounded-full bg-slate-200 dark:bg-neutral-800 overflow-hidden flex-shrink-0">
+            <span className="text-[10px] text-muted-foreground tabular-nums flex-shrink-0">{elapsed}s</span>
+            <div className="w-14 h-1 rounded-full bg-muted overflow-hidden flex-shrink-0">
               <motion.div
                 className="h-full bg-[rgb(var(--primary-500))] rounded-full"
                 animate={{ width: `${progress}%` }}
@@ -835,7 +835,7 @@ export default function ModernResults() {
       {/* ══════ CONTENT ══════ */}
       <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className="w-60 shrink-0 border-r border-slate-100 dark:border-neutral-800/50 bg-white dark:bg-neutral-950 hidden xl:flex flex-col h-[calc(100dvh-114px)] sticky top-[54px] overflow-y-auto">
+        <aside className="w-60 shrink-0 border-r border-border/50 bg-card hidden xl:flex flex-col h-[calc(100dvh-114px)] sticky top-[54px] overflow-y-auto">
           <div className="px-4 pt-5 pb-8">{filterContent}</div>
         </aside>
 
@@ -855,15 +855,15 @@ export default function ModernResults() {
                 animate={{ x: 0 }}
                 exit={{ x: -280 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed left-0 top-0 bottom-0 z-50 w-[272px] bg-white dark:bg-neutral-900 shadow-2xl overflow-y-auto xl:hidden"
+                className="fixed left-0 top-0 bottom-0 z-50 w-[272px] bg-card shadow-2xl overflow-y-auto xl:hidden"
               >
-                <div className="px-4 py-4 flex items-center justify-between border-b border-[#E8E8E4] dark:border-neutral-800">
-                  <span className="text-sm font-semibold text-[#1A1A18] dark:text-neutral-100">
+                <div className="px-4 py-4 flex items-center justify-between border-b border-border">
+                  <span className="text-sm font-semibold text-foreground">
                     Filtros
                   </span>
                   <button
                     onClick={() => setMobileFiltersOpen(false)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-[#A0A09A] dark:text-neutral-500 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -872,7 +872,7 @@ export default function ModernResults() {
                 <div className="px-4 pb-4">
                   <button
                     onClick={() => setMobileFiltersOpen(false)}
-                    className="w-full rounded-xl bg-[rgb(var(--primary-500))] py-2.5 text-sm font-semibold text-[#1A1A18] dark:text-neutral-100 hover:bg-[rgb(var(--primary-600))] transition-colors"
+                    className="w-full rounded-xl bg-[rgb(var(--primary-500))] py-2.5 text-sm font-semibold text-white hover:bg-[rgb(var(--primary-600))] transition-colors"
                   >
                     Ver {filtered.length} resultado
                     {filtered.length !== 1 ? "s" : ""}
@@ -889,13 +889,13 @@ export default function ModernResults() {
             {/* ── Stats strip ── */}
             {!loading && totalOffers > 0 && (
               <div className="flex items-center gap-2 mb-5 flex-wrap">
-                <div className="flex items-baseline gap-1.5 rounded-xl bg-slate-50 dark:bg-neutral-900/70 border border-slate-100 dark:border-neutral-800/60 px-3.5 py-2">
-                  <span className="text-[22px] font-bold text-[#1A1A18] dark:text-neutral-50 tabular-nums leading-none">{totalOffers}</span>
-                  <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-500 uppercase tracking-wide">ofertas</span>
+                <div className="flex items-baseline gap-1.5 rounded-xl bg-muted/70 border border-border/60 px-3.5 py-2">
+                  <span className="text-[22px] font-bold text-foreground tabular-nums leading-none">{totalOffers}</span>
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">ofertas</span>
                 </div>
-                <div className="flex items-baseline gap-1.5 rounded-xl bg-slate-50 dark:bg-neutral-900/70 border border-slate-100 dark:border-neutral-800/60 px-3.5 py-2">
-                  <span className="text-[22px] font-bold text-[#1A1A18] dark:text-neutral-50 tabular-nums leading-none">{uniqueStores}</span>
-                  <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-500 uppercase tracking-wide">loja{uniqueStores !== 1 ? "s" : ""}</span>
+                <div className="flex items-baseline gap-1.5 rounded-xl bg-muted/70 border border-border/60 px-3.5 py-2">
+                  <span className="text-[22px] font-bold text-foreground tabular-nums leading-none">{uniqueStores}</span>
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">loja{uniqueStores !== 1 ? "s" : ""}</span>
                 </div>
                 {bestPriceInFiltered && (
                   <div className="flex items-baseline gap-1.5 rounded-xl bg-[rgb(var(--primary-500))]/8 dark:bg-[rgb(var(--primary-500))]/10 border border-[rgb(var(--primary-500))]/15 dark:border-[rgb(var(--primary-500))]/20 px-3.5 py-2">
@@ -909,13 +909,13 @@ export default function ModernResults() {
             {/* ── Toolbar ── */}
             {totalOffers > 0 && (
               <div className="flex items-center justify-between gap-3 mb-4">
-                <span className="text-[12px] text-slate-400 dark:text-neutral-500 tabular-nums">
+                <span className="text-[12px] text-muted-foreground tabular-nums">
                   {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
                   {totalPages > 1 && <span className="ml-1 opacity-70">· pág. {page}/{totalPages}</span>}
                 </span>
                 <div className="flex items-center gap-1.5">
                   {/* View mode */}
-                  <div className="hidden sm:flex items-center rounded-lg border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-0.5 gap-0.5">
+                  <div className="hidden sm:flex items-center rounded-lg border border-border bg-card p-0.5 gap-0.5">
                     {([["grid", Grid3X3], ["list", List]] as const).map(([mode, Icon]) => (
                       <button
                         key={mode}
@@ -923,8 +923,8 @@ export default function ModernResults() {
                         className={cn(
                           "rounded-md p-1.5 transition-colors",
                           viewMode === mode
-                            ? "bg-slate-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
-                            : "text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300",
+                            ? "bg-foreground text-background"
+                            : "text-muted-foreground hover:text-foreground",
                         )}
                       >
                         <Icon className="h-3.5 w-3.5" />
@@ -932,7 +932,7 @@ export default function ModernResults() {
                     ))}
                   </div>
                   {/* Sort */}
-                  <div className="flex items-center rounded-lg border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-0.5 gap-0.5">
+                  <div className="flex items-center rounded-lg border border-border bg-card p-0.5 gap-0.5">
                     {(["best_price", "alphabetical"] as const).map((opt) => (
                       <button
                         key={opt}
@@ -940,8 +940,8 @@ export default function ModernResults() {
                         className={cn(
                           "rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors",
                           sortBy === opt
-                            ? "bg-slate-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
-                            : "text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800",
+                            ? "bg-foreground text-background"
+                            : "text-muted-foreground hover:bg-muted",
                         )}
                       >
                         {opt === "best_price" ? "Menor Preço" : "A-Z"}
@@ -959,10 +959,10 @@ export default function ModernResults() {
                   <Loader2 className="h-7 w-7 animate-spin text-[rgb(var(--primary-500))]" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-[#1A1A18] dark:text-neutral-100">
+                  <p className="text-sm font-semibold text-foreground">
                     Conectando as lojas
                   </p>
-                  <p className="text-xs text-[#A0A09A] dark:text-neutral-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Isso pode levar alguns segundos...
                   </p>
                 </div>
@@ -971,16 +971,16 @@ export default function ModernResults() {
 
             {/* ── Loading: per-store panel (no results yet) ── */}
             {loading && storeStates.length > 0 && allOffers.length === 0 && (
-              <div className="bg-white dark:bg-neutral-900 border border-[#E8E8E4] dark:border-neutral-800 rounded-2xl p-6 mb-6 max-w-lg mx-auto">
+              <div className="bg-card border border-border rounded-2xl p-6 mb-6 max-w-lg mx-auto">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgb(var(--primary-500))]/10">
                     <Loader2 className="h-5 w-5 animate-spin text-[rgb(var(--primary-500))]" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#1A1A18] dark:text-neutral-100">
+                    <p className="text-sm font-semibold text-foreground">
                       Buscando resultados
                     </p>
-                    <p className="text-xs text-[#A0A09A] dark:text-neutral-500">
+                    <p className="text-xs text-muted-foreground">
                       Consultando {storeStates.length} fornecedores... (
                       {elapsed}s)
                     </p>
@@ -1012,17 +1012,17 @@ export default function ModernResults() {
                               <AlertCircle className="h-4 w-4 text-red-500" />
                             )}
                             {isPending && (
-                              <div className="h-1.5 w-1.5 rounded-full bg-[#D0D0CA] dark:bg-neutral-700" />
+                              <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />
                             )}
                           </div>
                           <span
                             className={cn(
                               "text-sm",
                               (isSearching || isDone) &&
-                                "text-[#1A1A18] dark:text-neutral-100 font-medium",
+                                "text-foreground font-medium",
                               isError && "text-red-600 dark:text-red-400",
                               isPending &&
-                                "text-[#A0A09A] dark:text-neutral-500",
+                                "text-muted-foreground",
                             )}
                           >
                             {s.name}
@@ -1033,9 +1033,9 @@ export default function ModernResults() {
                             "text-xs",
                             isSearching &&
                               "text-[rgb(var(--primary-500))] animate-pulse font-medium",
-                            isDone && "text-[#6B6B63] dark:text-neutral-400",
+                            isDone && "text-muted-foreground",
                             isError && "text-red-500",
-                            isPending && "text-[#D0D0CA]",
+                            isPending && "text-muted-foreground/50",
                           )}
                         >
                           {isSearching && "Buscando..."}
@@ -1050,7 +1050,7 @@ export default function ModernResults() {
                   })}
                 </div>
 
-                <div className="h-1.5 rounded-full bg-[#F0F0EC] dark:bg-neutral-800 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <motion.div
                     className="h-full rounded-full bg-[rgb(var(--primary-500))]"
                     initial={{ width: "0%" }}
@@ -1058,7 +1058,7 @@ export default function ModernResults() {
                     transition={{ duration: 0.4 }}
                   />
                 </div>
-                <p className="text-[10px] text-[#A0A09A] dark:text-neutral-500 text-right mt-1.5">
+                <p className="text-[10px] text-muted-foreground text-right mt-1.5">
                   {
                     storeStates.filter(
                       (s) => s.status === "done" || s.status === "error",
@@ -1088,19 +1088,19 @@ export default function ModernResults() {
 
             {/* ── Empty after filters ── */}
             {!error && filtered.length === 0 && allOffers.length > 0 && (
-              <div className="bg-white dark:bg-neutral-900 border border-[#E8E8E4] dark:border-neutral-800 rounded-2xl p-12 text-center">
-                <Search className="mx-auto mb-4 h-10 w-10 text-[#D0D0CA]" />
-                <h3 className="mb-2 text-base font-semibold text-[#1A1A18] dark:text-neutral-100">
+              <div className="bg-card border border-border rounded-2xl p-12 text-center">
+                <Search className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
+                <h3 className="mb-2 text-base font-semibold text-foreground">
                   Nenhum resultado com esses filtros
                 </h3>
-                <p className="mb-5 text-sm text-[#6B6B63] dark:text-neutral-400 max-w-sm mx-auto">
+                <p className="mb-5 text-sm text-muted-foreground max-w-sm mx-auto">
                   {cardSearch
                     ? `Nenhum produto para "${cardSearch}"`
                     : "Tente ajustar os filtros"}
                 </p>
                 <button
                   onClick={clearFilters}
-                  className="rounded-xl bg-[rgb(var(--primary-500))] px-5 py-2 text-sm font-semibold text-[#1A1A18] dark:text-neutral-100 hover:bg-[rgb(var(--primary-600))] transition-colors"
+                  className="rounded-xl bg-[rgb(var(--primary-500))] px-5 py-2 text-sm font-semibold text-white hover:bg-[rgb(var(--primary-600))] transition-colors"
                 >
                   Limpar filtros
                 </button>
@@ -1140,7 +1140,7 @@ export default function ModernResults() {
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E8E8E4] dark:border-neutral-800 bg-white dark:bg-neutral-900 text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800 disabled:opacity-30"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted disabled:opacity-30"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -1161,7 +1161,7 @@ export default function ModernResults() {
                         p === "..." ? (
                           <span
                             key={`e-${idx}`}
-                            className="px-1 text-[#A0A09A] dark:text-neutral-500"
+                            className="px-1 text-muted-foreground"
                           >
                             ...
                           </span>
@@ -1172,8 +1172,8 @@ export default function ModernResults() {
                             className={cn(
                               "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-colors",
                               page === p
-                                ? "bg-[#1A1A18] dark:bg-neutral-100 text-white dark:text-neutral-900"
-                                : "border border-[#E8E8E4] dark:border-neutral-800 bg-white dark:bg-neutral-900 text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800",
+                                ? "bg-foreground text-background"
+                                : "border border-border bg-card text-muted-foreground hover:bg-muted",
                             )}
                           >
                             {p}
@@ -1185,7 +1185,7 @@ export default function ModernResults() {
                         setPage((p) => Math.min(totalPages, p + 1))
                       }
                       disabled={page === totalPages}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E8E8E4] dark:border-neutral-800 bg-white dark:bg-neutral-900 text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800 disabled:opacity-30"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted disabled:opacity-30"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -1223,23 +1223,23 @@ export default function ModernResults() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-2xl bg-white dark:bg-neutral-900 border border-[#E8E8E4] dark:border-neutral-800 shadow-2xl p-6"
+              className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6"
             >
               <div className="flex items-start gap-3 mb-4">
                 <TriangleAlert className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="font-semibold text-[#1A1A18] dark:text-neutral-100">
+                  <h3 className="font-semibold text-foreground">
                     {failedStores.length === 1
                       ? "1 loja com problema"
                       : `${failedStores.length} lojas com problema`}
                   </h3>
-                  <p className="mt-0.5 text-sm text-[#6B6B63] dark:text-neutral-400">
+                  <p className="mt-0.5 text-sm text-muted-foreground">
                     A busca foi concluida, mas algumas lojas nao responderam.
                   </p>
                 </div>
                 <button
                   onClick={() => setShowErrorModal(false)}
-                  className="flex-shrink-0 rounded-lg p-1 text-[#A0A09A] dark:text-neutral-500 hover:text-[#6B6B63] transition-colors"
+                  className="flex-shrink-0 rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1271,7 +1271,7 @@ export default function ModernResults() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowErrorModal(false)}
-                  className="flex-1 rounded-xl border border-[#E8E8E4] dark:border-neutral-800 px-4 py-2.5 text-sm font-medium text-[#6B6B63] dark:text-neutral-400 hover:bg-[#F7F7F5] dark:hover:bg-neutral-800 transition-colors"
+                  className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
                 >
                   Fechar
                 </button>
@@ -1280,7 +1280,7 @@ export default function ModernResults() {
                     setShowErrorModal(false);
                     void search(items, true, selectedSuppliersFromAgent);
                   }}
-                  className="flex-1 rounded-xl bg-[rgb(var(--primary-500))] px-4 py-2.5 text-sm font-semibold text-[#1A1A18] dark:text-neutral-100 hover:bg-[rgb(var(--primary-600))] transition-colors"
+                  className="flex-1 rounded-xl bg-[rgb(var(--primary-500))] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[rgb(var(--primary-600))] transition-colors"
                 >
                   Tentar novamente
                 </button>

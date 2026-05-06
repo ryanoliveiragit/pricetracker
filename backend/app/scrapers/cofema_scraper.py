@@ -24,7 +24,9 @@ HEADERS = {
     "Sec-Ch-Ua-Platform": '"Windows"',
     "Cache-Control": "max-age=0",
 }
-MAX_PRODUCTS = 40
+# Máximo de cards por resposta HTML (uma página do grid)
+MAX_CARDS_PER_PAGE = 120
+MAX_GRID_PAGES = 10
 MAX_LOGIN_RETRIES = 3
 CACHE_KEY = "cofema"
 
@@ -143,13 +145,30 @@ class CofemaScraper(BaseScraper):
         grid_el = soup.find(attrs={"data-grid": True})
         gd = {k[5:]: v for k, v in grid_el.attrs.items() if k.startswith("data-")} if grid_el else {}
 
-        time.sleep(1)
-        html = self._fetch_grid(query, page_token, gd)
-        if not html:
-            logger.warning("Cofema: grid vazio")
-            return []
+        rows_per_page = int(gd.get("rows", 24) or 24)
+        all_offers: List[ProductOffer] = []
+        missing_price_ids: dict = {}
+        seen_urls: set[str] = set()
 
-        offers, missing_price_ids = self._parse_grid_html(html)
+        for page in range(1, MAX_GRID_PAGES + 1):
+            time.sleep(0.35)
+            html = self._fetch_grid(query, page_token, gd, page=page)
+            if not html:
+                break
+            page_offers, page_missing = self._parse_grid_html(html)
+            if not page_offers:
+                break
+            for offer in page_offers:
+                if offer.product_url in seen_urls:
+                    continue
+                seen_urls.add(offer.product_url)
+                all_offers.append(offer)
+                if offer.price == 0 and offer.sku:
+                    missing_price_ids[offer.sku] = True
+            if len(page_offers) < rows_per_page:
+                break
+
+        offers = all_offers
 
         if not offers:
             logger.info("Cofema: nenhum produto encontrado para '%s'", query)
@@ -183,15 +202,15 @@ class CofemaScraper(BaseScraper):
 
         logger.info("Cofema: %d produtos encontrados (%d com preço)",
                     len(offers), sum(1 for o in offers if o.price > 0))
-        return offers
+        return self._rank_results(query, offers, limit=None)
 
-    def _fetch_grid(self, query: str, token: str, gd: dict) -> str:
+    def _fetch_grid(self, query: str, token: str, gd: dict, page: int = 1) -> str:
         encoded = urllib.parse.quote(query)
         try:
             r = self.session.post(
                 f"{BASE_URL}/Item/GridItens",
                 data={
-                    "getPage": "1",
+                    "getPage": str(page),
                     "rows": gd.get("rows", "24"),
                     "grid": gd.get("grid", "GridItens"),
                     "header": gd.get("header", "false"),
@@ -289,7 +308,7 @@ class CofemaScraper(BaseScraper):
         if not cards:
             return offers, missing
 
-        for card in cards[:MAX_PRODUCTS]:
+        for card in cards[:MAX_CARDS_PER_PAGE]:
             try:
                 name_tag = card.select_one("a.item-title")
                 if not name_tag:

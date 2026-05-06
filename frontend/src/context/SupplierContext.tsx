@@ -5,6 +5,13 @@ import { toast } from "sonner";
 import { suppliersApi } from "../services/api";
 import type { Supplier, SupplierInput } from "../types/supplier";
 
+export class LoginError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LoginError";
+  }
+}
+
 interface SupplierContextValue {
   suppliers: Supplier[];
   loading: boolean;
@@ -59,22 +66,13 @@ export function SupplierProvider({ children }: { children: ReactNode }) {
       password: input.password?.trim() || "",
       isActive: true,
       region: input.region?.trim() || "",
-      notes: input.notes?.trim() || ""
+      notes: input.notes?.trim() || "",
     };
 
-    try {
-      const created = await suppliersApi.create(payload);
-      setSuppliers((prev) => [created, ...prev]);
-      toast.success("Fornecedor cadastrado com sucesso");
-    } catch {
-      const localFallback: Supplier = {
-        id: crypto.randomUUID(),
-        ...payload,
-        createdAt: new Date().toISOString()
-      };
-      setSuppliers((prev) => [localFallback, ...prev]);
-      toast.success("Fornecedor cadastrado localmente");
-    }
+    // Pode lançar LoginError — deixa propagar para o form tratar
+    const created = await suppliersApi.create(payload);
+    setSuppliers((prev) => [created, ...prev]);
+    toast.success("Fornecedor cadastrado e login verificado!");
   }
 
   async function updateSupplier(id: string, input: Partial<SupplierInput>): Promise<void> {
@@ -86,34 +84,15 @@ export function SupplierProvider({ children }: { children: ReactNode }) {
       username: input.username?.trim(),
       password: input.password?.trim(),
       region: input.region?.trim(),
-      notes: input.notes?.trim()
+      notes: input.notes?.trim(),
     };
 
-    try {
-      const updated = await suppliersApi.update(id, payload);
-      setSuppliers((prev) =>
-        prev.map((supplier) => (supplier.id === id ? updated : supplier))
-      );
-      toast.success("Fornecedor atualizado");
-    } catch {
-      setSuppliers((prev) =>
-        prev.map((supplier) =>
-          supplier.id === id
-            ? {
-                ...supplier,
-                ...(payload.name !== undefined ? { name: payload.name } : {}),
-                ...(payload.url !== undefined ? { url: payload.url } : {}),
-                ...(payload.logo !== undefined ? { logo: payload.logo } : {}),
-                ...(payload.requiresLogin !== undefined ? { requiresLogin: payload.requiresLogin } : {}),
-                ...(payload.username !== undefined ? { username: payload.username } : {}),
-                ...(payload.password !== undefined ? { password: payload.password } : {}),
-                ...(payload.region !== undefined ? { region: payload.region } : {}),
-                ...(payload.notes !== undefined ? { notes: payload.notes } : {})
-              }
-            : supplier
-        )
-      );
-    }
+    // Pode lançar LoginError — deixa propagar para o form tratar
+    const updated = await suppliersApi.update(id, payload);
+    setSuppliers((prev) =>
+      prev.map((s) => (s.id === id ? updated : s))
+    );
+    toast.success("Fornecedor atualizado");
   }
 
   async function removeSupplier(id: string): Promise<void> {
