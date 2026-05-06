@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase__list_projects",
+      "mcp__supabase__execute_sql",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute"
+    ]
+  }
+}
