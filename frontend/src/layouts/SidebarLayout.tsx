@@ -306,7 +306,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                   className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold text-white ring-2"
                   style={{
                     background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-                    ringColor: `color-mix(in srgb, ${ACC} 25%, transparent)`,
+                    ["--tw-ring-color" as string]: `color-mix(in srgb, ${ACC} 25%, transparent)`,
                   }}
                 >
                   {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
