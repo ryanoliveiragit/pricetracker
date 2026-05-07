@@ -1,0 +1,119 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e42]:
+      - complementary [ref=e43]:
+        - generic [ref=e45]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: C
+            - generic [ref=e49]:
+              - paragraph [ref=e50]: ConstruPrice
+              - generic [ref=e51]:
+                - generic [ref=e52]: v2.4
+                - generic [ref=e53]: beta
+          - generic [ref=e54]: Menu principal
+          - navigation [ref=e55]:
+            - link "Agente IA Busca inteligente IA" [ref=e56] [cursor=pointer]:
+              - /url: /agent
+              - img [ref=e58]
+              - generic [ref=e61]:
+                - paragraph [ref=e62]: Agente IA
+                - paragraph [ref=e63]: Busca inteligente
+              - generic [ref=e64]: IA
+            - link "Fornecedores Gerir lojas" [ref=e65] [cursor=pointer]:
+              - /url: /suppliers
+              - img [ref=e67]
+              - generic [ref=e71]:
+                - paragraph [ref=e72]: Fornecedores
+                - paragraph [ref=e73]: Gerir lojas
+            - link "Resultados Cotações recentes" [ref=e74] [cursor=pointer]:
+              - /url: /results
+              - img [ref=e76]
+              - generic [ref=e78]:
+                - paragraph [ref=e79]: Resultados
+                - paragraph [ref=e80]: Cotações recentes
+            - link "Ofertas Salvas Itens guardados" [ref=e81] [cursor=pointer]:
+              - /url: /saves
+              - img [ref=e83]
+              - generic [ref=e85]:
+                - paragraph [ref=e86]: Ofertas Salvas
+                - paragraph [ref=e87]: Itens guardados
+          - generic [ref=e88]:
+            - generic [ref=e89]: Sistema
+            - link "Configurações" [ref=e90] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e91]
+              - generic [ref=e94]: Configurações
+            - button "Sair" [ref=e95] [cursor=pointer]:
+              - img [ref=e96]
+              - generic [ref=e99]: Sair
+            - generic [ref=e101]:
+              - generic [ref=e103]: G
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: gestor
+                - generic [ref=e107]: Gestor
+        - button [ref=e108] [cursor=pointer]:
+          - img [ref=e109]
+      - generic [ref=e111]:
+        - banner [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - img [ref=e116]
+              - generic [ref=e119]:
+                - paragraph [ref=e120]: ConstruPrice
+                - paragraph [ref=e121]: Plataforma de cotação
+            - button "Buscar produto ou variante… K" [ref=e122] [cursor=pointer]:
+              - img [ref=e123]
+              - generic [ref=e126]: Buscar produto ou variante…
+              - generic [ref=e127]:
+                - img [ref=e128]
+                - text: K
+            - generic [ref=e130]:
+              - button [ref=e132] [cursor=pointer]:
+                - img [ref=e133]
+              - button "Alternar tema" [ref=e137] [cursor=pointer]:
+                - img [ref=e139]
+              - button "Iniciar Tour" [ref=e141] [cursor=pointer]:
+                - img [ref=e142]
+              - generic [ref=e146]:
+                - generic [ref=e148]: G
+                - generic [ref=e150]:
+                  - paragraph [ref=e151]: gestor
+                  - paragraph [ref=e152]: Gestor
+        - main [ref=e153]:
+          - generic [ref=e154]:
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - img [ref=e157]
+                - generic [ref=e160]: Buscar Produtos
+              - heading "Nova Cotação" [level=1] [ref=e161]
+              - paragraph [ref=e162]: Selecione os produtos do catálogo para realizar uma cotação de preços
+            - generic [ref=e163]:
+              - generic [ref=e164]:
+                - generic [ref=e165]:
+                  - img [ref=e167]
+                  - generic [ref=e169]:
+                    - paragraph [ref=e171]: Catálogo Local
+                    - paragraph [ref=e172]: Nenhum produto no catálogo — inicie o scraping para habilitar busca instantânea
+                - button "Iniciar Scraping" [ref=e174] [cursor=pointer]:
+                  - img [ref=e175]
+                  - text: Iniciar Scraping
+              - paragraph [ref=e181]: Falha ao buscar status
+            - generic [ref=e182]:
+              - generic [ref=e183]:
+                - generic [ref=e184]:
+                  - img [ref=e185]
+                  - textbox "Buscar por nome, categoria ou marca..." [ref=e188]
+                - generic [ref=e189]:
+                  - heading "Produtos Disponíveis (0)" [level=2] [ref=e191]
+                  - generic [ref=e193]:
+                    - img [ref=e195]
+                    - paragraph [ref=e198]: Nenhum produto encontrado
+              - generic [ref=e200]:
+                - generic [ref=e201]:
+                  - img [ref=e202]
+                  - heading "Produtos Selecionados" [level=2] [ref=e205]
+                - generic [ref=e206]:
+                  - img [ref=e208]
+                  - paragraph [ref=e209]: Selecione produtos para iniciar a cotação
+    - region "Notifications alt+T"
+  - alert [ref=e7]
