@@ -40,6 +40,7 @@ class SupplierDB(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     region: Mapped[str] = mapped_column(String(64), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -182,6 +183,94 @@ class ScraperSessionDB(Base):
         nullable=True,
     )
     is_valid: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class FeedbackStatus(str, enum.Enum):
+    PENDING = "pending"          # aguardando IA transcrever
+    ANALYZED = "analyzed"        # IA transcreveu — aguarda revisão do admin
+    APPROVED = "approved"        # legado (mantido para compatibilidade)
+    VALIDATED = "validated"      # admin validou o prompt — pronto para execução em branch
+    EXECUTING = "executing"      # branch sendo criada / IA gerando diff
+    DEPLOYED = "deployed"        # branch criada + push + preview URL gerada
+    MERGED = "merged"            # admin mergeou na main (terminal sucesso)
+    REJECTED = "rejected"
+
+
+class FeedbackReportDB(Base):
+    """Feedbacks de usuários sobre problemas de busca — analisados pela IA."""
+    __tablename__ = "feedback_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    user_name: Mapped[str] = mapped_column(String(255), default="")
+
+    problem_type: Mapped[str] = mapped_column(String(64), default="search")
+    search_query: Mapped[str] = mapped_column(String(512), default="")
+    expected_result: Mapped[str] = mapped_column(Text, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    screenshot_path: Mapped[str] = mapped_column(Text, nullable=True)
+    reference_url: Mapped[str] = mapped_column(Text, nullable=True)
+
+    status: Mapped[FeedbackStatus] = mapped_column(
+        Enum(FeedbackStatus), default=FeedbackStatus.PENDING, index=True
+    )
+
+    ai_summary: Mapped[str] = mapped_column(Text, nullable=True)
+    ai_fix_type: Mapped[str] = mapped_column(String(64), nullable=True)
+    ai_proposed_fix: Mapped[dict] = mapped_column(JSON, nullable=True)
+    ai_confidence: Mapped[float] = mapped_column(Float, nullable=True)
+    ai_explanation: Mapped[str] = mapped_column(Text, nullable=True)
+
+    admin_email: Mapped[str] = mapped_column(String(255), nullable=True)
+    admin_notes: Mapped[str] = mapped_column(Text, nullable=True)
+
+    # Execução automática via IA
+    execution_status: Mapped[str] = mapped_column(String(32), nullable=True)  # idle|running|done|error|deployed
+    execution_diff: Mapped[dict] = mapped_column(JSON, nullable=True)   # [{file, old, new}]
+    execution_summary: Mapped[str] = mapped_column(Text, nullable=True)
+    execution_error: Mapped[str] = mapped_column(Text, nullable=True)
+
+    # Fluxo agente: prompt validado pelo admin (editável antes de executar)
+    validated_prompt: Mapped[str] = mapped_column(Text, nullable=True)
+    # Branch git criada para a execução isolada
+    branch_name: Mapped[str] = mapped_column(String(128), nullable=True)
+    commit_sha: Mapped[str] = mapped_column(String(40), nullable=True)
+    # URL do deploy preview (Vercel ou similar)
+    preview_url: Mapped[str] = mapped_column(Text, nullable=True)
+    branch_url: Mapped[str] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    resolved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DynamicAbbreviationDB(Base):
+    """Abreviações adicionadas dinamicamente via aprovação de feedback."""
+    __tablename__ = "dynamic_abbreviations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    long_form: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    short_forms: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    feedback_id: Mapped[int] = mapped_column(Integer, ForeignKey("feedback_reports.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class DynamicSynonymDB(Base):
+    """Grupos de sinônimos adicionados dinamicamente via aprovação de feedback."""
+    __tablename__ = "dynamic_synonyms"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    group: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    feedback_id: Mapped[int] = mapped_column(Integer, ForeignKey("feedback_reports.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
 
 
 class SavedOfferDB(Base):

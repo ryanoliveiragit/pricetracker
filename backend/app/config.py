@@ -36,6 +36,19 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379"
     SEARCH_CACHE_TTL: int = 1800  # 30 minutos
 
+    # IA / LLM
+    ANTHROPIC_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
+    PERPLEXITY_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+    OLLAMA_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.2"
+
+    # Fluxo agente de feedback — execução em branch isolada
+    GIT_BASE_BRANCH: str = "main"
+    GIT_PUSH_ENABLED: bool = False
+    VERCEL_PREVIEW_PATTERN: Optional[str] = None  # ex: "https://pricetracker-git-{branch}.vercel.app"
+
     # Logging
     LOG_LEVEL: str = "INFO"
 
