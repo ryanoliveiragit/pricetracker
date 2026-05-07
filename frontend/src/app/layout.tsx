@@ -12,12 +12,20 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "ConstruPrice",
-  description: "Comparador de preços de materiais de construção"
+  description: "Comparador de preços de materiais de construção",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="pt-BR" className={`light ${jetbrainsMono.variable}`} data-theme-color="orange">
+    <html
+      lang="pt-BR"
+      className={`light ${jetbrainsMono.variable}`}
+      data-theme-color="orange"
+    >
       <body>
         <Providers>{children}</Providers>
       </body>

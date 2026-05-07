@@ -33,8 +33,10 @@ export default function ModernLogin() {
     <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-neutral-950">
       {/* Subtle background gradient */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-[rgb(var(--primary-500))/0.12]/50 dark:bg-[rgb(var(--primary-500))/0.10] blur-[100px]" />
-        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-[rgb(var(--primary-500))/0.60] dark:bg-[rgb(var(--primary-500))/0.05] blur-[100px]" />
+        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full blur-[100px]"
+          style={{ background: "rgb(var(--primary-500) / 0.08)" }} />
+        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full blur-[100px]"
+          style={{ background: "rgb(var(--primary-500) / 0.06)" }} />
       </div>
 
       <div className="relative z-10 w-full max-w-[420px] px-4">

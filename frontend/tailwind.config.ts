@@ -108,9 +108,9 @@ export default {
         "soft": "0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)",
         "card": "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
         "elevated": "0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
-        "glow-sm": "0 0 20px -5px rgb(var(--purple-500) / 0.2)",
-        "glow": "0 0 30px -5px rgb(var(--purple-500) / 0.3)",
-        "glow-lg": "0 0 50px -10px rgb(var(--purple-500) / 0.4)"
+        "glow-sm": "0 0 20px -5px rgb(var(--primary-500) / 0.2)",
+        "glow": "0 0 30px -5px rgb(var(--primary-500) / 0.3)",
+        "glow-lg": "0 0 50px -10px rgb(var(--primary-500) / 0.4)"
       },
       animation: {
         "fade-in": "fade-in 0.3s ease-out",

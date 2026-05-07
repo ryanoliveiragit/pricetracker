@@ -29,7 +29,7 @@ interface ThemeContextValue extends ThemeSettings {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const DEFAULT_THEME: ThemeSettings = {
-  mode: "system",
+  mode: "light",
   color: "orange",
   layout: "sidebar",
 };

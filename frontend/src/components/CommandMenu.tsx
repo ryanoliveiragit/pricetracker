@@ -126,7 +126,7 @@ export default function CommandMenu() {
                       }
                       className="hover:bg-[rgb(var(--primary-500))/0.20] dark:hover:bg-[rgb(var(--primary-500))/0.30] rounded-full p-0.5 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      xx
                     </button>
                   </motion.span>
                 ))}

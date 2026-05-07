@@ -1,7 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Home, Search, Package, BarChart3, Store, Settings, LogOut, Menu, X } from "lucide-react";
+import {
+  Home,
+  Search,
+  Package,
+  BarChart3,
+  Store,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -13,7 +23,7 @@ const navItems = [
   { href: "/products", label: "Produtos", icon: Package },
   { href: "/suppliers", label: "Fornecedores", icon: Store },
   { href: "/results", label: "Resultados", icon: BarChart3 },
-  { href: "/settings", label: "Configurações", icon: Settings }
+  { href: "/settings", label: "Configurações", icon: Settings },
 ];
 
 export default function WideLayout({ children }: { children: ReactNode }) {
@@ -42,8 +52,12 @@ export default function WideLayout({ children }: { children: ReactNode }) {
               <Package className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">ConstruPrice</h1>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">Comparador de Preços</p>
+              <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+                ConstruPrice
+              </h1>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Comparador de Preços
+              </p>
             </div>
           </Link>
 
@@ -65,7 +79,11 @@ export default function WideLayout({ children }: { children: ReactNode }) {
                     <motion.div
                       layoutId="activeWideItem"
                       className="absolute inset-0 rounded-xl bg-purple-100 dark:bg-purple-500/10"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      transition={{
+                        type: "spring",
+                        bounce: 0.2,
+                        duration: 0.6,
+                      }}
                     />
                   )}
                   <Icon className="relative h-5 w-5" />
@@ -81,8 +99,12 @@ export default function WideLayout({ children }: { children: ReactNode }) {
                 {user?.displayName?.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{user?.displayName}</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                  {user?.displayName}
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {user?.email}
+                </p>
               </div>
             </div>
             <button
@@ -97,7 +119,11 @@ export default function WideLayout({ children }: { children: ReactNode }) {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-neutral-400"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </button>
           </div>
         </div>

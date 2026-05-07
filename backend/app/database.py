@@ -11,12 +11,15 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+_connect_args = {"ssl": "require"} if "supabase.co" in settings.DATABASE_URL else {}
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
+    connect_args=_connect_args,
 )
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

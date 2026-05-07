@@ -842,17 +842,19 @@ function HeroCommandBar({ onSend }: HeroProps) {
         </motion.div>
 
         {/* ── Supplier marquee ── */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
-          style={{ marginTop: 40 }}
-        >
-          <div className="mono" style={{
-            fontSize: 10, color: "var(--t3)", letterSpacing: "0.12em",
-            textTransform: "uppercase", textAlign: "center", marginBottom: 12,
-          }}>
-            conectado com
-          </div>
-          <SupplierMarquee names={supplierNames} />
-        </motion.div>
+        {supplierNames.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+            style={{ marginTop: 40 }}
+          >
+            <div className="mono" style={{
+              fontSize: 10, color: "var(--t3)", letterSpacing: "0.12em",
+              textTransform: "uppercase", textAlign: "center", marginBottom: 12,
+            }}>
+              conectado com
+            </div>
+            <SupplierMarquee names={supplierNames} />
+          </motion.div>
+        )}
       </div>
     </div>
   );
