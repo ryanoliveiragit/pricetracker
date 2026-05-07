@@ -1,17 +1,30 @@
 """
-Rotas de feedback — usuários reportam problemas, IA analisa, admin aprova/rejeita.
+Rotas de feedback — fluxo agente de 4 etapas:
+
+    pending  ──IA──▶  analyzed (transcrito)  ──admin edita+valida──▶  validated
+                                                                          │
+                                                                          ▼
+                                                                       executing
+                                                                          │
+                                                                          ▼
+                                                                       deployed (branch + preview)
+                                                                          │
+                                                                          ▼
+                                                                        merged
+
+Auto-fixes (add_abbreviation/add_synonym) saem direto de `analyzed` para `merged`
+aplicando na DB de sinônimos — não criam branch.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
-import traceback
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +45,10 @@ router = APIRouter()
 
 UPLOAD_DIR = "uploads/feedback"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+AUTO_FIX_TYPES = {"add_abbreviation", "add_synonym"}
+PROMPT_FIX_TYPES = {"ui_change", "feature_request", "bug_fix"}
+TERMINAL_STATUSES = {FeedbackStatus.MERGED, FeedbackStatus.REJECTED}
 
 
 # ─── Auth helpers ──────────────────────────────────────────────────────────────
@@ -57,7 +74,15 @@ async def require_admin(user: UserDB = Depends(get_current_user)) -> UserDB:
     return user
 
 
-# ─── Background analysis task ──────────────────────────────────────────────────
+async def _load_report(db: AsyncSession, report_id: int) -> FeedbackReportDB:
+    result = await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))
+    report = result.scalar_one_or_none()
+    if not report:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado")
+    return report
+
+
+# ─── Background analysis (etapa 1: transcrever) ───────────────────────────────
 
 async def _persist_analysis(report_id: int, analysis: dict) -> None:
     from app.database import async_session
@@ -72,6 +97,10 @@ async def _persist_analysis(report_id: int, analysis: dict) -> None:
         report.ai_confidence = float(analysis.get("confidence", 0.0))
         report.ai_explanation = analysis.get("explanation", "")
         report.status = FeedbackStatus.ANALYZED
+        # Pré-popula validated_prompt com o prompt da IA (admin pode editar)
+        proposed_prompt = (analysis.get("proposed_fix") or {}).get("prompt")
+        if proposed_prompt and not report.validated_prompt:
+            report.validated_prompt = proposed_prompt
         await db.commit()
         logger.info(f"feedback #{report_id}: análise salva — fix_type={report.ai_fix_type}")
 
@@ -87,7 +116,7 @@ async def _run_analysis(report_id: int, problem_type: str, search_query: str, ex
     except asyncio.TimeoutError:
         logger.error(f"feedback #{report_id}: análise excedeu 45s — usando heurística")
         from app.services.feedback_agent import _heuristic
-        analysis = _heuristic(search_query, expected_result, description)
+        analysis = _heuristic(problem_type, search_query, expected_result, description)
     except Exception as exc:
         logger.error(f"feedback #{report_id}: erro na análise — {exc}")
         analysis = {
@@ -118,7 +147,7 @@ async def create_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserDB = Depends(get_current_user),
 ):
-    """Cria um novo relatório de feedback. Qualquer usuário autenticado pode reportar."""
+    """Cria um novo relatório. IA transcreve em background → status='analyzed'."""
     screenshot_path: str | None = None
 
     if screenshot and screenshot.filename:
@@ -152,7 +181,7 @@ async def create_feedback(
                       report.description, screenshot_path)
     )
 
-    return {"id": report.id, "status": report.status, "message": "Feedback recebido. IA está analisando..."}
+    return {"id": report.id, "status": report.status, "message": "Feedback recebido. IA está transcrevendo..."}
 
 
 # ─── GET /api/feedback ─────────────────────────────────────────────────────────
@@ -163,13 +192,11 @@ async def list_feedback(
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    """Lista todos os feedbacks. Apenas admin."""
     q = select(FeedbackReportDB).order_by(FeedbackReportDB.created_at.desc())
     if status_filter:
         q = q.where(FeedbackReportDB.status == status_filter)
     result = await db.execute(q)
-    reports = result.scalars().all()
-    return [_serialize(r) for r in reports]
+    return [_serialize(r) for r in result.scalars().all()]
 
 
 # ─── GET /api/feedback/{id} ────────────────────────────────────────────────────
@@ -180,11 +207,7 @@ async def get_feedback(
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    result = await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=404, detail="Relatório não encontrado")
-    return _serialize(report)
+    return _serialize(await _load_report(db, report_id))
 
 
 # ─── POST /api/feedback/{id}/reanalyze ────────────────────────────────────────
@@ -195,14 +218,11 @@ async def reanalyze_feedback(
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    """Re-dispara a análise de IA para um relatório existente (admin)."""
-    result = await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=404, detail="Relatório não encontrado")
+    """Re-dispara IA para reescrever o prompt — apaga edições anteriores."""
+    report = await _load_report(db, report_id)
 
-    if report.status in (FeedbackStatus.APPROVED, FeedbackStatus.REJECTED):
-        raise HTTPException(status_code=400, detail="Relatório já resolvido — não pode ser reanalisado")
+    if report.status in TERMINAL_STATUSES:
+        raise HTTPException(status_code=400, detail="Relatório já finalizado — não pode ser reanalisado")
 
     report.status = FeedbackStatus.PENDING
     report.ai_summary = None
@@ -210,6 +230,7 @@ async def reanalyze_feedback(
     report.ai_proposed_fix = None
     report.ai_confidence = None
     report.ai_explanation = None
+    report.validated_prompt = None
     await db.commit()
 
     asyncio.create_task(
@@ -220,66 +241,71 @@ async def reanalyze_feedback(
     return {"id": report.id, "status": FeedbackStatus.PENDING, "message": "Reanálise iniciada"}
 
 
-# ─── PATCH /api/feedback/{id}/resolve ─────────────────────────────────────────
+# ─── PATCH /api/feedback/{id}/prompt ──────────────────────────────────────────
+# Etapa 2: admin edita o prompt transcrito antes de validar.
 
-@router.patch("/{report_id}/resolve")
-async def resolve_feedback(
+@router.patch("/{report_id}/prompt")
+async def update_prompt(
     report_id: int,
-    action: str = Form(...),          # "approve" | "reject"
-    admin_notes: str = Form(default=""),
+    prompt: str = Form(...),
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    """Admin aprova ou rejeita o feedback. Se aprovado, aplica o fix automaticamente."""
-    if action not in ("approve", "reject"):
-        raise HTTPException(status_code=400, detail="action deve ser 'approve' ou 'reject'")
+    report = await _load_report(db, report_id)
+    if report.status not in (FeedbackStatus.ANALYZED, FeedbackStatus.PENDING):
+        raise HTTPException(status_code=400, detail="Prompt só pode ser editado antes da validação")
+    if not prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt não pode ser vazio")
+    report.validated_prompt = prompt.strip()
+    await db.commit()
+    return {"id": report.id, "validated_prompt": report.validated_prompt}
 
-    result = await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=404, detail="Relatório não encontrado")
 
-    if report.status in (FeedbackStatus.APPROVED, FeedbackStatus.REJECTED):
-        raise HTTPException(status_code=400, detail="Relatório já foi resolvido")
+# ─── POST /api/feedback/{id}/validate ─────────────────────────────────────────
+# Etapa 3a: admin valida.
+#   - Tipos auto-fix → aplica imediatamente em synonyms.py + DB → MERGED
+#   - Tipos prompt   → status VALIDATED, fica pronto para /execute
+
+@router.post("/{report_id}/validate")
+async def validate_feedback(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: UserDB = Depends(require_admin),
+):
+    report = await _load_report(db, report_id)
+
+    if report.status != FeedbackStatus.ANALYZED:
+        raise HTTPException(status_code=400, detail=f"Só é possível validar feedbacks 'analyzed' (atual: {report.status})")
 
     report.admin_email = admin.email
-    report.admin_notes = admin_notes.strip() or None
-    report.resolved_at = datetime.now(timezone.utc)
 
-    fix_applied = False
+    # ── Caminho rápido: abreviação / sinônimo ─────────────────────────────────
+    if report.ai_fix_type in AUTO_FIX_TYPES:
+        applied = await _apply_auto_fix(report, db)
+        if not applied:
+            raise HTTPException(status_code=500, detail="Falha ao aplicar auto-fix em synonyms.py")
+        report.status = FeedbackStatus.MERGED
+        report.resolved_at = datetime.now(timezone.utc)
+        await db.commit()
+        return {"id": report.id, "status": report.status, "auto_applied": True}
 
-    if action == "approve":
-        report.status = FeedbackStatus.APPROVED
-        fix_applied = await _apply_fix(report, db)
-        if not fix_applied:
-            prompt = (report.ai_proposed_fix or {}).get("prompt", "")
-            if prompt:
-                report.execution_status = "running"
-                await db.commit()
-                asyncio.create_task(
-                    _run_execution(report.id, prompt, report.ai_fix_type or "ui_change", auto_apply=True)
-                )
-                return {"id": report.id, "status": report.status, "fix_applied": False,
-                        "message": "Aprovado — IA está implementando a mudança automaticamente..."}
-    else:
-        report.status = FeedbackStatus.REJECTED
+    # ── Caminho prompt: marca como validado, pronto para execução em branch ──
+    if not report.validated_prompt:
+        # Fallback: usa prompt da IA se admin não editou
+        report.validated_prompt = (report.ai_proposed_fix or {}).get("prompt", "").strip()
+    if not report.validated_prompt:
+        raise HTTPException(status_code=400, detail="Sem prompt para validar")
 
+    report.status = FeedbackStatus.VALIDATED
     await db.commit()
-
-    return {
-        "id": report.id,
-        "status": report.status,
-        "fix_applied": fix_applied,
-        "message": "Correção aplicada com sucesso!" if fix_applied else "Resolução registrada.",
-    }
+    return {"id": report.id, "status": report.status, "auto_applied": False}
 
 
-async def _apply_fix(report: FeedbackReportDB, db: AsyncSession) -> bool:
-    """Escreve a correção em synonyms.py e atualiza o índice em memória."""
+async def _apply_auto_fix(report: FeedbackReportDB, db: AsyncSession) -> bool:
+    """Escreve abreviação/sinônimo em synonyms.py + DB de overrides."""
     fix_type = report.ai_fix_type
     proposed = report.ai_proposed_fix or {}
-
-    if fix_type not in ("add_abbreviation", "add_synonym"):
+    if fix_type not in AUTO_FIX_TYPES:
         return False
 
     try:
@@ -289,13 +315,10 @@ async def _apply_fix(report: FeedbackReportDB, db: AsyncSession) -> bool:
             patch_synonyms_file,
         )
 
-        # 1. Escreve no código-fonte (fix permanente)
-        patched = patch_synonyms_file(fix_type, proposed)
-        if not patched:
+        if not patch_synonyms_file(fix_type, proposed):
             logger.warning(f"feedback #{report.id}: patch_synonyms_file retornou False")
             return False
 
-        # 2. Atualiza índice em memória imediatamente (sem restart)
         if fix_type == "add_abbreviation":
             long_form = proposed.get("long_form", "").strip()
             short_forms = [s.strip() for s in proposed.get("short_forms", []) if s.strip()]
@@ -306,15 +329,15 @@ async def _apply_fix(report: FeedbackReportDB, db: AsyncSession) -> bool:
             add_dynamic_synonym_group(group)
             db.add(DynamicSynonymDB(group=group, feedback_id=report.id))
 
-        logger.info(f"feedback #{report.id}: fix '{fix_type}' aplicado em synonyms.py")
+        logger.info(f"feedback #{report.id}: auto-fix '{fix_type}' aplicado")
         return True
-
     except Exception as e:
-        logger.error(f"feedback #{report.id}: erro ao aplicar fix — {e}")
+        logger.error(f"feedback #{report.id}: erro no auto-fix — {e}")
         return False
 
 
 # ─── POST /api/feedback/{id}/execute ──────────────────────────────────────────
+# Etapa 3b: cria branch isolada, IA gera diff, commit + push, gera preview URL.
 
 @router.post("/{report_id}/execute")
 async def execute_feedback(
@@ -322,116 +345,168 @@ async def execute_feedback(
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    """Envia o prompt aprovado para a IA implementar as mudanças de código."""
-    result = await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=404, detail="Relatório não encontrado")
-    if report.status != FeedbackStatus.APPROVED:
-        raise HTTPException(status_code=400, detail="Só é possível executar feedbacks aprovados")
+    report = await _load_report(db, report_id)
 
-    prompt = (report.ai_proposed_fix or {}).get("prompt", "")
+    if report.status not in (FeedbackStatus.VALIDATED, FeedbackStatus.DEPLOYED):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Só é possível executar feedbacks validados (atual: {report.status})",
+        )
+
+    prompt = (report.validated_prompt or "").strip()
     if not prompt:
-        raise HTTPException(status_code=400, detail="Sem prompt para executar")
+        raise HTTPException(status_code=400, detail="Sem prompt validado para executar")
 
+    report.status = FeedbackStatus.EXECUTING
     report.execution_status = "running"
     report.execution_diff = None
     report.execution_error = None
+    report.preview_url = None
+    report.branch_url = None
+    report.commit_sha = None
     await db.commit()
 
-    asyncio.create_task(_run_execution(report_id, prompt, report.ai_fix_type or "ui_change"))
-    return {"id": report_id, "execution_status": "running"}
+    asyncio.create_task(_run_branch_execution(report_id, prompt, report.ai_fix_type or "ui_change"))
+    return {"id": report.id, "status": report.status, "execution_status": "running"}
 
 
-async def _run_execution(report_id: int, prompt: str, fix_type: str, auto_apply: bool = False) -> None:
+async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> None:
+    """Background: gera diff via IA, cria worktree+branch, aplica, commita, push."""
+    from app.database import async_session
+    from app.services import git_executor
     import importlib
     import app.services.auto_fix_agent as _afa
     importlib.reload(_afa)
-    execute_fix = _afa.execute_fix
-    from app.database import async_session
-    try:
-        result = await asyncio.wait_for(execute_fix(prompt, fix_type), timeout=90.0)
-        changes = result.get("changes", [])
-        logger.info("feedback #%s: IA retornou summary=%r, %d mudanças",
-                    report_id, result.get("summary"), len(changes))
-        for i, c in enumerate(changes, 1):
-            logger.info("  [%d] %s", i, c.get("file"))
 
-        if auto_apply and changes:
-            apply_results, tsc_error = await asyncio.to_thread(
-                _afa.apply_and_validate,
-                changes,
-            )
-            all_ok = all(r["status"] == "applied" for r in apply_results) and tsc_error is None
-            for r in apply_results:
-                if r["status"] == "applied":
-                    logger.info("  ✅ aplicado: %s", r["file"])
-                else:
-                    logger.warning("  ❌ %s — %s: %s", r["file"], r["status"], r.get("error", ""))
-            if tsc_error:
-                logger.error("feedback #%s: tsc rejeitou — %s", report_id, tsc_error)
-            logger.info("feedback #%s: auto_apply all_ok=%s", report_id, all_ok)
-            async with async_session() as db:
-                r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
-                r.execution_status = "applied" if all_ok else ("tsc_error" if tsc_error else "partial")
-                r.execution_diff = changes
-                r.execution_summary = result.get("summary", "")
-                r.execution_error = tsc_error
-                await db.commit()
-        else:
-            async with async_session() as db:
-                r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
-                r.execution_status = "done"
-                r.execution_diff = changes
-                r.execution_summary = result.get("summary", "")
-                await db.commit()
-    except Exception as exc:
-        logger.error(f"feedback #{report_id}: execução falhou — {exc}", exc_info=True)
+    summary_for_branch = ""
+    branch: str | None = None
+
+    try:
+        # 1. IA gera diff
+        result = await asyncio.wait_for(_afa.execute_fix(prompt, fix_type), timeout=90.0)
+        changes = result.get("changes", [])
+        summary = result.get("summary", "") or "feedback fix"
+        summary_for_branch = summary
+
+        if not changes:
+            raise RuntimeError("IA retornou diff vazio")
+
+        # 2. Worktree + branch
+        branch, worktree = await asyncio.to_thread(git_executor.create_worktree, report_id, summary)
+
+        # 3. Aplica mudanças no worktree
+        apply_results = await asyncio.to_thread(git_executor.apply_changes_to_worktree, worktree, changes)
+        if any(r["status"] != "applied" for r in apply_results):
+            errs = [r for r in apply_results if r["status"] != "applied"]
+            raise RuntimeError(f"Falha ao aplicar diff em worktree: {errs}")
+
+        # 4. Commit
+        commit_msg = f"feedback #{report_id}: {summary[:72]}"
+        sha = await asyncio.to_thread(git_executor.stage_and_commit, worktree, changes, commit_msg)
+
+        # 5. Push (opcional, controlado por GIT_PUSH_ENABLED)
+        pushed = False
+        try:
+            pushed = await asyncio.to_thread(git_executor.push_worktree, worktree, branch)
+        except Exception as exc:
+            logger.warning(f"feedback #{report_id}: push falhou — {exc}")
+
+        # 6. URLs
+        preview_url = git_executor.preview_url_for(branch) if pushed else None
+        branch_url = git_executor.github_branch_url(branch) if pushed else None
+
         async with async_session() as db:
             r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
+            r.status = FeedbackStatus.DEPLOYED
+            r.execution_status = "deployed"
+            r.execution_diff = changes
+            r.execution_summary = summary
+            r.execution_error = None
+            r.branch_name = branch
+            r.commit_sha = sha
+            r.preview_url = preview_url
+            r.branch_url = branch_url
+            await db.commit()
+        logger.info(
+            f"feedback #{report_id}: deployed branch={branch} sha={sha[:8]} pushed={pushed}"
+        )
+
+    except Exception as exc:
+        logger.error(f"feedback #{report_id}: execução em branch falhou — {exc}", exc_info=True)
+        async with async_session() as db:
+            r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
+            r.status = FeedbackStatus.VALIDATED  # volta a validated para nova tentativa
             r.execution_status = "error"
             r.execution_error = str(exc)
+            if branch:
+                r.branch_name = branch
             await db.commit()
 
 
-# ─── POST /api/feedback/{id}/apply-changes ────────────────────────────────────
+# ─── POST /api/feedback/{id}/merge ────────────────────────────────────────────
+# Marca como mergeado (após o admin mergear o PR no GitHub manualmente).
 
-@router.post("/{report_id}/apply-changes")
-async def apply_feedback_changes(
+@router.post("/{report_id}/merge")
+async def mark_merged(
     report_id: int,
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    """Aplica o diff gerado pela IA nos arquivos do projeto."""
-    result = await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=404, detail="Relatório não encontrado")
-    if report.execution_status != "done" or not report.execution_diff:
-        raise HTTPException(status_code=400, detail="Nenhum diff disponível para aplicar")
-
-    import importlib
-    import app.services.auto_fix_agent as _afa
-    importlib.reload(_afa)
-    results, tsc_error = await asyncio.to_thread(_afa.apply_and_validate, report.execution_diff)
-
-    for r in results:
-        if r["status"] == "applied":
-            logger.info("  ✅ aplicado: %s", r["file"])
-        else:
-            logger.warning("  ❌ %s — %s: %s", r["file"], r["status"], r.get("error", ""))
-
-    if tsc_error:
-        logger.error("apply-changes #%s: tsc rejeitou — %s", report_id, tsc_error)
-
-    all_ok = all(r["status"] == "applied" for r in results) and tsc_error is None
-    logger.info("apply-changes #%s: all_ok=%s", report_id, all_ok)
-    report.execution_status = "applied" if all_ok else ("tsc_error" if tsc_error else "partial")
-    report.execution_error = tsc_error
+    report = await _load_report(db, report_id)
+    if report.status != FeedbackStatus.DEPLOYED:
+        raise HTTPException(status_code=400, detail="Apenas feedbacks 'deployed' podem ser marcados como mergeados")
+    report.status = FeedbackStatus.MERGED
+    report.resolved_at = datetime.now(timezone.utc)
     await db.commit()
+    return {"id": report.id, "status": report.status}
 
-    return {"results": results, "all_applied": all_ok, "tsc_error": tsc_error}
 
+# ─── POST /api/feedback/{id}/reject ───────────────────────────────────────────
+
+@router.post("/{report_id}/reject")
+async def reject_feedback(
+    report_id: int,
+    admin_notes: str = Form(default=""),
+    db: AsyncSession = Depends(get_db),
+    admin: UserDB = Depends(require_admin),
+):
+    report = await _load_report(db, report_id)
+    if report.status in TERMINAL_STATUSES:
+        raise HTTPException(status_code=400, detail="Relatório já finalizado")
+    report.status = FeedbackStatus.REJECTED
+    report.admin_email = admin.email
+    report.admin_notes = admin_notes.strip() or None
+    report.resolved_at = datetime.now(timezone.utc)
+    # Limpa worktree órfã se houver
+    try:
+        from app.services import git_executor
+        await asyncio.to_thread(git_executor.cleanup_worktree, report_id)
+    except Exception:
+        pass
+    await db.commit()
+    return {"id": report.id, "status": report.status}
+
+
+# ─── PATCH /api/feedback/{id}/resolve (legado — apenas reject) ────────────────
+
+@router.patch("/{report_id}/resolve")
+async def resolve_feedback_legacy(
+    report_id: int,
+    action: str = Form(...),
+    admin_notes: str = Form(default=""),
+    db: AsyncSession = Depends(get_db),
+    admin: UserDB = Depends(require_admin),
+):
+    """Legado para compatibilidade. Use /validate ou /reject diretamente."""
+    if action == "reject":
+        return await reject_feedback(report_id, admin_notes, db, admin)
+    if action == "approve":
+        # mantemos uma transição razoável: approve == validate
+        return await validate_feedback(report_id, db, admin)
+    raise HTTPException(status_code=400, detail="action deve ser 'approve' ou 'reject'")
+
+
+# ─── Serialização ──────────────────────────────────────────────────────────────
 
 def _serialize(r: FeedbackReportDB) -> dict:
     return {
@@ -457,4 +532,9 @@ def _serialize(r: FeedbackReportDB) -> dict:
         "execution_diff": r.execution_diff,
         "execution_summary": r.execution_summary,
         "execution_error": r.execution_error,
+        "validated_prompt": r.validated_prompt,
+        "branch_name": r.branch_name,
+        "commit_sha": r.commit_sha,
+        "preview_url": r.preview_url,
+        "branch_url": r.branch_url,
     }
