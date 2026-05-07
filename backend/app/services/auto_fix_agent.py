@@ -185,7 +185,10 @@ def _collect_context(fix_type: str, prompt: str) -> str:
     parts: list[str] = []
     for path in candidates:
         try:
-            lines = path.read_text(encoding="utf-8").splitlines()[:MAX_FILE_LINES]
+            raw_lines = path.read_text(encoding="utf-8").splitlines()[:MAX_FILE_LINES]
+            # Strip import lines — they contain double-quoted module names which
+            # cause the AI to generate invalid JSON (unescaped quotes in "old").
+            lines = [l for l in raw_lines if not l.strip().startswith(("import ", "from "))]
             rel = path.relative_to(PROJECT_ROOT)
             parts.append(f"### {rel}\n```\n{chr(10).join(lines)}\n```")
         except Exception:
