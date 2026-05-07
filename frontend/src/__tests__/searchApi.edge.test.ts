@@ -106,7 +106,7 @@ describe("searchMaterialsStream — SSE parsing", () => {
     // storeStates devem refletir login_error — verificado via onChunk
     const lastCall = onChunk.mock.calls.at(-1);
     expect(lastCall).toBeTruthy();
-    const stores = lastCall[1] as Array<{ status: string; name: string }>;
+    const stores = lastCall![1] as Array<{ status: string; name: string }>;
     expect(stores.find((s) => s.name === "Cofema")?.status).toBe("login_error");
   });
 });

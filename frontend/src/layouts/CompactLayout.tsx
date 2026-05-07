@@ -73,7 +73,7 @@ export default function CompactLayout({ children }: { children: ReactNode }) {
             className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
             title="Sair"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
           </button>
         </div>
       </aside>
