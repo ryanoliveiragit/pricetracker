@@ -518,29 +518,28 @@ def apply_and_validate(changes: list[dict]) -> tuple[list[dict], str | None]:
 # Chat Agent — acesso completo ao código-fonte
 # ---------------------------------------------------------------------------
 
-_CHAT_SYSTEM = """Você é um desenvolvedor sênior especialista no projeto ConstruPrice (plataforma de cotação de preços para construção civil).
+_CHAT_SYSTEM = """Você é um consultor técnico do projeto ConstruPrice (plataforma de cotação de preços para construção civil).
 
-Stack: Next.js 14, TypeScript, Tailwind CSS, framer-motion (frontend) | Python/FastAPI (backend)
+Seu papel é PLANEJAR junto ao administrador o que precisa ser mudado no código — sem aplicar nada ainda.
 
-Você recebe o histórico da conversa + conteúdo COMPLETO dos arquivos do projeto abaixo.
+Você tem acesso ao código-fonte completo abaixo.
 
-## Formato de resposta
-Responda SEMPRE com JSON válido (sem markdown fora do JSON):
+## Objetivo
+Conversar para entender com precisão o que mudar. Quando o admin confirmar o plano, gere um "refined_prompt" com instruções técnicas precisas para execução futura.
 
-Apenas texto (sem mudanças de código):
-{"text": "Sua resposta", "changes": null}
+## Formato de resposta (JSON válido obrigatório — sem markdown fora do JSON)
 
-Com mudanças de código:
-{"text": "Explicação clara do que foi feito", "changes": [{"file": "caminho/relativo/ao/projeto", "old": "trecho exato copiado do arquivo abaixo", "new": "substituição completa"}]}
+Conversando / planejando:
+{"text": "Sua resposta em linguagem natural", "refined_prompt": null}
 
-## REGRAS CRÍTICAS para mudanças de código
-1. "file": caminho relativo à raiz do projeto (ex: "frontend/src/layouts/CompactLayout.tsx")
-2. "old": SUBSTRING EXATA — copie da fonte fornecida abaixo, caractere por caractere, sem omitir nada
-3. "new": substituição completa do trecho (pode ser multiline com \\n)
-4. Máximo 3 changes por resposta
-5. Nunca quebrar imports TypeScript, tipos ou balanço de JSX
-6. Se não tiver certeza do conteúdo exato de um arquivo, diga no "text" e use "changes": null
-7. Preserve dark mode (classes dark:), Tailwind e padrões do projeto
+Plano confirmado (quando admin disser ok/confirmar/pode executar/sim):
+{"text": "Perfeito! Prompt técnico gerado.", "refined_prompt": "Descrição técnica precisa: arquivo, trecho específico a alterar, novo conteúdo esperado."}
+
+## Regras
+- NUNCA gere código agora — apenas planeje e descreva com precisão
+- Faça perguntas de esclarecimento se necessário
+- O "refined_prompt" deve ser preciso o suficiente para um agente aplicar sem ambiguidade
+- Baseie-se sempre no código real fornecido abaixo para referenciar arquivos e trechos
 
 ## Código-fonte do projeto
 """
@@ -637,27 +636,76 @@ def _collect_chat_context(prompt: str, ticket_desc: str = "") -> str:
     return "\n\n".join(parts)
 
 
-def _claude_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
-    """Chamada síncrona ao Claude para o agente de chat."""
-    import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
-    resp = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        system=system,
-        messages=messages,
-    )
-    raw = resp.content[0].text
+def _extract_chat_result(raw: str) -> dict:
     result = _extract_json(raw)
     if "text" not in result:
         result["text"] = raw[:500]
-    if "changes" not in result:
-        result["changes"] = None
+    result.setdefault("refined_prompt", None)
     return result
 
 
+def _claude_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+    resp = client.messages.create(
+        model="claude-sonnet-4-6", max_tokens=4096, system=system, messages=messages,
+    )
+    return _extract_chat_result(resp.content[0].text)
+
+
+def _gemini_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
+    import urllib.request
+    contents = [
+        {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
+        for m in messages
+    ]
+    payload = json.dumps({
+        "system_instruction": {"parts": [{"text": system}]},
+        "contents": contents,
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 4096},
+    }).encode()
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        data = json.loads(r.read())
+    raw = data["candidates"][0]["content"]["parts"][0]["text"]
+    return _extract_chat_result(raw)
+
+
+def _groq_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
+    import urllib.request
+    payload = json.dumps({
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "system", "content": system}] + messages,
+        "temperature": 0.3, "max_tokens": 4096,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions", data=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as r:
+        data = json.loads(r.read())
+    return _extract_chat_result(data["choices"][0]["message"]["content"])
+
+
+def _perplexity_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
+    import urllib.request
+    payload = json.dumps({
+        "model": "llama-3.1-sonar-large-128k-online",
+        "messages": [{"role": "system", "content": system}] + messages,
+        "temperature": 0.3, "max_tokens": 4096,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.perplexity.ai/chat/completions", data=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as r:
+        data = json.loads(r.read())
+    return _extract_chat_result(data["choices"][0]["message"]["content"])
+
+
 async def chat_agent_execute(message: str, history: list[dict], ticket_context: str) -> dict:
-    """Chat com agente de IA com acesso completo ao código. Retorna {text, changes}."""
+    """Chat de planejamento com acesso completo ao código. Retorna {text, refined_prompt}."""
     import asyncio as _asyncio
     from app.config import settings
 
@@ -665,8 +713,25 @@ async def chat_agent_execute(message: str, history: list[dict], ticket_context: 
     system = _CHAT_SYSTEM + codebase
     messages = history[-10:] if len(history) > 10 else list(history)
 
-    api_key = (settings.ANTHROPIC_API_KEY or "").strip()
-    if api_key:
-        return await _asyncio.to_thread(_claude_chat_sync, api_key, system, messages)
+    providers = []
+    if (settings.GEMINI_API_KEY or "").strip():
+        providers.append(("Gemini", _gemini_chat_sync, settings.GEMINI_API_KEY))
+    if (settings.GROQ_API_KEY or "").strip():
+        providers.append(("Groq", _groq_chat_sync, settings.GROQ_API_KEY))
+    if (settings.PERPLEXITY_API_KEY or "").strip():
+        providers.append(("Perplexity", _perplexity_chat_sync, settings.PERPLEXITY_API_KEY))
+    if (settings.ANTHROPIC_API_KEY or "").strip():
+        providers.append(("Claude", _claude_chat_sync, settings.ANTHROPIC_API_KEY))
 
-    raise RuntimeError("ANTHROPIC_API_KEY não configurado — adicione no .env")
+    if not providers:
+        raise RuntimeError("Nenhum provider configurado — adicione GEMINI_API_KEY, GROQ_API_KEY ou ANTHROPIC_API_KEY")
+
+    last_exc: Exception = RuntimeError("providers esgotados")
+    for name, fn, key in providers:
+        try:
+            logger.info("chat_agent: chamando %s…", name)
+            return await _asyncio.to_thread(fn, key.strip(), system, messages)
+        except Exception as exc:
+            logger.warning("chat_agent: %s falhou — %s", name, exc)
+            last_exc = exc
+    raise last_exc

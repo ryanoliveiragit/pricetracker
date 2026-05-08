@@ -590,35 +590,13 @@ async def chat_with_ticket(
         raise HTTPException(status_code=500, detail=str(exc))
 
     text: str = result.get("text", "")
-    changes: list[dict] = result.get("changes") or []
-    build_ok: bool | None = None
-    branch = report.branch_name
-    commit_sha_new: str | None = None
-    apply_error: str | None = None
+    refined_prompt: str | None = result.get("refined_prompt") or None
+    prompt_updated = False
 
-    if changes:
-        try:
-            commit_msg = f"chat #{report_id}: {text[:60]}"
-            branch_new, sha_new = await asyncio.get_event_loop().run_in_executor(
-                None, _create_branch_via_git, report_id, changes, commit_msg
-            )
-            branch = branch_new
-            commit_sha_new = sha_new
-            build_ok = True
-            report.branch_name = branch
-            report.commit_sha = sha_new
-            try:
-                from app.services.github_api import branch_url as _burl
-                report.branch_url = _burl(branch)
-            except Exception:
-                pass
-            if report.status in (FeedbackStatus.validated, FeedbackStatus.analyzed):
-                report.status = FeedbackStatus.deployed
-                report.execution_status = "deployed"
-        except Exception as exc:
-            build_ok = False
-            apply_error = str(exc)[:500]
-            text = f"{text}\n\n⚠️ Não foi possível aplicar: {apply_error[:200]}"
+    # Se a IA gerou um prompt refinado, atualiza validated_prompt automaticamente
+    if refined_prompt and refined_prompt.strip():
+        report.validated_prompt = refined_prompt.strip()
+        prompt_updated = True
 
     history.append({"role": "assistant", "content": text})
     report.chat_history = history
@@ -626,11 +604,9 @@ async def chat_with_ticket(
 
     return {
         "text": text,
-        "changes": changes or None,
-        "build_ok": build_ok,
-        "branch": branch,
-        "commit_sha": commit_sha_new,
-        "error": apply_error,
+        "refined_prompt": refined_prompt,
+        "prompt_updated": prompt_updated,
+        "validated_prompt": report.validated_prompt,
     }
 
 

@@ -39,11 +39,9 @@ export interface ChatMessage {
 
 export interface ChatResponse {
   text: string;
-  changes: FileDiff[] | null;
-  build_ok: boolean | null;
-  branch: string | null;
-  commit_sha: string | null;
-  error: string | null;
+  refined_prompt: string | null;
+  prompt_updated: boolean;
+  validated_prompt: string | null;
 }
 
 export interface FeedbackReport {

@@ -136,14 +136,15 @@ function DiffView({ diff }: { diff: FileDiff[] }) {
 
 // ─── TicketChat ────────────────────────────────────────────────────────────────
 
-function TicketChat({ reportId, initialHistory, onBranchUpdate }: {
+function TicketChat({ reportId, initialHistory, onPromptUpdate }: {
   reportId: number;
   initialHistory: ChatMessage[];
-  onBranchUpdate: () => void;
+  onPromptUpdate: () => void;
 }) {
   const [history, setHistory] = useState<ChatMessage[]>(initialHistory);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lastRefined, setLastRefined] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -159,7 +160,10 @@ function TicketChat({ reportId, initialHistory, onBranchUpdate }: {
     try {
       const res = await chatWithTicket(reportId, msg);
       setHistory(h => [...h, { role: "assistant", content: res.text }]);
-      if (res.changes) onBranchUpdate();
+      if (res.prompt_updated && res.refined_prompt) {
+        setLastRefined(res.refined_prompt);
+        onPromptUpdate();
+      }
     } catch (e) {
       setHistory(h => [...h, { role: "assistant", content: `Erro: ${e instanceof Error ? e.message : e}` }]);
     } finally {
@@ -168,20 +172,28 @@ function TicketChat({ reportId, initialHistory, onBranchUpdate }: {
   }
 
   return (
-    <div className="border-t border-slate-100 dark:border-neutral-800 mt-3">
+    <div className="border-t border-violet-100 dark:border-violet-500/20 mt-3 bg-violet-50/30 dark:bg-violet-500/5 rounded-b-2xl">
       <div className="px-4 pt-3 pb-1 flex items-center gap-1.5">
         <Bot className="h-3.5 w-3.5 text-violet-500" />
-        <span className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400">Agente IA — acesso completo ao código</span>
+        <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400">Planejamento com IA</span>
+        <span className="text-[10px] text-slate-400 dark:text-neutral-500 ml-1">— converse antes de validar</span>
       </div>
 
+      {lastRefined && (
+        <div className="mx-4 mb-2 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2">
+          <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-0.5">Prompt atualizado automaticamente</p>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-300 line-clamp-2">{lastRefined}</p>
+        </div>
+      )}
+
       {history.length > 0 && (
-        <div className="px-4 max-h-72 overflow-y-auto space-y-2 py-2">
+        <div className="px-4 max-h-64 overflow-y-auto space-y-2 py-2">
           {history.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[12px] whitespace-pre-wrap leading-relaxed ${
                 msg.role === "user"
                   ? "bg-violet-500 text-white"
-                  : "bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300"
+                  : "bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300"
               }`}>
                 {msg.content}
               </div>
@@ -189,7 +201,7 @@ function TicketChat({ reportId, initialHistory, onBranchUpdate }: {
           ))}
           {busy && (
             <div className="flex justify-start">
-              <div className="bg-slate-100 dark:bg-neutral-800 rounded-xl px-3 py-2">
+              <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-xl px-3 py-2">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
               </div>
             </div>
@@ -198,12 +210,12 @@ function TicketChat({ reportId, initialHistory, onBranchUpdate }: {
         </div>
       )}
 
-      <div className="px-4 pb-3 pt-1 flex gap-2">
+      <div className="px-4 pb-3 pt-2 flex gap-2">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Descreva o que quer mudar no código…"
+          placeholder="Ex: quero adicionar um botão de exportar PDF no dashboard…"
           disabled={busy}
           className="flex-1 rounded-xl border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-[12px] text-slate-700 dark:text-neutral-300 placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-violet-400 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-50"
         />
@@ -518,26 +530,33 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
                 </p>
               )}
 
-              {/* ── Chat IA ── */}
-              <div className="pt-1">
-                <button
-                  onClick={() => setShowChat(s => !s)}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                    showChat
-                      ? "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
-                      : "border border-slate-200 dark:border-neutral-700 text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
-                  }`}
-                >
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  Chat IA
-                </button>
-              </div>
+              {/* ── Chat IA (planejamento pré-validação) ── */}
+              {(isAnalyzed || isValidated) && (
+                <div className="pt-1">
+                  <button
+                    onClick={() => setShowChat(s => !s)}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                      showChat
+                        ? "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+                        : "border border-slate-200 dark:border-neutral-700 text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
+                    }`}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {showChat ? "Fechar chat" : "Chat IA"}
+                    {(report.chat_history?.length ?? 0) > 0 && (
+                      <span className="rounded-full bg-violet-500 text-white text-[9px] px-1.5 py-px font-bold">
+                        {Math.floor((report.chat_history?.length ?? 0) / 2)}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
 
-              {showChat && (
+              {showChat && (isAnalyzed || isValidated) && (
                 <TicketChat
                   reportId={report.id}
                   initialHistory={report.chat_history ?? []}
-                  onBranchUpdate={() => onRefresh(true)}
+                  onPromptUpdate={() => onRefresh(true)}
                 />
               )}
 
