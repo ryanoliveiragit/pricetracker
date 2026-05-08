@@ -29,9 +29,16 @@ class GitError(RuntimeError):
 
 # ─── Subprocess helpers ────────────────────────────────────────────────────────
 
+def _git_bin() -> str:
+    bin_ = shutil.which("git")
+    if not bin_:
+        raise GitError("git não encontrado no PATH — instale git no ambiente de execução")
+    return bin_
+
+
 def _run_git(cwd: Path, *args: str, check: bool = True, timeout: int = 60) -> str:
     proc = subprocess.run(
-        ["git", *args],
+        [_git_bin(), *args],
         cwd=str(cwd),
         capture_output=True,
         text=True,

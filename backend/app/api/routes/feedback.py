@@ -386,14 +386,13 @@ async def execute_feedback(
 
 
 async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> None:
-    """Background: gera diff via IA, cria worktree+branch, aplica, commita, push."""
+    """Background: gera diff via IA, cria branch no GitHub via API, commita."""
     from app.database import async_session
-    from app.services import git_executor
+    from app.services import github_api
     import importlib
     import app.services.auto_fix_agent as _afa
     importlib.reload(_afa)
 
-    summary_for_branch = ""
     branch: str | None = None
 
     try:
@@ -401,34 +400,17 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
         result = await asyncio.wait_for(_afa.execute_fix(prompt, fix_type), timeout=90.0)
         changes = result.get("changes", [])
         summary = result.get("summary", "") or "feedback fix"
-        summary_for_branch = summary
 
         if not changes:
             raise RuntimeError("IA retornou diff vazio")
 
-        # 2. Worktree + branch
-        branch, worktree = await asyncio.to_thread(git_executor.create_worktree, report_id, summary)
-
-        # 3. Aplica mudanças no worktree
-        apply_results = await asyncio.to_thread(git_executor.apply_changes_to_worktree, worktree, changes)
-        if any(r["status"] != "applied" for r in apply_results):
-            errs = [r for r in apply_results if r["status"] != "applied"]
-            raise RuntimeError(f"Falha ao aplicar diff em worktree: {errs}")
-
-        # 4. Commit
+        # 2. Cria branch + commit via GitHub API (sem git local)
         commit_msg = f"feedback #{report_id}: {summary[:72]}"
-        sha = await asyncio.to_thread(git_executor.stage_and_commit, worktree, changes, commit_msg)
+        branch, sha = await github_api.create_branch_with_changes(report_id, changes, commit_msg)
 
-        # 5. Push (opcional, controlado por GIT_PUSH_ENABLED)
-        pushed = False
-        try:
-            pushed = await asyncio.to_thread(git_executor.push_worktree, worktree, branch)
-        except Exception as exc:
-            logger.warning(f"feedback #{report_id}: push falhou — {exc}")
-
-        # 6. URLs
-        preview_url = git_executor.preview_url_for(branch) if pushed else None
-        branch_url = git_executor.github_branch_url(branch) if pushed else None
+        # 3. URLs
+        b_url = github_api.branch_url(branch)
+        p_url = github_api.preview_url_for(branch)
 
         async with async_session() as db:
             r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
@@ -439,12 +421,10 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
             r.execution_error = None
             r.branch_name = branch
             r.commit_sha = sha
-            r.preview_url = preview_url
-            r.branch_url = branch_url
+            r.preview_url = p_url
+            r.branch_url = b_url
             await db.commit()
-        logger.info(
-            f"feedback #{report_id}: deployed branch={branch} sha={sha[:8]} pushed={pushed}"
-        )
+        logger.info(f"feedback #{report_id}: deployed branch={branch} sha={sha[:8]}")
 
     except Exception as exc:
         logger.error(f"feedback #{report_id}: execução em branch falhou — {exc}", exc_info=True)
@@ -492,12 +472,6 @@ async def reject_feedback(
     report.admin_email = admin.email
     report.admin_notes = admin_notes.strip() or None
     report.resolved_at = datetime.now(timezone.utc)
-    # Limpa worktree órfã se houver
-    try:
-        from app.services import git_executor
-        await asyncio.to_thread(git_executor.cleanup_worktree, report_id)
-    except Exception:
-        pass
     await db.commit()
     return {"id": report.id, "status": report.status}
 

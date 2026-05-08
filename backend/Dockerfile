@@ -3,7 +3,7 @@ FROM python:3.11-slim
 
 # Install Chrome + ChromeDriver (required by Selenium scrapers)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget gnupg ca-certificates curl unzip \
+    wget gnupg ca-certificates curl unzip git \
     # Chrome dependencies
     libglib2.0-0 libnss3 libgconf-2-4 libfontconfig1 \
     libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 \

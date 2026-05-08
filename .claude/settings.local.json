@@ -94,7 +94,10 @@
       "Bash(git push *)",
       "mcp__vercel__get_runtime_logs",
       "mcp__vercel__get_deployment_build_logs",
-      "mcp__vercel__get_deployment"
+      "mcp__vercel__get_deployment",
+      "mcp__vercel__web_fetch_vercel_url",
+      "Bash(git *)",
+      "Bash(where git *)"
     ],
     "deny": [],
     "ask": []

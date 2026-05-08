@@ -44,9 +44,10 @@ class Settings(BaseSettings):
     OLLAMA_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"
 
-    # Fluxo agente de feedback — execução em branch isolada
+    # Fluxo agente de feedback — criação de branch via GitHub API
+    GITHUB_TOKEN: Optional[str] = None          # Personal access token (scope: repo)
+    GITHUB_REPO: Optional[str] = None           # "owner/repo" ex: "ryanoliveiragit/pricetracker"
     GIT_BASE_BRANCH: str = "main"
-    GIT_PUSH_ENABLED: bool = False
     VERCEL_PREVIEW_PATTERN: Optional[str] = None  # ex: "https://pricetracker-git-{branch}.vercel.app"
 
     # Logging
