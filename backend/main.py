@@ -1,11 +1,42 @@
 import logging
 import os
+import re as _re
 from contextlib import asynccontextmanager
 
 from app.api.routes import agent, auth, feedback, products, saves, search, suppliers, users
 from app.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+_CORS_RE = _re.compile(r"https://pricetracker[^.]*\.vercel\.app")
+_CORS_EXACT = {"http://localhost:3000", "http://localhost:3001"}
+
+
+class _OptionsCORSMiddleware:
+    """Intercepts OPTIONS preflight at ASGI level before CORSMiddleware."""
+
+    def __init__(self, app):
+        self._app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] == "OPTIONS":
+            raw = dict(scope.get("headers", []))
+            origin = raw.get(b"origin", b"").decode()
+            if origin and (origin in _CORS_EXACT or _CORS_RE.fullmatch(origin)):
+                from starlette.responses import Response
+                await Response(
+                    status_code=204,
+                    headers={
+                        "Access-Control-Allow-Origin": origin,
+                        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,PATCH,OPTIONS",
+                        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+                        "Access-Control-Allow-Credentials": "true",
+                        "Access-Control-Max-Age": "86400",
+                    },
+                )(scope, receive, send)
+                return
+        await self._app(scope, receive, send)
+
 
 # Configurar logging
 logging.basicConfig(
@@ -102,6 +133,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(_OptionsCORSMiddleware)
 
 # Registrar rotas
 app.include_router(search.router, prefix="/api", tags=["search"])
