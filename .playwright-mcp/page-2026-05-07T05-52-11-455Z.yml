@@ -1,0 +1,407 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "C ConstruPrice" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: C
+        - generic [ref=e7]: ConstruPrice
+      - navigation [ref=e8]:
+        - link "Funcionalidades" [ref=e9] [cursor=pointer]:
+          - /url: "#features"
+        - link "Como funciona" [ref=e10] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "Planos" [ref=e11] [cursor=pointer]:
+          - /url: "#pricing"
+        - link "FAQ" [ref=e12] [cursor=pointer]:
+          - /url: "#faq"
+      - generic [ref=e13]:
+        - link "Entrar" [ref=e14] [cursor=pointer]:
+          - /url: /login
+        - link "Começar grátis" [ref=e15] [cursor=pointer]:
+          - /url: "#pricing"
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - img [ref=e21]
+        - text: Agente IA com linguagem natural
+      - heading "Cote materiais em múltiplos atacadistas em segundos" [level=1] [ref=e24]:
+        - text: Cote materiais em
+        - text: múltiplos atacadistas
+        - text: em segundos
+      - paragraph [ref=e25]: ConstruPrice conecta todos os seus fornecedores e compara preços automaticamente — com um agente IA que entende o que você precisa.
+      - generic [ref=e26]:
+        - link "Começar grátis" [ref=e27] [cursor=pointer]:
+          - /url: "#pricing"
+          - text: Começar grátis
+          - img [ref=e28]
+        - link "Ver demonstração" [ref=e30] [cursor=pointer]:
+          - /url: "#demo"
+          - text: Ver demonstração
+          - img [ref=e31]
+      - generic [ref=e33]:
+        - paragraph [ref=e34]: 14 dias grátis · Sem cartão
+        - generic [ref=e36]:
+          - img [ref=e37]
+          - img [ref=e39]
+          - img [ref=e41]
+          - img [ref=e43]
+          - img [ref=e45]
+          - generic [ref=e47]: 4.9/5
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - img [ref=e54]
+          - generic [ref=e57]: Agente IA
+        - generic [ref=e60]: online
+      - generic [ref=e61]:
+        - paragraph [ref=e64]: preciso de cimento, areia e brita para fundar 200m²
+        - generic [ref=e65]:
+          - img [ref=e67]
+          - generic [ref=e70]:
+            - paragraph [ref=e71]: Encontrei 3 materiais em 4 fornecedores
+            - generic [ref=e72]:
+              - generic [ref=e73]:
+                - paragraph [ref=e74]: Cimento CP-II 50kg
+                - paragraph [ref=e75]: EstoqueAtacadista
+              - generic [ref=e76]:
+                - paragraph [ref=e77]: R$ 35,90
+                - paragraph [ref=e78]: −12%
+            - generic [ref=e79]:
+              - generic [ref=e80]:
+                - paragraph [ref=e81]: Areia Fina m³
+                - paragraph [ref=e82]: Megaleste
+              - generic [ref=e83]:
+                - paragraph [ref=e84]: R$ 89,00
+                - paragraph [ref=e85]: −8%
+            - generic [ref=e86]:
+              - generic [ref=e87]:
+                - paragraph [ref=e88]: Brita 1 m³
+                - paragraph [ref=e89]: SuperABC
+              - generic [ref=e90]:
+                - paragraph [ref=e91]: R$ 112,00
+                - paragraph [ref=e92]: −15%
+      - generic [ref=e94]:
+        - generic [ref=e95]: Descreva o que precisa…
+        - img [ref=e97]
+  - generic [ref=e99]:
+    - paragraph [ref=e100]: Fornecedores integrados
+    - generic [ref=e102]:
+      - generic [ref=e103]: EstoqueAtacadista
+      - generic [ref=e104]: Megaleste
+      - generic [ref=e105]: Cofema
+      - generic [ref=e106]: SuperABC
+      - generic [ref=e107]: DepósitoPro
+      - generic [ref=e108]: ObraFácil
+      - generic [ref=e109]: AtacadãoConstrução
+      - generic [ref=e110]: RevendaMais
+      - generic [ref=e111]: EstoqueAtacadista
+      - generic [ref=e112]: Megaleste
+      - generic [ref=e113]: Cofema
+      - generic [ref=e114]: SuperABC
+      - generic [ref=e115]: DepósitoPro
+      - generic [ref=e116]: ObraFácil
+      - generic [ref=e117]: AtacadãoConstrução
+      - generic [ref=e118]: RevendaMais
+  - generic [ref=e120]:
+    - generic [ref=e121]:
+      - paragraph [ref=e122]: Produto
+      - heading "Resultados em tempo real" [level=2] [ref=e123]
+      - paragraph [ref=e124]: Os preços chegam em streaming conforme cada fornecedor responde — ordenados automaticamente pelo melhor valor.
+    - generic [ref=e125]:
+      - generic [ref=e131]:
+        - img [ref=e132]
+        - generic [ref=e135]: app.construprice.com.br
+      - generic [ref=e136]:
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - img [ref=e139]
+            - text: Agente IA
+          - generic [ref=e141]:
+            - img [ref=e142]
+            - text: Resultados
+          - generic [ref=e145]:
+            - img [ref=e146]
+            - text: Salvos
+          - generic [ref=e148]:
+            - img [ref=e149]
+            - text: Produtos
+        - generic [ref=e153]:
+          - generic [ref=e154]:
+            - generic [ref=e155]:
+              - paragraph [ref=e156]: Cimento CP-II 50kg
+              - paragraph [ref=e157]: 4 fornecedores · agora
+            - generic [ref=e158]: Live
+          - generic [ref=e160]:
+            - generic [ref=e161]:
+              - generic [ref=e162]: "1"
+              - generic [ref=e163]:
+                - paragraph [ref=e164]: EstoqueAtacadista
+                - paragraph [ref=e165]: R$ 0,72/kg
+              - generic [ref=e166]:
+                - generic [ref=e167]: Melhor
+                - paragraph [ref=e168]: R$ 35,90
+            - generic [ref=e169]:
+              - generic [ref=e170]: "2"
+              - generic [ref=e171]:
+                - paragraph [ref=e172]: Megaleste
+                - paragraph [ref=e173]: R$ 0,77/kg
+              - paragraph [ref=e175]: R$ 38,50
+            - generic [ref=e176]:
+              - generic [ref=e177]: "3"
+              - generic [ref=e178]:
+                - paragraph [ref=e179]: Cofema
+                - paragraph [ref=e180]: R$ 0,82/kg
+              - paragraph [ref=e182]: R$ 41,00
+            - generic [ref=e183]:
+              - generic [ref=e184]: "4"
+              - generic [ref=e185]:
+                - paragraph [ref=e186]: SuperABC
+                - paragraph [ref=e187]: R$ 0,86/kg
+              - paragraph [ref=e189]: R$ 43,00
+          - generic [ref=e193]: Buscando…
+  - generic [ref=e195]:
+    - generic [ref=e196]:
+      - paragraph [ref=e197]: Funcionalidades
+      - heading "Tudo que você precisa" [level=2] [ref=e198]
+      - paragraph [ref=e199]: Uma plataforma completa para o dia a dia do setor de construção.
+    - generic [ref=e200]:
+      - generic [ref=e201]:
+        - generic [ref=e202]:
+          - img [ref=e204]
+          - generic [ref=e207]: Linguagem natural
+        - heading "Agente IA" [level=3] [ref=e208]
+        - paragraph [ref=e209]: Descreva em linguagem natural. O agente interpreta, normaliza termos técnicos e busca automaticamente.
+      - generic [ref=e210]:
+        - generic [ref=e211]:
+          - img [ref=e213]
+          - generic [ref=e215]: SSE
+        - heading "Streaming em tempo real" [level=3] [ref=e216]
+        - paragraph [ref=e217]: Resultados chegam enquanto cada loja responde via SSE. Sem aguardar carregamento completo.
+      - generic [ref=e218]:
+        - generic [ref=e219]:
+          - img [ref=e221]
+          - generic [ref=e225]: Ilimitado no Pro
+        - heading "Multi-fornecedor" [level=3] [ref=e226]
+        - paragraph [ref=e227]: EstoqueAtacadista, Megaleste, Cofema, SuperABC — com ou sem login. Adicione quantos quiser.
+      - generic [ref=e228]:
+        - generic [ref=e229]:
+          - img [ref=e231]
+          - generic [ref=e233]: AES-256
+        - heading "Credenciais seguras" [level=3] [ref=e234]
+        - paragraph [ref=e235]: Logins criptografados com AES-256. Sessões Selenium em cache, nunca trafegam em texto puro.
+      - generic [ref=e236]:
+        - generic [ref=e237]:
+          - img [ref=e239]
+          - generic [ref=e241]: Em breve
+        - heading "Histórico de preços" [level=3] [ref=e242]
+        - paragraph [ref=e243]: Acompanhe variações ao longo do tempo. Saiba quando é o melhor momento para comprar.
+      - generic [ref=e244]:
+        - generic [ref=e245]:
+          - img [ref=e247]
+          - generic [ref=e252]: Até 10 usuários
+        - heading "Controle de equipe" [level=3] [ref=e253]
+        - paragraph [ref=e254]: Perfis de admin, gestor, usuário e funcionário — cada um vê e faz apenas o que precisa.
+  - generic [ref=e256]:
+    - generic [ref=e257]:
+      - paragraph [ref=e258]: Como funciona
+      - heading "Setup em 5 minutos" [level=2] [ref=e259]
+    - generic [ref=e260]:
+      - generic [ref=e261]:
+        - generic [ref=e262]: "1"
+        - generic [ref=e263]:
+          - heading "Cadastre seus fornecedores" [level=3] [ref=e264]
+          - paragraph [ref=e265]: Adicione atacadistas com ou sem login. Credenciais ficam criptografadas com AES-256.
+      - generic [ref=e266]:
+        - generic [ref=e267]: "2"
+        - generic [ref=e268]:
+          - heading "Descreva o que precisa" [level=3] [ref=e269]
+          - paragraph [ref=e270]: Use linguagem natural ou pesquisa direta. O agente normaliza e busca em paralelo.
+      - generic [ref=e271]:
+        - generic [ref=e272]: "3"
+        - generic [ref=e273]:
+          - heading "Compare e decida" [level=3] [ref=e274]
+          - paragraph [ref=e275]: Preços ranqueados lado a lado. Salve e recompre com um clique.
+  - generic [ref=e277]:
+    - generic [ref=e278]:
+      - paragraph [ref=e279]: Depoimentos
+      - heading "Quem usa, não volta atrás" [level=2] [ref=e280]
+    - generic [ref=e281]:
+      - generic [ref=e282]:
+        - generic [ref=e283]:
+          - img [ref=e284]
+          - img [ref=e286]
+          - img [ref=e288]
+          - img [ref=e290]
+          - img [ref=e292]
+        - blockquote [ref=e294]: “Antes eu passava 2 horas ligando para fornecedores. Agora faço a cotação em 30 segundos.”
+        - generic [ref=e295]:
+          - generic [ref=e296]: R
+          - generic [ref=e297]:
+            - paragraph [ref=e298]: Rafael Costa
+            - paragraph [ref=e299]: Mestre de obras · SP
+      - generic [ref=e300]:
+        - generic [ref=e301]:
+          - img [ref=e302]
+          - img [ref=e304]
+          - img [ref=e306]
+          - img [ref=e308]
+          - img [ref=e310]
+        - blockquote [ref=e312]: “O agente IA entende exatamente o que preciso. Só digito o material e pronto.”
+        - generic [ref=e313]:
+          - generic [ref=e314]: M
+          - generic [ref=e315]:
+            - paragraph [ref=e316]: Mariana Souza
+            - paragraph [ref=e317]: Gestora de compras · RJ
+      - generic [ref=e318]:
+        - generic [ref=e319]:
+          - img [ref=e320]
+          - img [ref=e322]
+          - img [ref=e324]
+          - img [ref=e326]
+          - img [ref=e328]
+        - blockquote [ref=e330]: “Economizamos 28% no custo de material nos primeiros três meses. ROI imediato.”
+        - generic [ref=e331]:
+          - generic [ref=e332]: C
+          - generic [ref=e333]:
+            - paragraph [ref=e334]: Carlos Mendes
+            - paragraph [ref=e335]: Diretor de obras · MG
+  - generic [ref=e337]:
+    - generic [ref=e338]:
+      - paragraph [ref=e339]: Planos
+      - heading "Simples e transparente" [level=2] [ref=e340]
+      - paragraph [ref=e341]: Sem surpresas na fatura. Cancele quando quiser.
+    - generic [ref=e342]:
+      - generic [ref=e344]:
+        - paragraph [ref=e345]: Starter
+        - generic [ref=e346]:
+          - generic [ref=e347]: R$ 97
+          - generic [ref=e348]: /mês
+        - paragraph [ref=e349]: Para autônomos e pequenas obras
+        - list [ref=e350]:
+          - listitem [ref=e351]:
+            - img [ref=e352]
+            - generic [ref=e354]: 3 fornecedores
+          - listitem [ref=e355]:
+            - img [ref=e356]
+            - generic [ref=e358]: 500 cotações/mês
+          - listitem [ref=e359]:
+            - img [ref=e360]
+            - generic [ref=e362]: Agente IA básico
+          - listitem [ref=e363]:
+            - img [ref=e364]
+            - generic [ref=e366]: 1 usuário
+        - link "Começar agora" [ref=e367] [cursor=pointer]:
+          - /url: "#contact"
+      - generic [ref=e368]:
+        - generic [ref=e369]: Mais popular
+        - generic [ref=e370]:
+          - paragraph [ref=e371]: Pro
+          - generic [ref=e372]:
+            - generic [ref=e373]: R$ 247
+            - generic [ref=e374]: /mês
+          - paragraph [ref=e375]: Para construtoras e revendas
+          - list [ref=e376]:
+            - listitem [ref=e377]:
+              - img [ref=e378]
+              - generic [ref=e380]: Fornecedores ilimitados
+            - listitem [ref=e381]:
+              - img [ref=e382]
+              - generic [ref=e384]: Cotações ilimitadas
+            - listitem [ref=e385]:
+              - img [ref=e386]
+              - generic [ref=e388]: Agente IA avançado
+            - listitem [ref=e389]:
+              - img [ref=e390]
+              - generic [ref=e392]: 10 usuários
+            - listitem [ref=e393]:
+              - img [ref=e394]
+              - generic [ref=e396]: Histórico completo
+            - listitem [ref=e397]:
+              - img [ref=e398]
+              - generic [ref=e400]: Suporte prioritário
+          - link "Começar agora" [ref=e401] [cursor=pointer]:
+            - /url: "#contact"
+      - generic [ref=e403]:
+        - paragraph [ref=e404]: Enterprise
+        - generic [ref=e406]: Sob consulta
+        - paragraph [ref=e407]: Para grandes redes e distribuidoras
+        - list [ref=e408]:
+          - listitem [ref=e409]:
+            - img [ref=e410]
+            - generic [ref=e412]: Tudo do Pro
+          - listitem [ref=e413]:
+            - img [ref=e414]
+            - generic [ref=e416]: Usuários ilimitados
+          - listitem [ref=e417]:
+            - img [ref=e418]
+            - generic [ref=e420]: API de integração
+          - listitem [ref=e421]:
+            - img [ref=e422]
+            - generic [ref=e424]: Onboarding dedicado
+          - listitem [ref=e425]:
+            - img [ref=e426]
+            - generic [ref=e428]: SLA garantido
+        - link "Falar com vendas" [ref=e429] [cursor=pointer]:
+          - /url: "#contact"
+  - generic [ref=e431]:
+    - generic [ref=e432]:
+      - paragraph [ref=e433]: FAQ
+      - heading "Perguntas frequentes" [level=2] [ref=e434]
+    - generic [ref=e435]:
+      - button "Quantos fornecedores posso conectar?" [ref=e437] [cursor=pointer]:
+        - generic [ref=e438]: Quantos fornecedores posso conectar?
+        - img [ref=e439]
+      - button "Como funciona o scraping automático?" [ref=e441] [cursor=pointer]:
+        - generic [ref=e442]: Como funciona o scraping automático?
+        - img [ref=e443]
+      - button "Os dados de acesso às lojas ficam seguros?" [ref=e445] [cursor=pointer]:
+        - generic [ref=e446]: Os dados de acesso às lojas ficam seguros?
+        - img [ref=e447]
+      - button "Preciso instalar algo na minha máquina?" [ref=e449] [cursor=pointer]:
+        - generic [ref=e450]: Preciso instalar algo na minha máquina?
+        - img [ref=e451]
+      - button "O Agente IA funciona como?" [ref=e453] [cursor=pointer]:
+        - generic [ref=e454]: O Agente IA funciona como?
+        - img [ref=e455]
+      - button "Posso usar em equipe?" [ref=e457] [cursor=pointer]:
+        - generic [ref=e458]: Posso usar em equipe?
+        - img [ref=e459]
+  - generic [ref=e463]:
+    - heading "Pronto para cotar mais rápido?" [level=2] [ref=e464]
+    - paragraph [ref=e465]: Junte-se às construtoras que já economizam horas por semana com ConstruPrice.
+    - link "Começar grátis — 14 dias" [ref=e466] [cursor=pointer]:
+      - /url: "#pricing"
+      - text: Começar grátis — 14 dias
+      - img [ref=e467]
+    - paragraph [ref=e469]: Sem cartão de crédito · Setup em menos de 5 minutos
+  - generic [ref=e471]:
+    - generic [ref=e472]:
+      - paragraph [ref=e473]: Contato
+      - heading "Fale com a gente" [level=2] [ref=e474]
+      - paragraph [ref=e475]: Demo personalizada ou dúvidas sobre planos.
+    - generic [ref=e476]:
+      - generic [ref=e477]:
+        - generic [ref=e478]:
+          - generic [ref=e479]: Nome
+          - textbox "Nome" [ref=e480]:
+            - /placeholder: Seu nome
+        - generic [ref=e481]:
+          - generic [ref=e482]: E-mail
+          - textbox "E-mail" [ref=e483]:
+            - /placeholder: seu@email.com
+      - generic [ref=e484]:
+        - generic [ref=e485]: Mensagem
+        - textbox "Mensagem" [ref=e486]:
+          - /placeholder: Como podemos ajudar?
+      - button "Enviar mensagem" [ref=e487] [cursor=pointer]
+  - contentinfo [ref=e488]:
+    - generic [ref=e490]:
+      - generic [ref=e491]:
+        - generic [ref=e492]: C
+        - generic [ref=e493]: ConstruPrice
+      - paragraph [ref=e494]: © 2026 ConstruPrice. Todos os direitos reservados.
+      - generic [ref=e495]:
+        - link "Privacidade" [ref=e496] [cursor=pointer]:
+          - /url: "#"
+        - link "Termos" [ref=e497] [cursor=pointer]:
+          - /url: "#"

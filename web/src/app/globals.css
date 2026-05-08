@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: #080808;
+    color: rgba(255,255,255,0.92);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgba(250, 93, 25, 0.25);
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.55) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-brand {
+    background: linear-gradient(135deg, #fa5d19 0%, #ff9d6a 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass card */
+  .glass {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .glass-hover {
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .glass-hover:hover {
+    background: rgba(255,255,255,0.055);
+    border-color: rgba(255,255,255,0.14);
+  }
+
+  /* Noise overlay */
+  .noise::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orb */
+  .glow-brand {
+    background: radial-gradient(circle, rgba(250,93,25,0.35) 0%, transparent 70%);
+  }
+  .glow-sm {
+    background: radial-gradient(circle, rgba(250,93,25,0.18) 0%, transparent 70%);
+  }
+
+  /* Dot grid */
+  .dot-grid {
+    background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* Radial vignette to fade the dot grid */
+  .radial-fade {
+    background: radial-gradient(ellipse 80% 55% at 50% 0%, transparent 20%, #080808 75%);
+  }
+
+  /* Gradient border */
+  .border-gradient {
+    background: linear-gradient(#080808, #080808) padding-box,
+                linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04)) border-box;
+    border: 1px solid transparent;
+  }
+
+  .border-gradient-brand {
+    background: linear-gradient(#0d0d0d, #0d0d0d) padding-box,
+                linear-gradient(135deg, rgba(250,93,25,0.5), rgba(250,93,25,0.1)) border-box;
+    border: 1px solid transparent;
+  }
+}
+
+/* FAQ accordion */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }

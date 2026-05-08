@@ -1,0 +1,32 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - img [ref=e16]
+        - heading "Bem-vindo ao ConstruPrice" [level=1] [ref=e20]
+        - paragraph [ref=e21]: Faca login para acessar o painel
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e25]: Email
+            - textbox "Email" [ref=e26]:
+              - /placeholder: seu@email.com
+              - text: admin@construprice.com
+          - generic [ref=e27]:
+            - generic [ref=e28]: Senha
+            - textbox "Senha" [ref=e29]:
+              - /placeholder: "********"
+              - text: admin123
+          - generic [ref=e42]: Credenciais inválidas
+          - button "Entrar" [ref=e30] [cursor=pointer]:
+            - generic [ref=e31]:
+              - text: Entrar
+              - img [ref=e43]
+        - generic [ref=e35]:
+          - img [ref=e36]
+          - generic [ref=e38]:
+            - paragraph [ref=e39]: Modo demonstracao
+            - paragraph [ref=e40]: Use as credenciais pre-preenchidas para acessar.
+      - paragraph [ref=e41]: ConstruPrice © 2025
+    - region "Notifications alt+T"
+  - alert [ref=e7]
