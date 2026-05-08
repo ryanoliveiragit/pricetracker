@@ -48,7 +48,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 AUTO_FIX_TYPES = {"add_abbreviation", "add_synonym"}
 PROMPT_FIX_TYPES = {"ui_change", "feature_request", "bug_fix"}
-TERMINAL_STATUSES = {FeedbackStatus.MERGED, FeedbackStatus.REJECTED}
+TERMINAL_STATUSES = {FeedbackStatus.merged, FeedbackStatus.rejected}
 
 
 # ─── Auth helpers ──────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ async def _persist_analysis(report_id: int, analysis: dict) -> None:
         report.ai_proposed_fix = analysis.get("proposed_fix", {})
         report.ai_confidence = float(analysis.get("confidence", 0.0))
         report.ai_explanation = analysis.get("explanation", "")
-        report.status = FeedbackStatus.ANALYZED
+        report.status = FeedbackStatus.analyzed
         # Pré-popula validated_prompt com o prompt da IA (admin pode editar)
         proposed_prompt = (analysis.get("proposed_fix") or {}).get("prompt")
         if proposed_prompt and not report.validated_prompt:
@@ -170,7 +170,7 @@ async def create_feedback(
         description=description.strip(),
         screenshot_path=screenshot_path,
         reference_url=reference_url.strip() or None,
-        status=FeedbackStatus.PENDING,
+        status=FeedbackStatus.pending,
     )
     db.add(report)
     await db.commit()
@@ -224,7 +224,7 @@ async def reanalyze_feedback(
     if report.status in TERMINAL_STATUSES:
         raise HTTPException(status_code=400, detail="Relatório já finalizado — não pode ser reanalisado")
 
-    report.status = FeedbackStatus.PENDING
+    report.status = FeedbackStatus.pending
     report.ai_summary = None
     report.ai_fix_type = None
     report.ai_proposed_fix = None
@@ -238,7 +238,7 @@ async def reanalyze_feedback(
                       report.description, report.screenshot_path)
     )
 
-    return {"id": report.id, "status": FeedbackStatus.PENDING, "message": "Reanálise iniciada"}
+    return {"id": report.id, "status": FeedbackStatus.pending, "message": "Reanálise iniciada"}
 
 
 # ─── PATCH /api/feedback/{id}/prompt ──────────────────────────────────────────
@@ -252,7 +252,7 @@ async def update_prompt(
     admin: UserDB = Depends(require_admin),
 ):
     report = await _load_report(db, report_id)
-    if report.status not in (FeedbackStatus.ANALYZED, FeedbackStatus.PENDING):
+    if report.status not in (FeedbackStatus.analyzed, FeedbackStatus.pending, FeedbackStatus.validated):
         raise HTTPException(status_code=400, detail="Prompt só pode ser editado antes da validação")
     if not prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt não pode ser vazio")
@@ -272,33 +272,42 @@ async def validate_feedback(
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    report = await _load_report(db, report_id)
+    try:
+        report = await _load_report(db, report_id)
+        logger.info(f"feedback #{report_id}: validando (status={report.status}, fix_type={report.ai_fix_type})")
 
-    if report.status != FeedbackStatus.ANALYZED:
-        raise HTTPException(status_code=400, detail=f"Só é possível validar feedbacks 'analyzed' (atual: {report.status})")
+        if report.status != FeedbackStatus.analyzed:
+            raise HTTPException(status_code=400, detail=f"Só é possível validar feedbacks 'analyzed' (atual: {report.status})")
 
-    report.admin_email = admin.email
+        report.admin_email = admin.email
 
-    # ── Caminho rápido: abreviação / sinônimo ─────────────────────────────────
-    if report.ai_fix_type in AUTO_FIX_TYPES:
-        applied = await _apply_auto_fix(report, db)
-        if not applied:
-            raise HTTPException(status_code=500, detail="Falha ao aplicar auto-fix em synonyms.py")
-        report.status = FeedbackStatus.MERGED
-        report.resolved_at = datetime.now(timezone.utc)
+        # ── Caminho rápido: abreviação / sinônimo ─────────────────────────────────
+        if report.ai_fix_type in AUTO_FIX_TYPES:
+            applied = await _apply_auto_fix(report, db)
+            if not applied:
+                raise HTTPException(status_code=500, detail="Falha ao aplicar auto-fix em synonyms.py")
+            report.status = FeedbackStatus.merged
+            report.resolved_at = datetime.now(timezone.utc)
+            await db.commit()
+            logger.info(f"feedback #{report_id}: auto-fix aplicado, status→merged")
+            return {"id": report.id, "status": report.status, "auto_applied": True}
+
+        # ── Caminho prompt: marca como validado, pronto para execução em branch ──
+        if not report.validated_prompt:
+            # Fallback: usa prompt da IA se admin não editou
+            report.validated_prompt = (report.ai_proposed_fix or {}).get("prompt", "").strip()
+        if not report.validated_prompt:
+            raise HTTPException(status_code=400, detail="Sem prompt para validar")
+
+        report.status = FeedbackStatus.validated
         await db.commit()
-        return {"id": report.id, "status": report.status, "auto_applied": True}
-
-    # ── Caminho prompt: marca como validado, pronto para execução em branch ──
-    if not report.validated_prompt:
-        # Fallback: usa prompt da IA se admin não editou
-        report.validated_prompt = (report.ai_proposed_fix or {}).get("prompt", "").strip()
-    if not report.validated_prompt:
-        raise HTTPException(status_code=400, detail="Sem prompt para validar")
-
-    report.status = FeedbackStatus.VALIDATED
-    await db.commit()
-    return {"id": report.id, "status": report.status, "auto_applied": False}
+        logger.info(f"feedback #{report_id}: validado com sucesso, status→validated")
+        return {"id": report.id, "status": report.status, "auto_applied": False}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"feedback #{report_id}: erro inesperado na validação — {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno: {exc}")
 
 
 async def _apply_auto_fix(report: FeedbackReportDB, db: AsyncSession) -> bool:
@@ -347,7 +356,7 @@ async def execute_feedback(
 ):
     report = await _load_report(db, report_id)
 
-    if report.status not in (FeedbackStatus.VALIDATED, FeedbackStatus.DEPLOYED):
+    if report.status not in (FeedbackStatus.validated, FeedbackStatus.deployed):
         raise HTTPException(
             status_code=400,
             detail=f"Só é possível executar feedbacks validados (atual: {report.status})",
@@ -357,7 +366,7 @@ async def execute_feedback(
     if not prompt:
         raise HTTPException(status_code=400, detail="Sem prompt validado para executar")
 
-    report.status = FeedbackStatus.EXECUTING
+    report.status = FeedbackStatus.executing
     report.execution_status = "running"
     report.execution_diff = None
     report.execution_error = None
@@ -417,7 +426,7 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
 
         async with async_session() as db:
             r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
-            r.status = FeedbackStatus.DEPLOYED
+            r.status = FeedbackStatus.deployed
             r.execution_status = "deployed"
             r.execution_diff = changes
             r.execution_summary = summary
@@ -435,7 +444,7 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
         logger.error(f"feedback #{report_id}: execução em branch falhou — {exc}", exc_info=True)
         async with async_session() as db:
             r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
-            r.status = FeedbackStatus.VALIDATED  # volta a validated para nova tentativa
+            r.status = FeedbackStatus.validated  # volta a validated para nova tentativa
             r.execution_status = "error"
             r.execution_error = str(exc)
             if branch:
@@ -453,9 +462,9 @@ async def mark_merged(
     admin: UserDB = Depends(require_admin),
 ):
     report = await _load_report(db, report_id)
-    if report.status != FeedbackStatus.DEPLOYED:
+    if report.status != FeedbackStatus.deployed:
         raise HTTPException(status_code=400, detail="Apenas feedbacks 'deployed' podem ser marcados como mergeados")
-    report.status = FeedbackStatus.MERGED
+    report.status = FeedbackStatus.merged
     report.resolved_at = datetime.now(timezone.utc)
     await db.commit()
     return {"id": report.id, "status": report.status}
@@ -473,7 +482,7 @@ async def reject_feedback(
     report = await _load_report(db, report_id)
     if report.status in TERMINAL_STATUSES:
         raise HTTPException(status_code=400, detail="Relatório já finalizado")
-    report.status = FeedbackStatus.REJECTED
+    report.status = FeedbackStatus.rejected
     report.admin_email = admin.email
     report.admin_notes = admin_notes.strip() or None
     report.resolved_at = datetime.now(timezone.utc)
@@ -516,7 +525,7 @@ def _serialize(r: FeedbackReportDB) -> dict:
         "search_query": r.search_query,
         "expected_result": r.expected_result,
         "description": r.description,
-        "screenshot_url": f"/uploads/{os.path.basename(r.screenshot_path)}" if r.screenshot_path else None,
+        "screenshot_url": f"/uploads/feedback/{os.path.basename(r.screenshot_path)}" if r.screenshot_path else None,
         "reference_url": r.reference_url,
         "status": r.status,
         "ai_summary": r.ai_summary,

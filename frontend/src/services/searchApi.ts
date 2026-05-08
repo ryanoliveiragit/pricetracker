@@ -295,6 +295,77 @@ export interface CatalogStatus {
   catalogAgeMinutes: number | null;
 }
 
+export interface CatalogItem {
+  id: number;
+  store: string;
+  productName: string;
+  price: number;
+  currency: string;
+  productUrl: string;
+  addToCartUrl?: string;
+  availability: string;
+  sku?: string;
+  imageUrl?: string;
+  description?: string;
+  brand?: string;
+  score?: number;
+  sourceQuery: string;
+  scraperKey?: string;
+  scrapedAt?: string;
+}
+
+export interface CatalogItemsResponse {
+  items: CatalogItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface CatalogFacets {
+  stores: { name: string; count: number }[];
+  brands: { name: string; count: number }[];
+  categories: { name: string; count: number }[];
+  price_min: number;
+  price_max: number;
+  price_avg: number;
+  availability: { name: string; count: number }[];
+}
+
+export async function getCatalogFacets(): Promise<CatalogFacets> {
+  const response = await fetch(`${API_BASE_URL}/api/search/catalog-facets`);
+  if (!response.ok) throw new Error("Erro ao buscar facetas");
+  return response.json();
+}
+
+export async function getCatalogItems(params: {
+  q?: string;
+  stores?: string;
+  availability?: string;
+  brands?: string;
+  categories?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: string;
+  page?: number;
+  limit?: number;
+}): Promise<CatalogItemsResponse> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.stores) qs.set("stores", params.stores);
+  if (params.availability) qs.set("availability", params.availability);
+  if (params.brands) qs.set("brands", params.brands);
+  if (params.categories) qs.set("categories", params.categories);
+  if (params.minPrice) qs.set("min_price", String(params.minPrice));
+  if (params.maxPrice) qs.set("max_price", String(params.maxPrice));
+  if (params.sortBy) qs.set("sort_by", params.sortBy);
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  const response = await fetch(`${API_BASE_URL}/api/search/catalog-items?${qs.toString()}`);
+  if (!response.ok) throw new Error("Erro ao buscar itens do catálogo");
+  return response.json();
+}
+
 export async function getCatalogStatus(): Promise<CatalogStatus> {
   const response = await fetch(`${API_BASE_URL}/api/search/catalog-status`);
   if (!response.ok) throw new Error("Erro ao buscar status do catálogo");

@@ -186,14 +186,14 @@ class ScraperSessionDB(Base):
 
 
 class FeedbackStatus(str, enum.Enum):
-    PENDING = "pending"          # aguardando IA transcrever
-    ANALYZED = "analyzed"        # IA transcreveu — aguarda revisão do admin
-    APPROVED = "approved"        # legado (mantido para compatibilidade)
-    VALIDATED = "validated"      # admin validou o prompt — pronto para execução em branch
-    EXECUTING = "executing"      # branch sendo criada / IA gerando diff
-    DEPLOYED = "deployed"        # branch criada + push + preview URL gerada
-    MERGED = "merged"            # admin mergeou na main (terminal sucesso)
-    REJECTED = "rejected"
+    pending = "pending"          # aguardando IA transcrever
+    analyzed = "analyzed"        # IA transcreveu — aguarda revisão do admin
+    approved = "approved"        # legado (mantido para compatibilidade)
+    validated = "validated"      # admin validou o prompt — pronto para execução em branch
+    executing = "executing"      # branch sendo criada / IA gerando diff
+    deployed = "deployed"        # branch criada + push + preview URL gerada
+    merged = "merged"            # admin mergeou na main (terminal sucesso)
+    rejected = "rejected"
 
 
 class FeedbackReportDB(Base):
@@ -212,7 +212,8 @@ class FeedbackReportDB(Base):
     reference_url: Mapped[str] = mapped_column(Text, nullable=True)
 
     status: Mapped[FeedbackStatus] = mapped_column(
-        Enum(FeedbackStatus), default=FeedbackStatus.PENDING, index=True
+        Enum(FeedbackStatus, values_callable=lambda x: [item.value for item in x]),
+        default=FeedbackStatus.pending, index=True
     )
 
     ai_summary: Mapped[str] = mapped_column(Text, nullable=True)

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Home, Search, Package, BarChart3, Store, Settings, LogOut, Menu, X } from "lucide-react";
+import { Home, Search, Package, BarChart3, Store, Settings, DoorOpen, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -21,6 +21,7 @@ export default function TopbarLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   function handleLogout() {
     logout();
@@ -76,17 +77,27 @@ export default function TopbarLayout({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 dark:border-neutral-800 dark:bg-neutral-950/50">
+              <div className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 dark:border-neutral-800 dark:bg-neutral-950/50 relative">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />
+                ) : (
                 <div className="h-6 w-6 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white">
                   {user?.displayName?.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{user?.displayName}</span>
+                )}
+                <button className="text-sm font-medium text-neutral-900 dark:text-neutral-100" onClick={() => setDropdownOpen(!dropdownOpen)}>{user?.displayName}</button>
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 dark:bg-neutral-900">
+                    <Link href="/settings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800">Configurações</Link>
+                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800">Sair</button>
+                  </div>
+                )}
               </div>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-neutral-400 dark:hover:bg-neutral-800"
               >
-                <LogOut className="h-4 w-4" />
+                <DoorOpen className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
               </button>
             </div>
 
@@ -130,7 +141,7 @@ export default function TopbarLayout({ children }: { children: ReactNode }) {
                 onClick={handleLogout}
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
               >
-                <LogOut className="h-5 w-5" />
+                <DoorOpen className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                 Sair
               </button>
             </nav>

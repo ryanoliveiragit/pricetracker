@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from app.api.routes import agent, auth, products, saves, search, suppliers, users
+from app.api.routes import agent, auth, feedback, products, saves, search, suppliers, users
 from app.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +25,23 @@ async def lifespan(_app: FastAPI):
 
     await create_tables()
     await seed_defaults()
+
+    # Carrega abreviações e sinônimos dinâmicos aprovados via feedback
+    from app.database import async_session as _session
+    from app.models.db_models import DynamicAbbreviationDB, DynamicSynonymDB
+    from app.services.synonyms import load_dynamic_abbreviations, load_dynamic_synonyms
+    from sqlalchemy import select as _select
+    async with _session() as _db:
+        _abbrev_rows = await _db.execute(_select(DynamicAbbreviationDB))
+        _pairs = [(r.long_form, r.short_forms) for r in _abbrev_rows.scalars().all()]
+        load_dynamic_abbreviations(_pairs)
+
+        _syn_rows = await _db.execute(_select(DynamicSynonymDB))
+        _groups = [r.group for r in _syn_rows.scalars().all()]
+        load_dynamic_synonyms(_groups)
+
+        if _pairs or _groups:
+            logger.info(f"📚 {len(_pairs)} abreviações e {len(_groups)} grupos de sinônimos dinâmicos carregados")
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
@@ -70,12 +87,11 @@ app = FastAPI(
 )
 
 # Configurar CORS
-# Auth uses JWT via Authorization header (not cookies), so allow_credentials=False
-# is safe and required when allow_origins=["*"]
+# JWT via Authorization header — precisa de allow_credentials=True e origem explícita
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -88,6 +104,13 @@ app.include_router(products.router, prefix="/api", tags=["products"])
 app.include_router(users.router, prefix="/api", tags=["users"])
 app.include_router(saves.router, prefix="/api/saves", tags=["saves"])
 app.include_router(agent.router, prefix="/api", tags=["agent"])
+app.include_router(feedback.router, prefix="/api/feedback", tags=["feedback"])
+
+# Serve uploaded screenshots statically
+from fastapi.staticfiles import StaticFiles
+import os as _os
+_os.makedirs("uploads/feedback", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/api/admin/scraper-sessions")

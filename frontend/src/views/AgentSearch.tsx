@@ -20,6 +20,7 @@ import {
   Truck,
   X as XIcon,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -37,6 +38,8 @@ import {
   type AgentSummary,
   type ChatMessage,
 } from "../services/agentApi";
+import { searchMaterialsStream, type StoreState } from "../services/searchApi";
+import type { Offer } from "../types/search";
 
 /* ─── STATIC ANIMATIONS ─── */
 const AGENT_STYLE = `
@@ -265,6 +268,49 @@ function useCrypticPlaceholder(interval = 3200) {
 }
 
 
+/* ─── MARKDOWN COMPONENTS ─── */
+const mdComponents: React.ComponentProps<typeof ReactMarkdown>["components"] = {
+  p: ({ children }) => (
+    <p style={{ margin: "0 0 8px 0", lineHeight: 1.65 }}>{children}</p>
+  ),
+  strong: ({ children }) => (
+    <strong style={{ color: "var(--t0)", fontWeight: 600 }}>{children}</strong>
+  ),
+  em: ({ children }) => (
+    <em style={{ color: "var(--t1)", fontStyle: "italic" }}>{children}</em>
+  ),
+  code: ({ children }) => (
+    <code style={{
+      fontFamily: "var(--font-mono, 'Courier New', monospace)",
+      fontSize: 12,
+      background: "var(--bg3)",
+      border: "1px solid var(--ln)",
+      padding: "1px 6px",
+      borderRadius: 4,
+      color: "var(--acc)",
+    }}>{children}</code>
+  ),
+  ul: ({ children }) => (
+    <ul style={{ paddingLeft: 18, margin: "4px 0 8px" }}>{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol style={{ paddingLeft: 18, margin: "4px 0 8px" }}>{children}</ol>
+  ),
+  li: ({ children }) => (
+    <li style={{ marginBottom: 3, lineHeight: 1.55 }}>{children}</li>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote style={{
+      borderLeft: "3px solid var(--acc)",
+      paddingLeft: 12,
+      margin: "8px 0",
+      color: "var(--t2)",
+      fontStyle: "italic",
+    }}>{children}</blockquote>
+  ),
+  hr: () => <hr style={{ border: "none", borderTop: "1px solid var(--ln)", margin: "10px 0" }} />,
+};
+
 /* ─── TYPEWRITER ─── */
 function TypewriterText({ text, onDone }: { text: string; onDone?: () => void }) {
   const [shown, setShown] = useState("");
@@ -279,7 +325,7 @@ function TypewriterText({ text, onDone }: { text: string; onDone?: () => void })
   const done = shown.length >= text.length;
   return (
     <span>
-      {shown}
+      <ReactMarkdown components={mdComponents}>{shown}</ReactMarkdown>
       {!done && (
         <span className="cursor-blink" style={{
           display: "inline-block", width: 7, height: 15,
@@ -875,8 +921,9 @@ function UserMessage({ text }: { text: string }) {
         fontSize: 14,
         lineHeight: 1.55,
         color: "var(--t0)",
-        whiteSpace: "pre-wrap",
-      }}>{text}</div>
+      }}>
+        <ReactMarkdown components={mdComponents}>{text}</ReactMarkdown>
+      </div>
     </motion.div>
   );
 }
@@ -937,8 +984,11 @@ function AssistantMessage({ text, isStreaming, onDone, tools }: AssistantMsgProp
         )}
 
         {textReady && text && (
-          <div style={{ fontSize: 14.5, lineHeight: 1.7, color: "var(--t1)", whiteSpace: "pre-wrap" }}>
-            {isStreaming ? <TypewriterText text={text} onDone={onDone} /> : text}
+          <div style={{ fontSize: 14.5, lineHeight: 1.7, color: "var(--t1)" }}>
+            {isStreaming
+              ? <TypewriterText text={text} onDone={onDone} />
+              : <ReactMarkdown components={mdComponents}>{text}</ReactMarkdown>
+            }
           </div>
         )}
 
@@ -1193,7 +1243,7 @@ function MultiChipsInput({ suggested, onConfirm, onSkip }: { suggested: string[]
   );
 }
 
-/* ─── STICKY INPUT ─── */
+/* ─── STICKY INPUT (KokonutUI-inspired) ─── */
 function StickyInput({ onSend, disabled }: { onSend: (t: string) => void; disabled: boolean }) {
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
@@ -1202,7 +1252,7 @@ function StickyInput({ onSend, disabled }: { onSend: (t: string) => void; disabl
   useEffect(() => {
     if (ref.current) {
       ref.current.style.height = "auto";
-      ref.current.style.height = `${Math.min(ref.current.scrollHeight, 120)}px`;
+      ref.current.style.height = `${Math.min(ref.current.scrollHeight, 140)}px`;
     }
   }, [text]);
 
@@ -1212,59 +1262,68 @@ function StickyInput({ onSend, disabled }: { onSend: (t: string) => void; disabl
     setText("");
   };
 
+  const hasText = text.trim().length > 0;
+
   return (
-    <div style={{ padding: "12px 0 16px" }}>
+    <div style={{ padding: "12px 0 16px", opacity: disabled ? 0.58 : 1, transition: "opacity 200ms" }}>
+      {/* Gradient border wrapper */}
       <div style={{
-        background: "var(--bg1)",
-        border: `1px solid ${focused ? "var(--acc)" : "var(--ln)"}`,
-        borderRadius: 12,
-        padding: "8px 8px 8px 14px",
-        display: "flex", alignItems: "flex-end", gap: 8,
-        transition: "border-color 180ms, box-shadow 180ms",
-        boxShadow: focused
-          ? "0 0 0 3px var(--acc-soft)"
-          : "none",
-        opacity: disabled ? 0.6 : 1,
+        borderRadius: 16,
+        padding: "1.5px",
+        background: focused && !disabled
+          ? "linear-gradient(135deg, rgba(250,93,25,0.8), rgba(255,255,255,0.14) 45%, rgba(250,93,25,0.4))"
+          : "linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.035) 50%, rgba(255,255,255,0.07))",
+        transition: "background 300ms, box-shadow 300ms",
+        boxShadow: focused && !disabled
+          ? "0 0 32px -6px rgba(250,93,25,0.28), 0 4px 24px -8px rgba(0,0,0,0.55)"
+          : "0 2px 14px -4px rgba(0,0,0,0.32)",
       }}>
-        <textarea
-          ref={ref}
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
-          disabled={disabled}
-          placeholder={disabled ? "Selecione uma opção acima..." : "Mensagem..."}
-          rows={1}
-          style={{
-            flex: 1, fontSize: 14, lineHeight: 1.5, resize: "none",
-            minHeight: 24, maxHeight: 120, padding: "4px 0",
-            background: "none", border: "none", outline: "none",
-            color: "var(--t0)", fontFamily: "inherit",
-          }}
-        />
-        <button
-          onClick={submit}
-          disabled={!text.trim() || disabled}
-          className="press"
-          style={{
-            width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center",
-            background: text.trim() && !disabled ? "var(--acc)" : "transparent",
-            color: text.trim() && !disabled ? "#fff" : "var(--t3)",
-            border: `1px solid ${text.trim() && !disabled ? "var(--acc)" : "var(--ln)"}`,
-            cursor: text.trim() && !disabled ? "pointer" : "default",
-            transition: "all 160ms",
-            boxShadow: text.trim() && !disabled ? "0 2px 8px -2px var(--acc-glow)" : "none",
-            flexShrink: 0,
-          }}
-        >
-          <Send size={12} />
-        </button>
-      </div>
-      <div className="mono" style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 6, fontSize: 10, color: "var(--t3)" }}>
-        <span>↵ enviar · ⇧↵ nova linha</span>
-        <span>·</span>
-        <span>construprice pode cometer erros.</span>
+        {/* Inner content */}
+        <div style={{
+          borderRadius: 14.5,
+          background: "var(--bg1)",
+          padding: "12px 14px 9px 14px",
+        }}>
+          <textarea
+            ref={ref}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
+            disabled={disabled}
+            placeholder={disabled ? "Selecione uma opção acima..." : "Mensagem para o assistente..."}
+            rows={1}
+            style={{
+              width: "100%", fontSize: 14, lineHeight: 1.6, resize: "none",
+              background: "none", border: "none", outline: "none",
+              color: "var(--t0)", fontFamily: "inherit",
+              minHeight: 24, maxHeight: 140, display: "block",
+            }}
+          />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+            <span className="mono" style={{ fontSize: 10, color: "var(--t3)", letterSpacing: "0.01em" }}>
+              {hasText ? "↵ enviar · ⇧↵ nova linha" : "construprice pode cometer erros"}
+            </span>
+            <button
+              onClick={submit}
+              disabled={!hasText || disabled}
+              className="press"
+              style={{
+                width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center",
+                background: hasText && !disabled ? "var(--acc)" : "var(--bg3)",
+                color: hasText && !disabled ? "#fff" : "var(--t3)",
+                border: "none",
+                cursor: hasText && !disabled ? "pointer" : "default",
+                transition: "all 180ms",
+                boxShadow: hasText && !disabled ? "0 2px 10px -2px rgba(250,93,25,0.55)" : "none",
+                flexShrink: 0,
+              }}
+            >
+              <Send size={12} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1389,12 +1448,341 @@ function SummaryPanel({
 }
 
 /* ─── CHAT THREAD ─── */
+interface SearchResultState {
+  stores: StoreState[];
+  offers: Offer[];
+  isSearching: boolean;
+  query: string[];
+}
+
 interface UiMsg {
   id: string;
   role: "user" | "assistant";
   text: string;
   tools?: ToolCardProps[];
   chips?: AgentOption[];
+  searchResult?: SearchResultState;
+}
+
+/* ─── INLINE SEARCH RESULT CARD ─── */
+type SortMode = "price_asc" | "price_desc" | "score";
+
+function SearchResultCard({
+  result,
+  onViewAll,
+}: {
+  result: SearchResultState;
+  onViewAll: () => void;
+}) {
+  const [filterStore, setFilterStore] = useState<string | null>(null);
+  const [onlyInStock, setOnlyInStock] = useState(false);
+  const [sortBy, setSortBy] = useState<SortMode>("price_asc");
+  const [expanded, setExpanded] = useState(false);
+
+  const INITIAL_SHOW = 4;
+
+  const statusColor = (s: StoreState["status"]) => {
+    if (s === "done") return "var(--ok)";
+    if (s === "searching") return "var(--acc)";
+    if (s === "error" || s === "login_error") return "#ef4444";
+    return "var(--t3)";
+  };
+  const statusLabel = (s: StoreState) => {
+    if (s.status === "done") return `${s.offerCount} oferta${s.offerCount !== 1 ? "s" : ""}`;
+    if (s.status === "searching") return "buscando…";
+    if (s.status === "error" || s.status === "login_error") return "erro";
+    return "aguardando";
+  };
+
+  // Apply filters
+  const filtered = result.offers
+    .filter(o => o.price > 0)
+    .filter(o => !filterStore || o.store === filterStore)
+    .filter(o => !onlyInStock || o.availability === "em_estoque");
+
+  // Recalculate best price after filter
+  const minFiltered = filtered.length > 0 ? Math.min(...filtered.map(o => o.price)) : 0;
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "price_asc") return a.price - b.price;
+    if (sortBy === "price_desc") return b.price - a.price;
+    return (b.score ?? 0) - (a.score ?? 0);
+  });
+
+  const displayed = expanded ? sorted : sorted.slice(0, INITIAL_SHOW);
+  const hiddenCount = sorted.length - INITIAL_SHOW;
+
+  const uniqueStores = [...new Set(result.offers.filter(o => o.price > 0).map(o => o.store))];
+
+  const hasActiveFilter = filterStore !== null || onlyInStock || sortBy !== "price_asc";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{
+        marginLeft: 40,
+        background: "var(--bg1)",
+        border: "1px solid var(--ln)",
+        borderRadius: 12,
+        overflow: "hidden",
+        fontSize: 13,
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        padding: "10px 14px",
+        borderBottom: "1px solid var(--ln)",
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        {result.isSearching
+          ? <Loader2 size={13} style={{ color: "var(--acc)", animation: "spin 1s linear infinite", flexShrink: 0 }} />
+          : <CheckCircle2 size={13} style={{ color: "var(--ok)", flexShrink: 0 }} />
+        }
+        <span style={{ color: "var(--t1)", fontWeight: 500, flex: 1 }}>
+          {result.isSearching
+            ? "Buscando preços em tempo real…"
+            : `${sorted.length}${sorted.length !== result.offers.length ? ` de ${result.offers.length}` : ""} oferta${sorted.length !== 1 ? "s" : ""}`
+          }
+        </span>
+        <span style={{ fontSize: 11, color: "var(--t3)" }}>
+          {result.query.slice(0, 2).join(", ")}{result.query.length > 2 ? ` +${result.query.length - 2}` : ""}
+        </span>
+      </div>
+
+      {/* Store status pills */}
+      {result.stores.length > 0 && (
+        <div style={{
+          padding: "8px 14px",
+          display: "flex", flexWrap: "wrap", gap: 5,
+          borderBottom: "1px solid var(--ln)",
+        }}>
+          {result.stores.map(s => (
+            <div key={s.name} style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "3px 8px",
+              background: "var(--bg0)",
+              border: `1px solid ${s.status === "searching" ? "var(--acc)" : s.status === "done" ? "var(--ln2)" : "var(--ln)"}`,
+              borderRadius: 20, fontSize: 11,
+              color: statusColor(s.status),
+              transition: "border-color 200ms, color 200ms",
+            }}>
+              {s.status === "searching" && <Loader2 size={9} style={{ animation: "spin 1s linear infinite" }} />}
+              {s.status === "done" && <CheckCircle2 size={9} />}
+              <span style={{ color: "var(--t2)" }}>{s.name}</span>
+              <span style={{ color: statusColor(s.status) }}>{statusLabel(s)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Filter bar — shown after search completes */}
+      {!result.isSearching && result.offers.length > 0 && (
+        <div style={{
+          padding: "8px 14px",
+          borderBottom: "1px solid var(--ln)",
+          display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6,
+          background: "var(--bg0)",
+        }}>
+          {/* Store filter */}
+          {uniqueStores.length > 1 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Store size={10} style={{ color: "var(--t3)", flexShrink: 0 }} />
+              <button
+                onClick={() => setFilterStore(null)}
+                style={{
+                  padding: "2px 7px", borderRadius: 20, fontSize: 10, cursor: "pointer",
+                  fontFamily: "inherit", border: `1px solid ${filterStore === null ? "var(--acc)" : "var(--ln)"}`,
+                  background: filterStore === null ? "var(--acc-soft)" : "transparent",
+                  color: filterStore === null ? "var(--acc)" : "var(--t3)",
+                  transition: "all 150ms",
+                }}
+              >Todas</button>
+              {uniqueStores.map(name => (
+                <button
+                  key={name}
+                  onClick={() => setFilterStore(filterStore === name ? null : name)}
+                  style={{
+                    padding: "2px 7px", borderRadius: 20, fontSize: 10, cursor: "pointer",
+                    fontFamily: "inherit", border: `1px solid ${filterStore === name ? "var(--acc)" : "var(--ln)"}`,
+                    background: filterStore === name ? "var(--acc-soft)" : "transparent",
+                    color: filterStore === name ? "var(--acc)" : "var(--t2)",
+                    transition: "all 150ms",
+                  }}
+                >{name}</button>
+              ))}
+            </div>
+          )}
+
+          <div style={{ width: 1, height: 14, background: "var(--ln)", flexShrink: 0 }} />
+
+          {/* Sort */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {(["price_asc", "price_desc", "score"] as SortMode[]).map(mode => {
+              const labels: Record<SortMode, string> = { price_asc: "↑ Preço", price_desc: "↓ Preço", score: "Relevância" };
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setSortBy(mode)}
+                  style={{
+                    padding: "2px 7px", borderRadius: 20, fontSize: 10, cursor: "pointer",
+                    fontFamily: "inherit", border: `1px solid ${sortBy === mode ? "var(--acc)" : "var(--ln)"}`,
+                    background: sortBy === mode ? "var(--acc-soft)" : "transparent",
+                    color: sortBy === mode ? "var(--acc)" : "var(--t3)",
+                    transition: "all 150ms",
+                  }}
+                >{labels[mode]}</button>
+              );
+            })}
+          </div>
+
+          <div style={{ width: 1, height: 14, background: "var(--ln)", flexShrink: 0 }} />
+
+          {/* In-stock toggle */}
+          <button
+            onClick={() => setOnlyInStock(v => !v)}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "2px 7px", borderRadius: 20, fontSize: 10, cursor: "pointer",
+              fontFamily: "inherit", border: `1px solid ${onlyInStock ? "var(--ok)" : "var(--ln)"}`,
+              background: onlyInStock ? "rgba(34,197,94,0.1)" : "transparent",
+              color: onlyInStock ? "var(--ok)" : "var(--t3)",
+              transition: "all 150ms",
+            }}
+          >
+            <Tag size={9} /> Em estoque
+          </button>
+
+          {/* Clear filters */}
+          {hasActiveFilter && (
+            <button
+              onClick={() => { setFilterStore(null); setOnlyInStock(false); setSortBy("price_asc"); }}
+              style={{
+                marginLeft: "auto", display: "flex", alignItems: "center", gap: 3,
+                padding: "2px 7px", borderRadius: 20, fontSize: 10, cursor: "pointer",
+                fontFamily: "inherit", border: "1px solid var(--ln)",
+                background: "transparent", color: "var(--t3)",
+                transition: "all 150ms",
+              }}
+            >
+              <XIcon size={9} /> Limpar
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Offer list */}
+      {displayed.length > 0 && (
+        <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: 5 }}>
+          {displayed.map((offer, i) => {
+            const isBestFiltered = offer.price === minFiltered;
+            return (
+              <motion.div
+                key={`${offer.store}-${offer.productName}-${i}`}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "6px 10px",
+                  background: isBestFiltered ? "var(--acc-soft)" : "var(--bg0)",
+                  border: `1px solid ${isBestFiltered ? "var(--acc)" : "var(--ln)"}`,
+                  borderRadius: 8, transition: "border-color 200ms",
+                  position: "relative",
+                }}
+              >
+                {isBestFiltered && (
+                  <div style={{
+                    position: "absolute", top: -1, right: 8,
+                    fontSize: 9, fontWeight: 700,
+                    background: "var(--acc)", color: "#fff",
+                    padding: "1px 6px", borderRadius: "0 0 6px 6px",
+                    letterSpacing: "0.04em",
+                  }}>MENOR PREÇO</div>
+                )}
+                {offer.imageUrl ? (
+                  <img src={offer.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 4, flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 32, height: 32, background: "var(--bg1)", border: "1px solid var(--ln)", borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Box size={13} style={{ color: "var(--t3)" }} />
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {offer.productName}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--t3)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>{offer.store}</span>
+                    {offer.availability === "em_estoque" && (
+                      <span style={{ color: "var(--ok)", fontSize: 9 }}>● em estoque</span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isBestFiltered ? "var(--acc)" : "var(--t1)" }}>
+                    {offer.currency} {offer.price.toFixed(2)}
+                  </div>
+                  {i > 0 && minFiltered > 0 && (
+                    <div style={{ fontSize: 9, color: "var(--t3)" }}>
+                      +{((offer.price - minFiltered) / minFiltered * 100).toFixed(0)}%
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Show more / less */}
+      {!result.isSearching && hiddenCount > 0 && (
+        <div style={{ padding: "0 14px 8px" }}>
+          <button
+            onClick={() => setExpanded(v => !v)}
+            style={{
+              width: "100%", padding: "5px 0",
+              background: "transparent", border: "1px dashed var(--ln)",
+              borderRadius: 6, fontSize: 11, color: "var(--t3)",
+              cursor: "pointer", fontFamily: "inherit", transition: "all 150ms",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+            }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = "var(--acc)"; el.style.color = "var(--acc)"; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = "var(--ln)"; el.style.color = "var(--t3)"; }}
+          >
+            {expanded ? <><ChevronDown size={10} style={{ transform: "rotate(180deg)" }} /> Mostrar menos</> : <><ChevronDown size={10} /> Ver mais {hiddenCount} oferta{hiddenCount !== 1 ? "s" : ""}</>}
+          </button>
+        </div>
+      )}
+
+      {/* No results after filter */}
+      {!result.isSearching && sorted.length === 0 && result.offers.length > 0 && (
+        <div style={{ padding: "16px 14px", textAlign: "center", color: "var(--t3)", fontSize: 12 }}>
+          Nenhuma oferta com os filtros aplicados.
+        </div>
+      )}
+
+      {/* CTA */}
+      {!result.isSearching && (
+        <div style={{ padding: "8px 14px 12px", borderTop: "1px solid var(--ln)" }}>
+          <button
+            onClick={onViewAll}
+            style={{
+              width: "100%", padding: "8px 0",
+              background: "var(--acc)", color: "#fff",
+              border: "none", borderRadius: 8,
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              fontFamily: "inherit", transition: "opacity 150ms",
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+          >
+            Ver todos os resultados <ArrowRight size={12} />
+          </button>
+        </div>
+      )}
+    </motion.div>
+  );
 }
 
 /* ─── MAIN COMPONENT ─── */
@@ -1491,16 +1879,47 @@ export default function AgentSearch() {
     localStorage.removeItem("construprice-last-search-suppliers");
   }
 
-  function handleStartSearch() {
+  async function handleStartSearch() {
     if (!searchItems.length) return;
-    localStorage.setItem("construprice-last-search-items", JSON.stringify(searchItems));
+
     const supplierPayload = buildSupplierSearchPayload(selectedSuppliers);
+
+    // Persist for /results navigation
+    localStorage.setItem("construprice-last-search-items", JSON.stringify(searchItems));
+    localStorage.setItem("construprice-agent-search", "1");
     if (supplierPayload?.length) {
       localStorage.setItem("construprice-last-search-suppliers", JSON.stringify(supplierPayload.map(i => i.store_name)));
     } else {
       localStorage.removeItem("construprice-last-search-suppliers");
     }
-    router.push("/results");
+
+    const msgId = `search-${Date.now()}`;
+    setMessages(m => [...m, {
+      id: msgId,
+      role: "assistant",
+      text: "",
+      searchResult: { stores: [], offers: [], isSearching: true, query: searchItems },
+    }]);
+
+    try {
+      await searchMaterialsStream(
+        { items: searchItems, stores: supplierPayload ?? undefined, force_refresh: true },
+        (partial, stores) => {
+          const allOffers = partial.items.flatMap(i => i.offers);
+          setMessages(m => m.map(msg =>
+            msg.id === msgId
+              ? { ...msg, searchResult: { stores, offers: allOffers, isSearching: true, query: searchItems } }
+              : msg
+          ));
+        },
+      );
+    } catch { /* handled below */ }
+
+    setMessages(m => m.map(msg =>
+      msg.id === msgId && msg.searchResult
+        ? { ...msg, searchResult: { ...msg.searchResult, isSearching: false } }
+        : msg
+    ));
   }
 
   const lastMsg = messages[messages.length - 1];
@@ -1591,13 +2010,19 @@ export default function AgentSearch() {
                   <AnimatePresence initial={false}>
                     {messages.map(m => m.role === "user"
                       ? <UserMessage key={m.id} text={m.text} />
-                      : <AssistantMessage
-                          key={m.id}
-                          text={m.text}
-                          isStreaming={m.id === streamingId}
-                          onDone={() => m.id === streamingId && setStreamingId(null)}
-                          tools={m.tools}
-                        />
+                      : m.searchResult
+                        ? <SearchResultCard
+                            key={m.id}
+                            result={m.searchResult}
+                            onViewAll={() => router.push("/results")}
+                          />
+                        : <AssistantMessage
+                            key={m.id}
+                            text={m.text}
+                            isStreaming={m.id === streamingId}
+                            onDone={() => m.id === streamingId && setStreamingId(null)}
+                            tools={m.tools}
+                          />
                     )}
                   </AnimatePresence>
 

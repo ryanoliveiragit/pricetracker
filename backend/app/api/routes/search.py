@@ -1126,6 +1126,135 @@ async def trigger_catalog_scrape():
     }
 
 
+@router.get("/search/catalog-facets")
+async def catalog_facets():
+    """Retorna facetas para filtros dinâmicos do catálogo."""
+    from sqlalchemy import func
+    from app.models.db_models import ScrapedProductDB
+
+    try:
+        async with async_session() as session:
+            stores_r = await session.execute(
+                select(ScrapedProductDB.store, func.count().label("c"))
+                .group_by(ScrapedProductDB.store).order_by(func.count().desc())
+            )
+            brands_r = await session.execute(
+                select(ScrapedProductDB.brand, func.count().label("c"))
+                .where(ScrapedProductDB.brand.isnot(None)).where(ScrapedProductDB.brand != "")
+                .group_by(ScrapedProductDB.brand).order_by(func.count().desc()).limit(40)
+            )
+            cats_r = await session.execute(
+                select(ScrapedProductDB.source_query, func.count().label("c"))
+                .group_by(ScrapedProductDB.source_query).order_by(func.count().desc()).limit(60)
+            )
+            price_r = await session.execute(
+                select(
+                    func.min(ScrapedProductDB.price).label("mn"),
+                    func.max(ScrapedProductDB.price).label("mx"),
+                    func.avg(ScrapedProductDB.price).label("avg"),
+                ).where(ScrapedProductDB.price > 0)
+            )
+            avail_r = await session.execute(
+                select(ScrapedProductDB.availability, func.count().label("c"))
+                .group_by(ScrapedProductDB.availability)
+            )
+            pr = price_r.one()
+            return {
+                "stores": [{"name": r.store, "count": r.c} for r in stores_r.all()],
+                "brands": [{"name": r.brand, "count": r.c} for r in brands_r.all()],
+                "categories": [{"name": r.source_query, "count": r.c} for r in cats_r.all()],
+                "price_min": float(pr.mn or 0),
+                "price_max": float(pr.mx or 0),
+                "price_avg": float(pr.avg or 0),
+                "availability": [{"name": r.availability, "count": r.c} for r in avail_r.all()],
+            }
+    except Exception as e:
+        logger.error(f"Catalog facets error: {e}")
+        return {"stores": [], "brands": [], "categories": [], "price_min": 0, "price_max": 0, "price_avg": 0, "availability": []}
+
+
+@router.get("/search/catalog-items")
+async def catalog_items(
+    q: str = "",
+    stores: str = "",
+    availability: str = "",
+    brands: str = "",
+    categories: str = "",
+    min_price: float = 0,
+    max_price: float = 0,
+    sort_by: str = "newest",
+    page: int = 1,
+    limit: int = 60,
+):
+    """Lista produtos do catálogo local com paginação e filtros avançados."""
+    from sqlalchemy import func, asc, desc
+    from app.models.db_models import ScrapedProductDB
+
+    limit = min(limit, 200)
+    offset = (page - 1) * limit
+
+    try:
+        async with async_session() as session:
+            def build_where(stmt):
+                if q:
+                    stmt = stmt.where(ScrapedProductDB.product_name_normalized.like(f"%{q.lower()}%"))
+                if stores:
+                    store_list = [s.strip() for s in stores.split(",") if s.strip()]
+                    if store_list:
+                        stmt = stmt.where(ScrapedProductDB.store.in_(store_list))
+                if availability:
+                    avail_list = [a.strip() for a in availability.split(",") if a.strip()]
+                    if avail_list:
+                        stmt = stmt.where(ScrapedProductDB.availability.in_(avail_list))
+                if brands:
+                    brand_list = [b.strip() for b in brands.split(",") if b.strip()]
+                    if brand_list:
+                        stmt = stmt.where(ScrapedProductDB.brand.in_(brand_list))
+                if categories:
+                    cat_list = [c.strip() for c in categories.split(",") if c.strip()]
+                    if cat_list:
+                        stmt = stmt.where(ScrapedProductDB.source_query.in_(cat_list))
+                if min_price > 0:
+                    stmt = stmt.where(ScrapedProductDB.price >= min_price)
+                if max_price > 0:
+                    stmt = stmt.where(ScrapedProductDB.price <= max_price)
+                return stmt
+
+            count_stmt = build_where(select(func.count()).select_from(ScrapedProductDB))
+            total = (await session.execute(count_stmt)).scalar() or 0
+
+            stmt = build_where(select(ScrapedProductDB))
+            sort_map = {
+                "newest": desc(ScrapedProductDB.scraped_at),
+                "price_asc": asc(ScrapedProductDB.price),
+                "price_desc": desc(ScrapedProductDB.price),
+                "name_asc": asc(ScrapedProductDB.product_name),
+                "score": desc(ScrapedProductDB.score),
+            }
+            stmt = stmt.order_by(sort_map.get(sort_by, desc(ScrapedProductDB.scraped_at))).offset(offset).limit(limit)
+            items = (await session.execute(stmt)).scalars().all()
+
+            return {
+                "items": [{
+                    "id": p.id, "store": p.store,
+                    "productName": p.product_name, "price": p.price,
+                    "currency": p.currency, "productUrl": p.product_url,
+                    "addToCartUrl": p.add_to_cart_url,
+                    "availability": p.availability, "sku": p.sku,
+                    "imageUrl": p.image_url, "description": p.description,
+                    "brand": p.brand, "score": p.score,
+                    "sourceQuery": p.source_query,
+                    "scraperKey": p.scraper_key,
+                    "scrapedAt": p.scraped_at.isoformat() if p.scraped_at else None,
+                } for p in items],
+                "total": total, "page": page, "limit": limit,
+                "totalPages": max(1, -(-total // limit)),
+            }
+    except Exception as e:
+        logger.error(f"Catalog items error: {e}")
+        return {"items": [], "total": 0, "page": 1, "limit": limit, "totalPages": 1}
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint"""

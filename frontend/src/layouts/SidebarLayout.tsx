@@ -18,6 +18,9 @@ import {
   Sun,
   Moon,
   Home,
+  Database,
+  Gem,
+  MessageSquarePlus,
   LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +32,7 @@ import CommandMenu from "../components/CommandMenu";
 import { RoleGuard } from "../components/auth/RoleGuard";
 import UpdateNotifications from "../components/Notifications";
 import AppTour from "../components/AppTour";
+import FeedbackButton from "../components/FeedbackButton";
 import { cn } from "@/lib/utils";
 import { DarkModeToggle } from "../components/DarkModeToggle";
 
@@ -72,6 +76,14 @@ const navItems: NavItem[] = [
     icon: Star,
     id: "tour-nav-saves",
   },
+  {
+    href: "/catalog",
+    label: "Catálogo",
+    description: "Produtos locais",
+    icon: Database,
+    id: "tour-nav-catalog",
+    badge: "PLUS",
+  },
 ];
 
 const bottomItems: NavItem[] = [
@@ -81,6 +93,16 @@ const bottomItems: NavItem[] = [
     description: "Preferências",
     icon: Settings,
     id: "tour-nav-settings",
+  },
+];
+
+const adminItems: NavItem[] = [
+  {
+    href: "/feedback",
+    label: "Tickets",
+    description: "Análise de Tickets",
+    icon: MessageSquarePlus,
+    id: "tour-nav-feedback",
   },
 ];
 
@@ -97,17 +119,43 @@ const ROLE_LABEL: Record<string, string> = {
 /* ── Tooltip for collapsed items ──────────────────────────── */
 function NavTooltip({ label }: { label: string }) {
   return (
-    <div
-      className="
-      pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2
-      whitespace-nowrap rounded-lg border border-slate-200 dark:border-neutral-700
-      bg-white dark:bg-neutral-900 px-2.5 py-1.5 text-[12px] font-medium
-      text-slate-700 dark:text-neutral-200 shadow-lg opacity-0
-      group-hover:opacity-100 transition-opacity duration-150
-    "
-    >
+    <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-slate-200/80 dark:border-neutral-700/80 bg-white dark:bg-neutral-900 px-3 py-1.5 text-[12px] font-medium text-slate-700 dark:text-neutral-200 shadow-xl shadow-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
       {label}
     </div>
+  );
+}
+
+/* ── Nav badge ─────────────────────────────────────────────── */
+function NavBadge({ badge }: { badge: string }) {
+  if (badge === "PLUS") {
+    return (
+      <span
+        className="shrink-0 inline-flex items-center gap-[3px] rounded-md px-[7px] py-[3px] text-[9px] font-semibold leading-none"
+        style={{
+          background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
+          color: "#fff",
+          boxShadow: "0 2px 8px rgba(109,40,217,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+          letterSpacing: "0.05em",
+        }}
+      >
+        <Gem className="h-[7px] w-[7px] opacity-90" />
+        Plus
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="shrink-0 inline-flex items-center rounded-md px-[7px] py-[3px] text-[9px] font-bold leading-none"
+      style={{
+        background: `linear-gradient(135deg, ${ACC} 0%, ${ACC6} 100%)`,
+        color: "#fff",
+        boxShadow: `0 2px 8px color-mix(in srgb, ${ACC} 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.15)`,
+        letterSpacing: "0.06em",
+      }}
+    >
+      {badge}
+    </span>
   );
 }
 
@@ -143,46 +191,46 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
     <div className="flex h-full flex-col select-none">
       {/* Logo */}
       <div
-        className="flex h-[60px] shrink-0 items-center border-b border-slate-100/80 dark:border-neutral-800/60"
-        style={{ padding: collapsed ? "0 14px" : "0 18px" }}
+        className="flex h-[60px] shrink-0 items-center border-b border-slate-100/80 dark:border-neutral-800/50"
+        style={{ padding: collapsed ? "0 14px" : "0 16px" }}
       >
         {collapsed ? (
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-white text-sm font-bold shadow-md"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-[13px] font-black shadow-md"
             style={{
-              background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-              boxShadow: `0 4px 14px -2px color-mix(in srgb, ${ACC} 40%, transparent)`,
+              background: `linear-gradient(140deg, ${ACC}, ${ACC6})`,
+              boxShadow: `0 3px 12px -2px color-mix(in srgb, ${ACC} 50%, transparent)`,
             }}
           >
             C
           </div>
         ) : (
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-white text-sm font-bold shadow-md shrink-0"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-[13px] font-black shadow-md shrink-0"
               style={{
-                background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-                boxShadow: `0 4px 14px -2px color-mix(in srgb, ${ACC} 40%, transparent)`,
+                background: `linear-gradient(140deg, ${ACC}, ${ACC6})`,
+                boxShadow: `0 3px 12px -2px color-mix(in srgb, ${ACC} 50%, transparent)`,
               }}
             >
               C
             </div>
             <div className="min-w-0">
-              <p className="text-[14px] font-bold text-slate-900 dark:text-neutral-50 leading-tight tracking-tight">
+              <p className="text-[13.5px] font-bold text-slate-900 dark:text-neutral-50 leading-tight tracking-tight">
                 ConstruPrice
               </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="flex items-center gap-1 mt-[3px]">
                 <span
-                  className="inline-flex items-center rounded-full px-1.5 py-px text-[9px] font-semibold tracking-wide border"
+                  className="inline-flex items-center rounded px-1.5 py-px text-[9px] font-semibold"
                   style={{
                     background: `color-mix(in srgb, ${ACC} 10%, transparent)`,
-                    borderColor: `color-mix(in srgb, ${ACC} 30%, transparent)`,
                     color: ACC,
+                    letterSpacing: "0.04em",
                   }}
                 >
                   v2.4
                 </span>
-                <span className="text-[10px] text-slate-400 dark:text-neutral-500">
+                <span className="text-[9px] text-slate-400 dark:text-neutral-600 font-medium">
                   beta
                 </span>
               </div>
@@ -193,15 +241,15 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
 
       {/* Section label */}
       {!collapsed && (
-        <div className="px-4 pt-5 pb-1.5">
-          <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-neutral-600">
-            Menu principal
+        <div className="px-3.5 pt-5 pb-1">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">
+            Navegação
           </span>
         </div>
       )}
 
       {/* Main nav */}
-      <nav className="flex-1 overflow-y-auto px-2.5 pt-1 pb-2 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-2 pt-1 pb-2 space-y-px">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -214,50 +262,47 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               id={item.id}
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl transition-all duration-150",
-                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-3 py-2.5",
+                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
                 active
-                  ? "shadow-sm"
-                  : "hover:bg-slate-100/80 dark:hover:bg-neutral-800/60",
+                  ? ""
+                  : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
               )}
               style={
                 active
                   ? {
-                      background: `linear-gradient(135deg, color-mix(in srgb, ${ACC} 12%, transparent), color-mix(in srgb, ${ACC} 6%, transparent))`,
-                      borderLeft: collapsed ? undefined : `2px solid ${ACC}`,
-                      paddingLeft: collapsed ? undefined : "10px",
+                      background: `color-mix(in srgb, ${ACC} 9%, transparent)`,
                     }
                   : {}
               }
             >
-              {/* Active left accent for non-collapsed */}
+              {/* Active left pill */}
               {active && !collapsed && (
-                <div
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
-                  style={{ background: ACC, marginLeft: -1 }}
+                <span
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-full"
+                  style={{ background: ACC }}
                 />
               )}
 
               <div
                 className={cn(
-                  "flex shrink-0 items-center justify-center rounded-lg transition-all",
+                  "flex shrink-0 items-center justify-center rounded-lg transition-all duration-150",
                   collapsed ? "h-9 w-9" : "h-7 w-7",
-                  active ? "shadow-sm" : "",
                 )}
                 style={
                   active
                     ? {
-                        background: `color-mix(in srgb, ${ACC} 15%, transparent)`,
+                        background: `color-mix(in srgb, ${ACC} 14%, transparent)`,
                       }
                     : {}
                 }
               >
                 <Icon
                   className={cn(
-                    "transition-colors",
-                    collapsed ? "h-[17px] w-[17px]" : "h-4 w-4",
+                    "transition-colors duration-150",
+                    collapsed ? "h-[16px] w-[16px]" : "h-[15px] w-[15px]",
                     active
                       ? "text-[rgb(var(--primary-500))]"
-                      : "text-slate-500 dark:text-neutral-500 group-hover:text-slate-700 dark:group-hover:text-neutral-300",
+                      : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300",
                   )}
                 />
               </div>
@@ -266,30 +311,23 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                 <div className="flex-1 min-w-0">
                   <p
                     className={cn(
-                      "text-[13px] font-medium leading-tight truncate",
+                      "text-[13px] leading-tight truncate",
                       active
-                        ? "text-[rgb(var(--primary-600))] dark:text-[rgb(var(--primary-400))]"
-                        : "text-slate-700 dark:text-neutral-300",
+                        ? "font-semibold text-[rgb(var(--primary-600))] dark:text-[rgb(var(--primary-400))]"
+                        : "font-medium text-slate-700 dark:text-neutral-300 group-hover:text-slate-900 dark:group-hover:text-neutral-100",
                     )}
                   >
                     {item.label}
                   </p>
-                  <p className="text-[10px] text-slate-400 dark:text-neutral-600 leading-tight mt-px truncate">
-                    {item.description}
-                  </p>
+                  {!active && (
+                    <p className="text-[10px] text-slate-400 dark:text-neutral-600 leading-tight mt-px truncate">
+                      {item.description}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {!collapsed && item.badge && (
-                <span
-                  className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white"
-                  style={{
-                    background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-                  }}
-                >
-                  {item.badge}
-                </span>
-              )}
+              {!collapsed && item.badge && <NavBadge badge={item.badge} />}
 
               {collapsed && <NavTooltip label={item.label} />}
             </Link>
@@ -298,10 +336,55 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
       </nav>
 
       {/* Bottom section */}
-      <div className="shrink-0 border-t border-slate-100/80 dark:border-neutral-800/60 px-2.5 py-2.5 space-y-0.5">
+      <div className="shrink-0 border-t border-slate-100/80 dark:border-neutral-800/50 px-2 py-2 space-y-px">
+        {/* Admin-only items */}
+        {userRole === "admin" && (
+          <>
+            {!collapsed && (
+              <div className="px-2 pb-1 pt-1">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">
+                  Admin
+                </span>
+              </div>
+            )}
+            {adminItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  id={item.id}
+                  className={cn(
+                    "group relative flex items-center gap-3 rounded-xl transition-all duration-150",
+                    collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
+                    active ? "" : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
+                  )}
+                  style={active ? { background: "color-mix(in srgb, #7c3aed 9%, transparent)" } : {}}
+                >
+                  <Icon
+                    className={cn(
+                      "shrink-0 h-[15px] w-[15px] transition-colors duration-150",
+                      active ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300",
+                    )}
+                  />
+                  {!collapsed && (
+                    <span className={cn("text-[13px] font-medium", active ? "text-violet-600 dark:text-violet-400" : "text-slate-600 dark:text-neutral-400 group-hover:text-slate-800 dark:group-hover:text-neutral-200")}>
+                      {item.label}
+                    </span>
+                  )}
+                  {collapsed && <NavTooltip label={item.label} />}
+                </Link>
+              );
+            })}
+            <div className="h-px bg-slate-100 dark:bg-neutral-800/60 my-1" />
+          </>
+        )}
+
         {!collapsed && (
-          <div className="px-1.5 pb-1.5">
-            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-neutral-600">
+          <div className="px-2 pb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">
               Sistema
             </span>
           </div>
@@ -319,25 +402,23 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               id={item.id}
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl transition-all duration-150",
-                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-3 py-2",
+                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
                 active
                   ? ""
-                  : "hover:bg-slate-100/80 dark:hover:bg-neutral-800/60",
+                  : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
               )}
               style={
                 active
-                  ? {
-                      background: `linear-gradient(135deg, color-mix(in srgb, ${ACC} 12%, transparent), color-mix(in srgb, ${ACC} 6%, transparent))`,
-                    }
+                  ? { background: `color-mix(in srgb, ${ACC} 9%, transparent)` }
                   : {}
               }
             >
               <Icon
                 className={cn(
-                  "shrink-0 h-[16px] w-[16px] transition-colors",
+                  "shrink-0 h-[15px] w-[15px] transition-colors duration-150",
                   active
                     ? "text-[rgb(var(--primary-500))]"
-                    : "text-slate-500 dark:text-neutral-500 group-hover:text-slate-700 dark:group-hover:text-neutral-300",
+                    : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300",
                 )}
               />
               {!collapsed && (
@@ -346,7 +427,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                     "text-[13px] font-medium",
                     active
                       ? "text-[rgb(var(--primary-600))] dark:text-[rgb(var(--primary-400))]"
-                      : "text-slate-600 dark:text-neutral-400",
+                      : "text-slate-600 dark:text-neutral-400 group-hover:text-slate-800 dark:group-hover:text-neutral-200",
                   )}
                 >
                   {item.label}
@@ -361,40 +442,46 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
           onClick={handleLogout}
           className={cn(
             "group relative flex w-full items-center gap-3 rounded-xl transition-all duration-150 text-[13px] font-medium",
-            collapsed ? "justify-center h-10 w-10 mx-auto" : "px-3 py-2",
-            "text-slate-500 dark:text-neutral-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400",
+            collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
+            "text-slate-400 dark:text-neutral-500 hover:bg-red-50/80 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400",
           )}
         >
-          <LogOut className="shrink-0 h-[16px] w-[16px]" />
+          <LogOut className="shrink-0 h-[15px] w-[15px]" />
           {!collapsed && <span>Sair</span>}
           {collapsed && <NavTooltip label="Sair" />}
         </button>
 
         {/* User card */}
         {!collapsed && (
-          <div className="mt-2 pt-2.5 border-t border-slate-100/80 dark:border-neutral-800/60">
-            <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800/40 transition-colors cursor-default">
+          <div className="mt-1.5 pt-2 border-t border-slate-100/80 dark:border-neutral-800/50">
+            <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800/40 transition-colors cursor-default">
               <div className="relative shrink-0">
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold text-white ring-2"
-                  style={{
-                    background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-                    ["--tw-ring-color" as string]: `color-mix(in srgb, ${ACC} 25%, transparent)`,
-                  }}
-                >
-                  {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-neutral-950" />
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt=""
+                    className="h-7 w-7 rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                    style={{
+                      background: `linear-gradient(140deg, ${ACC}, ${ACC6})`,
+                    }}
+                  >
+                    {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
+                  </div>
+                )}
+                <div className="absolute -bottom-px -right-px h-2 w-2 rounded-full bg-emerald-400 ring-[1.5px] ring-white dark:ring-neutral-950" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-slate-800 dark:text-neutral-200 truncate leading-tight">
                   {user?.displayName ?? "Usuário"}
                 </p>
                 <span
-                  className="inline-flex items-center rounded-full px-1.5 py-px mt-0.5 text-[9px] font-semibold border"
+                  className="inline-flex items-center rounded px-1.5 py-px mt-0.5 text-[9px] font-medium"
                   style={{
                     background: `color-mix(in srgb, ${ACC} 8%, transparent)`,
-                    borderColor: `color-mix(in srgb, ${ACC} 25%, transparent)`,
                     color: ACC,
                   }}
                 >
@@ -429,17 +516,17 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
       {/* Collapse toggle — outside aside so overflow-hidden doesn't clip it */}
       <motion.button
         initial={false}
-        animate={{ left: sidebarWidth - 12 }}
+        animate={{ left: sidebarWidth - 11 }}
         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={() => setCollapsed((c) => !c)}
         aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
         aria-expanded={!collapsed}
-        className="fixed top-[68px] z-[55] hidden md:flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 shadow-md transition-colors hover:text-slate-700 dark:hover:text-neutral-200 hover:shadow-lg"
+        className="fixed top-[72px] z-[55] hidden md:flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-700/80 text-slate-400 dark:text-neutral-500 shadow-sm transition-all hover:text-slate-700 dark:hover:text-neutral-200 hover:border-slate-300 dark:hover:border-neutral-600 hover:shadow-md"
       >
         {collapsed ? (
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="h-2.5 w-2.5" />
         ) : (
-          <ChevronLeft className="h-3 w-3" />
+          <ChevronLeft className="h-2.5 w-2.5" />
         )}
       </motion.button>
 
@@ -580,6 +667,9 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               {/* User card */}
               <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 dark:border-neutral-700/60 bg-white/80 dark:bg-neutral-900/80 px-2.5 py-1.5 cursor-default hover:border-slate-300 dark:hover:border-neutral-600 hover:shadow-sm transition-all">
                 <div className="relative shrink-0">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />
+                  ) : (
                   <div
                     className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white"
                     style={{
@@ -588,6 +678,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                   >
                     {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
                   </div>
+                  )}
                   <div className="absolute -bottom-px -right-px h-2 w-2 rounded-full bg-emerald-400 ring-1 ring-white dark:ring-neutral-900" />
                 </div>
                 <div className="hidden xl:block">
@@ -609,6 +700,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
         <main className="relative flex-1 w-full min-w-0 overflow-y-auto min-h-0">
           <CommandMenu />
           {children}
+          <FeedbackButton />
         </main>
         <AppTour />
       </motion.div>
@@ -656,6 +748,9 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                 )}
               </button>
               <div className="relative">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover shadow-sm" />
+                ) : (
                 <div
                   className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-sm"
                   style={{
@@ -664,6 +759,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                 >
                   {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
                 </div>
+                )}
                 <div className="absolute -bottom-px -right-px h-2 w-2 rounded-full bg-emerald-400 ring-1 ring-white dark:ring-neutral-900" />
               </div>
             </div>

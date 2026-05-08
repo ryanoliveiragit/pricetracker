@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from typing import List
@@ -8,20 +8,14 @@ import traceback
 from app.database import get_db
 from app.models.db_models import SavedOfferDB
 from app.models.saved_offer import SavedOfferCreate, SavedOfferResponse
-from app.utils.auth import get_current_active_user
+from app.utils.auth import get_current_user_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-async def get_user_email(token: str = Header(...)):
-    """Extract email from mock token."""
-    try:
-        user = await get_current_active_user(token)
-        return user.email
-    except Exception as e:
-        logger.error(f"Erro no get_user_email: {str(e)}")
-        # Fallback para admin se falhar a extração do token
-        return "admin@construprice.com"
+async def get_user_email(email: str = Depends(get_current_user_email)):
+    """Extract email from auth token."""
+    return email
 
 @router.get("", response_model=List[SavedOfferResponse])
 async def list_saved_offers(

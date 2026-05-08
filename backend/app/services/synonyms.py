@@ -9,7 +9,7 @@ from typing import Optional
 from app.utils.text_normalizer import QUERY_STOP_WORDS, normalize_text
 
 # Grupos de sinônimos — todos os termos do grupo são equivalentes
-SYNONYM_GROUPS: list[list[str]] = [
+SYNONYM_GROUPS: list[list[str]] = [  # <dynamic-synonyms-start>
     ["cola", "adesivo", "selante", "vedante", "silicone"],
     ["parafuso", "fixador", "prego", "bucha"],
     ["cimento", "cimento portland"],
@@ -53,13 +53,108 @@ SYNONYM_GROUPS: list[list[str]] = [
     ["redutor", "redução", "bucha de redução"],
     ["cap", "tampa", "plugue"],
     ["abraçadeira", "braçadeira", "clamp"],
+    # <dynamic-synonyms-end>
 ]
+
+# ---------------------------------------------------------------------------
+# Abreviações bidirecionais de materiais de construção
+# Mapa: forma longa → lista de formas curtas (e vice-versa no índice invertido)
+# Usado por expand_query_for_scrape para gerar variantes abreviadas/por extenso
+# ---------------------------------------------------------------------------
+ABBREVIATION_PAIRS: list[tuple[str, list[str]]] = [  # <dynamic-abbreviations-start>
+    # Hidráulica / louças
+    ("caixa sifonada",    ["cx sif", "cx.sif", "caixa sif", "cx sifonada"]),
+    ("caixa dagua",       ["cx agua", "caixa agua"]),
+    ("vaso sanitario",    ["vaso san", "bacia sanitaria"]),
+    ("caixa acoplada",    ["cx acoplada"]),
+    ("caixa descarga",    ["cx descarga"]),
+    ("joelho 90",         ["jo 90", "jol 90", "joelho 90 graus"]),
+    ("joelho 45",         ["jo 45", "jol 45", "joelho 45 graus"]),
+    ("tubo esgoto",       ["tb esgoto", "tub esgoto"]),
+    ("tubo agua fria",    ["tb af", "tub af", "tubo af"]),
+    ("tubo soldavel",     ["tb soldavel", "tub soldavel"]),
+    ("registro gaveta",   ["reg gaveta"]),
+    ("registro esfera",   ["reg esfera"]),
+    ("sifao",             ["sif", "sifão"]),
+    # Elétrica
+    ("disjuntor",         ["disj", "dj"]),
+    ("eletroduto",        ["eletrod", "conduit"]),
+    ("cabo flexivel",     ["cabo flex", "cb flex"]),
+    ("fio rigido",        ["fio rig"]),
+    # Civil / alvenaria
+    ("cimento portland",  ["cim portland", "cp ii", "cp iii", "cp iv", "cp v"]),
+    ("argamassa colante", ["ac", "ac iii", "ac ii", "ac i"]),
+    ("tijolo furado",     ["tj furado", "bloco furado"]),
+    ("bloco concreto",    ["bl concreto", "bl cto"]),
+    # Acabamento
+    ("porcelanato",       ["porcel", "piso porcel"]),
+    ("rejuntamento",      ["rejunte", "rejunt"]),
+    ("massa corrida",     ["massa cor", "mc pva"]),
+    # Ferragens
+    ("parafuso cabeca",   ["par cab"]),
+    ("bucha nylon",       ["bucha ny"]),
+    ("chumbador",         ["chumb"]),
+    ("cadeado",           ["cad", "cad."]),
+    # <dynamic-abbreviations-end>
+]
+
+# Índice invertido de abreviações: forma_curta_normalizada → forma_longa
+_ABBREV_INDEX: dict[str, str] = {}
+for _long, _shorts in ABBREVIATION_PAIRS:
+    _long_n = normalize_text(_long)
+    for _short in _shorts:
+        _short_n = normalize_text(_short)
+        _ABBREV_INDEX[_short_n] = _long_n
+    # também mapeia a forma longa para ela mesma (facilita lookup)
+    _ABBREV_INDEX[_long_n] = _long_n
 
 # Índice invertido: termo → grupo de sinônimos
 _INDEX: dict[str, list[str]] = {}
 for group in SYNONYM_GROUPS:
     for term in group:
         _INDEX[term.lower()] = group
+
+
+def _abbrev_variants(query_normalized: str) -> list[str]:
+    """
+    Gera variantes abreviadas e por extenso de uma query normalizada.
+
+    Estratégia:
+    1. Tenta match exato da query inteira no índice de abreviações.
+    2. Para cada par (longa→curtas), verifica se a forma longa está contida
+       na query e gera versões com a forma curta no lugar.
+    3. Faz o reverso: se a query contém uma forma curta, substitui pela longa.
+    """
+    variants: list[str] = []
+    seen: set[str] = set()
+
+    def add(s: str) -> None:
+        s = s.strip()
+        if s and s not in seen:
+            seen.add(s)
+            variants.append(s)
+
+    # Match exato da query inteira
+    if query_normalized in _ABBREV_INDEX:
+        add(_ABBREV_INDEX[query_normalized])
+
+    # Substituições parciais: forma longa → formas curtas
+    for long_form, shorts in ABBREVIATION_PAIRS:
+        long_n = normalize_text(long_form)
+        if long_n in query_normalized:
+            for short in shorts:
+                short_n = normalize_text(short)
+                add(query_normalized.replace(long_n, short_n))
+
+    # Substituições parciais: forma curta → forma longa (reverso)
+    for long_form, shorts in ABBREVIATION_PAIRS:
+        long_n = normalize_text(long_form)
+        for short in shorts:
+            short_n = normalize_text(short)
+            if short_n in query_normalized:
+                add(query_normalized.replace(short_n, long_n))
+
+    return variants
 
 
 def expand_query_for_scrape(query: str, *, max_variants: int = 14) -> list[str]:
@@ -95,7 +190,14 @@ def expand_query_for_scrape(query: str, *, max_variants: int = 14) -> list[str]:
 
     if len(words) == 1:
         w0 = words[0]
-        if w0 in _INDEX:
+        # Resolve abreviação primeiro (ex: "cad" → "cadeado")
+        if w0 in _ABBREV_INDEX and _ABBREV_INDEX[w0] != w0:
+            expanded = _ABBREV_INDEX[w0]
+            add(expanded)
+            if expanded in _INDEX:
+                for s in _INDEX[expanded]:
+                    add(s)
+        elif w0 in _INDEX:
             for s in _INDEX[w0]:
                 add(s)
         else:
@@ -106,6 +208,10 @@ def expand_query_for_scrape(query: str, *, max_variants: int = 14) -> list[str]:
     add(qn)
     if len(words) == 2:
         add(" ".join(reversed(words)))
+
+    # Variantes de abreviação (ex: "caixa sifonada" → "cx sif", e vice-versa)
+    for variant in _abbrev_variants(qn):
+        add(variant)
 
     expand_idx = None
     for i, w in enumerate(words):
@@ -126,6 +232,68 @@ def expand_query_for_scrape(query: str, *, max_variants: int = 14) -> list[str]:
         add(" ".join(subst))
 
     return out[:max_variants]
+
+
+def add_dynamic_abbreviation(long_form: str, short_forms: list[str]) -> None:
+    """Adiciona par de abreviação dinamicamente (após aprovação de feedback)."""
+    long_n = normalize_text(long_form)
+    for short in short_forms:
+        short_n = normalize_text(short)
+        _ABBREV_INDEX[short_n] = long_n
+    _ABBREV_INDEX[long_n] = long_n
+    ABBREVIATION_PAIRS.append((long_form, short_forms))
+
+
+def add_dynamic_synonym_group(group: list[str]) -> None:
+    """Adiciona grupo de sinônimos dinamicamente (após aprovação de feedback)."""
+    for term in group:
+        _INDEX[term.lower()] = group
+    SYNONYM_GROUPS.append(group)
+
+
+def patch_synonyms_file(fix_type: str, data: dict) -> bool:
+    """Escreve a correção diretamente em synonyms.py (fix permanente no código)."""
+    file = Path(__file__)
+    content = file.read_text(encoding="utf-8")
+
+    if fix_type == "add_abbreviation":
+        long_form = data.get("long_form", "").strip()
+        short_forms = [s.strip() for s in data.get("short_forms", []) if s.strip()]
+        if not long_form or not short_forms:
+            return False
+        new_line = f'    ("{long_form}",       {short_forms!r}),\n'
+        marker = "    # <dynamic-abbreviations-end>"
+        if marker not in content:
+            return False
+        content = content.replace(marker, new_line + marker)
+        file.write_text(content, encoding="utf-8")
+        return True
+
+    if fix_type == "add_synonym":
+        group = [t.strip() for t in data.get("group", []) if t.strip()]
+        if len(group) < 2:
+            return False
+        new_line = f'    {group!r},\n'
+        marker = "    # <dynamic-synonyms-end>"
+        if marker not in content:
+            return False
+        content = content.replace(marker, new_line + marker)
+        file.write_text(content, encoding="utf-8")
+        return True
+
+    return False
+
+
+def load_dynamic_abbreviations(pairs: list[tuple[str, list[str]]]) -> None:
+    """Carrega abreviações persistidas no DB durante startup."""
+    for long_form, short_forms in pairs:
+        add_dynamic_abbreviation(long_form, short_forms)
+
+
+def load_dynamic_synonyms(groups: list[list[str]]) -> None:
+    """Carrega grupos de sinônimos persistidos no DB durante startup."""
+    for group in groups:
+        add_dynamic_synonym_group(group)
 
 
 def get_synonyms(query: str) -> list[str]:

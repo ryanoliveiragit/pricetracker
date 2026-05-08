@@ -11,6 +11,7 @@ export interface ApiSupplier {
   isActive: boolean;
   region?: string;
   notes?: string;
+  createdBy?: string;
   createdAt: string;
 }
 
@@ -180,33 +181,27 @@ export const searchApi = {
 // Auth API
 export const authApi = {
   async login(email: string, password: string): Promise<{ success: boolean; message?: string; user?: { email: string; name?: string; role?: string }; token?: string }> {
-    console.log('🔐 Login mockado - sem requisições de rede');
-    
-    // Validação básica
-    const validEmail = email.trim().length > 3;
-    const validPassword = password.trim().length >= 4;
-    
-    if (!validEmail || !validPassword) {
-      console.log('❌ Validação falhou');
-      return { success: false, message: 'Email ou senha inválidos' };
-    }
-    
-    // Login mockado - aceita qualquer email/senha válidos para desenvolvimento
-    let inferredRole = "funcionario";
-    if (email.toLowerCase().includes("admin")) inferredRole = "admin";
-    else if (email.toLowerCase().includes("gestor")) inferredRole = "gestor";
-    else if (email.toLowerCase().includes("user") || email.toLowerCase().includes("usuario")) inferredRole = "usuario";
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-    console.log('✅ Login mockado aceito:', inferredRole);
+    if (!response.ok) {
+      throw new Error(`Erro ao conectar com servidor: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.user) {
+      return { success: false, message: data.message || "Credenciais inválidas" };
+    }
+
     return {
       success: true,
-      message: 'Login realizado com sucesso',
-      user: {
-        email: email.trim(),
-        name: email.trim().split('@')[0],
-        role: inferredRole
-      },
-      token: `mock-token-${Date.now()}`
+      message: data.message,
+      user: data.user,
+      token: data.token,
     };
   }
 };

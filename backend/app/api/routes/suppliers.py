@@ -5,13 +5,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.supplier import SupplierCreate, SupplierUpdate
-from app.models.db_models import SupplierDB
+from app.models.db_models import SupplierDB, UserDB
 from app.database import get_db
+from app.utils.auth import get_current_user_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -110,7 +111,7 @@ async def _test_and_save_login(
 # Helpers for search.py compatibility
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _to_camel_dict(s: SupplierDB) -> dict:
+def _to_camel_dict(s: SupplierDB, creator_name: str = None) -> dict:
     return {
         "id": s.id,
         "name": s.name,
@@ -122,6 +123,7 @@ def _to_camel_dict(s: SupplierDB) -> dict:
         "isActive": s.is_active,
         "region": s.region or "",
         "notes": s.notes or "",
+        "createdBy": creator_name or "",
         "createdAt": s.created_at.isoformat() if s.created_at else "",
     }
 
@@ -157,7 +159,17 @@ async def get_all_suppliers_from_db() -> list:
 @router.get("/suppliers")
 async def list_suppliers(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(SupplierDB).order_by(SupplierDB.created_at.desc()))
-    return [_to_camel_dict(s) for s in result.scalars().all()]
+    suppliers = result.scalars().all()
+
+    # Fetch creator names for all suppliers
+    creator_ids = {s.created_by for s in suppliers if s.created_by}
+    creator_names = {}
+    if creator_ids:
+        users_result = await db.execute(select(UserDB).filter(UserDB.id.in_(creator_ids)))
+        for u in users_result.scalars().all():
+            creator_names[u.id] = u.nome or u.email
+
+    return [_to_camel_dict(s, creator_names.get(s.created_by)) for s in suppliers]
 
 
 @router.get("/suppliers/{supplier_id}")
@@ -169,12 +181,21 @@ async def get_supplier(supplier_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/suppliers", status_code=201)
-async def create_supplier(data: SupplierCreate, db: AsyncSession = Depends(get_db)):
+async def create_supplier(
+    data: SupplierCreate,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
     """
     Cria fornecedor.
     Se requiresLogin=True e credenciais fornecidas, testa login antes de confirmar.
     Retorna HTTP 422 com detail descritivo se o login falhar.
     """
+    # Get current user ID to set as creator
+    user_result = await db.execute(select(UserDB).filter(UserDB.email == email))
+    current_user = user_result.scalars().first()
+    creator_id = current_user.id if current_user else None
+
     # 1. Testar login ANTES de salvar no banco
     if data.requires_login and data.username and data.password:
         ok, error_msg = await _test_and_save_login(
@@ -201,13 +222,14 @@ async def create_supplier(data: SupplierCreate, db: AsyncSession = Depends(get_d
         is_active=data.is_active,
         region=data.region or "",
         notes=data.notes or "",
+        created_by=creator_id,
         created_at=datetime.now(timezone.utc),
     )
     db.add(supplier)
     await db.commit()
     await db.refresh(supplier)
-    logger.info("Fornecedor criado: %s", supplier.name)
-    return _to_camel_dict(supplier)
+    logger.info("Fornecedor criado: %s por %s", supplier.name, email)
+    return _to_camel_dict(supplier, current_user.nome if current_user else "")
 
 
 @router.patch("/suppliers/{supplier_id}")

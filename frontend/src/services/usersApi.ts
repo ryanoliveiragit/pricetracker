@@ -4,6 +4,27 @@
  */
 
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/api\/?$/, "");
+const AUTH_STORAGE_KEY = "construprice-auth";
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders(): HeadersInit {
+  const token = getToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+  };
+}
 
 export interface ApiUser {
   id: number;
@@ -52,9 +73,29 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 export const usersApi = {
+  /** Retorna dados do usuário logado */
+  async getMe(): Promise<ApiUser> {
+    const res = await fetch(`${BASE}/api/users/me`, {
+      headers: authHeaders(),
+    });
+    return handleResponse<ApiUser>(res);
+  },
+
+  /** Edita dados do usuário logado */
+  async updateMe(payload: UserUpdatePayload): Promise<ApiUser> {
+    const res = await fetch(`${BASE}/api/users/me`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<ApiUser>(res);
+  },
+
   /** Lista todos os usuários/funcionários */
   async getAll(): Promise<ApiUser[]> {
-    const res = await fetch(`${BASE}/api/users`);
+    const res = await fetch(`${BASE}/api/users`, {
+      headers: authHeaders(),
+    });
     return handleResponse<ApiUser[]>(res);
   },
 
@@ -62,7 +103,7 @@ export const usersApi = {
   async create(payload: UserCreatePayload): Promise<ApiUser> {
     const res = await fetch(`${BASE}/api/users`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(payload),
     });
     return handleResponse<ApiUser>(res);
@@ -72,7 +113,7 @@ export const usersApi = {
   async update(id: number, payload: UserUpdatePayload): Promise<ApiUser> {
     const res = await fetch(`${BASE}/api/users/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(payload),
     });
     return handleResponse<ApiUser>(res);
@@ -82,13 +123,17 @@ export const usersApi = {
   async toggleStatus(id: number): Promise<ApiUser> {
     const res = await fetch(`${BASE}/api/users/${id}/toggle-status`, {
       method: "PATCH",
+      headers: authHeaders(),
     });
     return handleResponse<ApiUser>(res);
   },
 
   /** Remove permanentemente */
   async delete(id: number): Promise<void> {
-    const res = await fetch(`${BASE}/api/users/${id}`, { method: "DELETE" });
+    const res = await fetch(`${BASE}/api/users/${id}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
     return handleResponse<void>(res);
   },
 };

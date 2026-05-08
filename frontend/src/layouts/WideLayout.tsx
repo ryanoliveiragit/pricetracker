@@ -95,9 +95,13 @@ export default function WideLayout({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/50">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-sm font-semibold text-white">
                 {user?.displayName?.charAt(0).toUpperCase()}
               </div>
+              )}
               <div>
                 <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                   {user?.displayName}

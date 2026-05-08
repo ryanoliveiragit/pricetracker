@@ -146,7 +146,11 @@ export default function ModernResults() {
   }, [loading]);
 
   useEffect(() => {
-    if (items.length > 0) void search(items, false, selectedSuppliersFromAgent);
+    if (items.length > 0) {
+      const fromAgent = localStorage.getItem("construprice-agent-search") === "1";
+      if (fromAgent) localStorage.removeItem("construprice-agent-search");
+      void search(items, fromAgent, selectedSuppliersFromAgent);
+    }
   }, []);
 
   /* ── filter state ── */

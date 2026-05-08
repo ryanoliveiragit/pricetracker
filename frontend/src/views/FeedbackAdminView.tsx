@@ -332,7 +332,7 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
                         Prompt {editingPrompt ? "(editando)" : "transcrito pela IA"}
                       </span>
                     </div>
-                    {isAnalyzed && !editingPrompt && (
+                    {(isAnalyzed || isValidated) && !editingPrompt && (
                       <button onClick={() => setEditingPrompt(true)}
                         className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-200 transition-colors">
                         <Pencil className="h-3 w-3" />Editar
@@ -530,12 +530,19 @@ const TABS = [
 export default function FeedbackAdminView() {
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("");
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    try { setReports(await listFeedback(tab || undefined)); }
-    finally { if (!silent) setLoading(false); }
+    if (!silent) setError(null);
+    try {
+      setReports(await listFeedback(tab || undefined));
+    } catch (e) {
+      if (!silent) setError(e instanceof Error ? e.message : "Erro ao carregar feedbacks");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [tab]);
 
   useEffect(() => { load(); }, [load]);
@@ -587,6 +594,20 @@ export default function FeedbackAdminView() {
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-5 w-5 animate-spin text-slate-300 dark:text-neutral-600" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+          <AlertCircle className="h-8 w-8 text-red-400" />
+          <div>
+            <p className="text-[13px] font-semibold text-slate-700 dark:text-neutral-300">Falha ao carregar feedbacks</p>
+            <p className="text-[11.5px] text-slate-400 dark:text-neutral-500 mt-1 font-mono">{error}</p>
+          </div>
+          <button
+            onClick={() => load()}
+            className="mt-1 rounded-xl border border-slate-200 dark:border-neutral-700 px-3 py-1.5 text-[12px] font-medium text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors"
+          >
+            Tentar novamente
+          </button>
         </div>
       ) : reports.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-2 text-center">

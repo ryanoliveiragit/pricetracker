@@ -12,19 +12,17 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkAuth = () => {
+      setIsChecking(false);
       if (!isAuthenticated) {
         router.replace("/login");
-      } else {
-        setIsChecking(false);
       }
     };
 
-    // Pequeno delay para evitar flash
     const timer = setTimeout(checkAuth, 100);
     return () => clearTimeout(timer);
   }, [isAuthenticated, router]);
 
-  if (isChecking || !isAuthenticated) {
+  if (isChecking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-950">
         <div className="text-center">
@@ -33,6 +31,10 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return <>{children}</>;

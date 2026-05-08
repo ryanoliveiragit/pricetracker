@@ -7,10 +7,19 @@ import logging
 from app.database import get_db
 from app.models.db_models import UserDB, UserRole
 from app.models.user import UserCreate, UserUpdate, UserResponse
-from app.utils.auth import get_password_hash
+from app.utils.auth import get_password_hash, get_current_user_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def _get_user_from_db(db: AsyncSession, email: str) -> UserDB:
+    """Helper to fetch user from database by email."""
+    result = await db.execute(select(UserDB).filter(UserDB.email == email))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado no banco.")
+    return user
 
 
 def _to_dict(u: UserDB) -> dict:
@@ -29,14 +38,54 @@ def _to_dict(u: UserDB) -> dict:
     }
 
 
+# ── ME (logged-in user) ─────────────────────────────────────────────────────
+
+@router.get("/users/me")
+async def get_me(
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
+    """Retorna os dados do usuário logado."""
+    user = await _get_user_from_db(db, email)
+    return _to_dict(user)
+
+
+@router.patch("/users/me")
+async def update_me(
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
+    """Edita dados do usuário logado."""
+    user = await _get_user_from_db(db, email)
+
+    if data.nome is not None:
+        user.nome = data.nome
+    if data.telefone is not None:
+        user.telefone = data.telefone
+    if data.empresa is not None:
+        user.empresa = data.empresa
+    if data.cargo is not None:
+        user.cargo = data.cargo
+    if data.avatar is not None:
+        user.avatar = data.avatar
+    if data.password:
+        user.password_hash = get_password_hash(data.password)
+
+    await db.commit()
+    await db.refresh(user)
+    logger.info(f"Perfil atualizado: {user.email}")
+    return _to_dict(user)
+
+
 # ── LIST ─────────────────────────────────────────────────────────────────────
 
 @router.get("/users", response_model=list)
-async def list_users(db: AsyncSession = Depends(get_db)):
-    """
-    Lista todos os usuários cadastrados no banco.
-    Em produção, filtrar por role/hierarquia via token JWT.
-    """
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
+    """Lista todos os usuários cadastrados no banco."""
     result = await db.execute(select(UserDB).order_by(UserDB.created_at.desc()))
     return [_to_dict(u) for u in result.scalars().all()]
 
@@ -44,7 +93,11 @@ async def list_users(db: AsyncSession = Depends(get_db)):
 # ── CREATE ────────────────────────────────────────────────────────────────────
 
 @router.post("/users", status_code=201)
-async def create_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def create_user(
+    data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
     """Cria novo usuário/funcionário."""
     # Verificar duplicata
     existing = await db.execute(select(UserDB).filter(UserDB.email == data.email))
@@ -79,7 +132,11 @@ async def create_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
 # ── GET BY ID ─────────────────────────────────────────────────────────────────
 
 @router.get("/users/{user_id}")
-async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def get_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
     u = await db.get(UserDB, user_id)
     if not u:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
@@ -89,7 +146,12 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
 # ── UPDATE ────────────────────────────────────────────────────────────────────
 
 @router.patch("/users/{user_id}")
-async def update_user(user_id: int, data: UserUpdate, db: AsyncSession = Depends(get_db)):
+async def update_user(
+    user_id: int,
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
     """Edita dados de um usuário."""
     u = await db.get(UserDB, user_id)
     if not u:
@@ -124,7 +186,11 @@ async def update_user(user_id: int, data: UserUpdate, db: AsyncSession = Depends
 # ── DELETE ────────────────────────────────────────────────────────────────────
 
 @router.delete("/users/{user_id}", status_code=204)
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
     """Remove permanentemente um usuário."""
     u = await db.get(UserDB, user_id)
     if not u:
@@ -137,7 +203,11 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
 # ── TOGGLE STATUS ─────────────────────────────────────────────────────────────
 
 @router.patch("/users/{user_id}/toggle-status")
-async def toggle_user_status(user_id: int, db: AsyncSession = Depends(get_db)):
+async def toggle_user_status(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    email: str = Depends(get_current_user_email),
+):
     """Ativa ou suspende o acesso de um usuário."""
     u = await db.get(UserDB, user_id)
     if not u:

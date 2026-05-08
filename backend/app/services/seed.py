@@ -5,9 +5,27 @@ Also patches existing suppliers whose credentials are empty on every startup.
 import logging
 from sqlalchemy import select, func
 from app.database import async_session
-from app.models.db_models import ProductDB, SupplierDB
+from app.models.db_models import ProductDB, SupplierDB, UserDB, UserRole
+from app.utils.auth import get_password_hash
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_USERS = [
+    {
+        "nome": "Administrador",
+        "email": "admin@construprice.com",
+        "password_hash": get_password_hash("admin"),
+        "role": UserRole.ADMIN,
+        "is_active": True,
+    },
+    {
+        "nome": "Gestor",
+        "email": "gestor@construprice.com",
+        "password_hash": get_password_hash("gestor123"),
+        "role": UserRole.GESTOR,
+        "is_active": True,
+    },
+]
 
 # Map supplier name → index in DEFAULT_SUPPLIERS for fast lookup
 _SUPPLIER_CREDS_BY_NAME: dict = {}  # populated after DEFAULT_SUPPLIERS is defined
@@ -128,10 +146,20 @@ DEFAULT_SUPPLIERS = [
 
 
 async def seed_defaults():
-    """Insert default products and suppliers if tables are empty.
+    """Insert default products, users and suppliers if tables are empty.
     Also patches credentials for existing suppliers that have empty username/password.
     """
     async with async_session() as session:
+        # ── Users ─────────────────────────────────────────────────────────────
+        count = await session.scalar(select(func.count()).select_from(UserDB))
+        if count == 0:
+            for u in DEFAULT_USERS:
+                session.add(UserDB(**u))
+            await session.commit()
+            logger.info(f"🌱 {len(DEFAULT_USERS)} usuários padrão inseridos")
+        else:
+            logger.info(f"👥 {count} usuários já existem no banco")
+
         # ── Products ──────────────────────────────────────────────────────────
         count = await session.scalar(select(func.count()).select_from(ProductDB))
         if count == 0:

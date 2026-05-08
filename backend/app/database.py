@@ -96,7 +96,8 @@ async def create_tables():
     # Adicionar novos valores ao enum FeedbackStatus no Postgres
     # (ALTER TYPE ... ADD VALUE não suporta IF NOT EXISTS em todas as versões;
     # capturamos exceção quando o valor já existe)
-    _new_status_values = ["validated", "executing", "deployed", "merged"]
+    _new_status_values = ["pending", "analyzed", "approved", "rejected",
+                          "validated", "executing", "deployed", "merged"]
     for value in _new_status_values:
         try:
             async with engine.begin() as conn:
@@ -106,3 +107,22 @@ async def create_tables():
             logger.info(f"✅ Status '{value}' adicionado ao enum feedbackstatus")
         except Exception as e:
             logger.debug(f"enum feedbackstatus '{value}': {e}")
+
+    # Normalizar labels uppercase legados → lowercase (PENDING→pending, etc.)
+    # PostgreSQL exige transação separada após ALTER TYPE ADD VALUE para usar o novo label.
+    _uppercase_migrations = [
+        ("PENDING",  "pending"),
+        ("ANALYZED", "analyzed"),
+        ("APPROVED", "approved"),
+        ("REJECTED", "rejected"),
+    ]
+    try:
+        async with engine.begin() as conn:
+            for upper, lower in _uppercase_migrations:
+                await conn.execute(sa.text(
+                    f"UPDATE feedback_reports SET status = '{lower}'::feedbackstatus "
+                    f"WHERE status::text = '{upper}'"
+                ))
+        logger.info("✅ Status uppercase→lowercase normalizados em feedback_reports")
+    except Exception as e:
+        logger.warning(f"⚠️  Normalização uppercase→lowercase: {e}")

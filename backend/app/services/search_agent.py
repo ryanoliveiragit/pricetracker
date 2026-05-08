@@ -1073,6 +1073,224 @@ PRODUCT_KB: dict[str, dict[str, Any]] = {
         "required": ["variant"],
         "suggested_aliases": ["gesso em pó", "gesso acartonado", "drywall"],
     },
+    "brita": {
+        "keywords": [
+            "brita",
+            "pedra britada",
+            "pedrisco",
+            "agregado graudo",
+            "agregado graúdo",
+            "brita 0",
+            "brita 1",
+            "brita 2",
+        ],
+        "display_name": "brita",
+        "question_label": "brita",
+        "fields": {
+            "variant": {
+                "question": "Qual tipo de brita?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("Brita 0"),
+                    option("Brita 1"),
+                    option("Brita 2"),
+                    option("Pedrisco"),
+                    option("Qualquer"),
+                ],
+            },
+            "weight_volume": {
+                "question": "Qual unidade?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("m³"),
+                    option("Saco 20kg"),
+                    option("Qualquer"),
+                ],
+            },
+            "quantity": {
+                "question": "Qual quantidade?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("1 m³"),
+                    option("2 m³"),
+                    option("5 m³"),
+                    option("Qualquer"),
+                ],
+            },
+        },
+        "priority": ["variant", "weight_volume", "quantity"],
+        "required": ["variant"],
+        "suggested_aliases": ["pedra britada", "agregado graúdo", "pedra 1"],
+    },
+    "cal": {
+        "keywords": [
+            "cal",
+            "cal hidratada",
+            "cal virgem",
+            "ch1",
+            "ch3",
+            "calcario",
+            "calcário",
+        ],
+        "display_name": "cal",
+        "question_label": "cal",
+        "fields": {
+            "variant": {
+                "question": "Qual tipo de cal?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("Cal hidratada CH I"),
+                    option("Cal hidratada CH III"),
+                    option("Cal virgem"),
+                    option("Qualquer"),
+                ],
+            },
+            "weight_volume": {
+                "question": "Qual embalagem?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("20kg"),
+                    option("Qualquer"),
+                ],
+            },
+            "quantity": {
+                "question": "Qual quantidade?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("1 saco"),
+                    option("5 sacos"),
+                    option("10 sacos"),
+                    option("Qualquer"),
+                ],
+            },
+        },
+        "priority": ["variant", "weight_volume", "quantity"],
+        "required": ["variant"],
+        "suggested_aliases": ["cal em pó", "hidratada"],
+    },
+    "impermeabilizante": {
+        "keywords": [
+            "impermeabilizante",
+            "manta",
+            "manta asfaltica",
+            "manta asfáltica",
+            "manta impermeavel",
+            "manta impermeável",
+            "hidrostatico",
+            "hidrostático",
+            "impermeavel",
+            "impermeável",
+        ],
+        "display_name": "impermeabilizante",
+        "question_label": "impermeabilizante",
+        "fields": {
+            "variant": {
+                "question": "Qual tipo de impermeabilizante?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("Manta asfáltica"),
+                    option("Líquido"),
+                    option("Cimentício"),
+                    option("Membrana"),
+                    option("Qualquer"),
+                ],
+            },
+            "brand": {
+                "question": "Qual marca?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("Vedacit"),
+                    option("Sika"),
+                    option("Qualquer"),
+                ],
+            },
+            "weight_volume": {
+                "question": "Qual embalagem?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("3,6L"),
+                    option("18L"),
+                    option("1m²"),
+                    option("10m²"),
+                    option("Qualquer"),
+                ],
+            },
+        },
+        "priority": ["variant", "brand", "weight_volume"],
+        "required": ["variant"],
+        "suggested_aliases": ["manta de impermeabilização", "vedacit", "impermeável líquido"],
+    },
+    "reboco": {
+        "keywords": [
+            "reboco",
+            "rebôco",
+            "chapisco",
+            "regularizadora",
+            "contrapiso",
+            "contra piso",
+            "argamassa de regularizacao",
+            "argamassa de regularização",
+        ],
+        "display_name": "reboco",
+        "question_label": "reboco",
+        "fields": {
+            "variant": {
+                "question": "Qual tipo?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("Reboco"),
+                    option("Chapisco"),
+                    option("Regularizadora"),
+                    option("Contrapiso"),
+                    option("Qualquer"),
+                ],
+            },
+            "brand": {
+                "question": "Qual marca?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("Quartzolit"),
+                    option("Votomassa"),
+                    option("Qualquer"),
+                ],
+            },
+            "weight_volume": {
+                "question": "Qual embalagem?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("20kg"),
+                    option("25kg"),
+                    option("Qualquer"),
+                ],
+            },
+            "quantity": {
+                "question": "Qual quantidade?",
+                "input_type": "chips",
+                "allow_free_text": True,
+                "options": [
+                    option("1 saco"),
+                    option("5 sacos"),
+                    option("10 sacos"),
+                    option("Qualquer"),
+                ],
+            },
+        },
+        "priority": ["variant", "brand", "weight_volume", "quantity"],
+        "required": ["variant"],
+        "suggested_aliases": ["reboco industrializado", "chapisco"],
+    },
     "parafuso": {
         "keywords": [
             "parafuso",
@@ -1143,9 +1361,63 @@ ATTRIBUTE_PRIORITY = [
     "quantity",
 ]
 
+# ─── Generic (unknown) product flow ──────────────────────────────────────────
+# When the user types a product not in PRODUCT_KB, we run a 2-step refinement
+# to build a precise scraper query:  "{product} {brand/model} {spec/size}"
+
+_GENERIC_SPEC_Q = "Qual marca, modelo ou especificação?"
+
+
+def _first_message_already_specific(message: str) -> bool:
+    """True if the first query already carries enough specificity to skip refinement."""
+    words = message.strip().split()
+    if len(words) >= 3:
+        return True
+    if extract_brand(message) is not None:
+        return True
+    if extract_first_match(message, DIMENSION_PATTERNS) is not None:
+        return True
+    if extract_first_match(message, WEIGHT_PATTERNS) is not None:
+        return True
+    return False
+
+
+def _build_generic_product(message: str, history: list[dict]) -> dict:
+    """
+    Rebuilds generic-flow state from conversation history.
+    Returns {"product_label": str, "spec": str|None, "spec_asked": bool}
+    """
+    user_msgs = [e["content"].strip() for e in history if e["role"] == "user"]
+    user_msgs.append(message.strip())
+
+    product_label = compact_spaces(user_msgs[0]) if user_msgs else message.strip()
+
+    asst_msgs = [e for e in history if e["role"] == "assistant"]
+    spec_asked = False
+    spec: Optional[str] = None
+
+    for i, asst in enumerate(asst_msgs):
+        if _GENERIC_SPEC_Q in asst.get("content", ""):
+            spec_asked = True
+            if i + 1 < len(user_msgs):
+                ans = user_msgs[i + 1].strip()
+                if not (is_broad_answer(ans) or normalize(ans) == "qualquer"):
+                    spec = ans
+            break
+
+    return {"product_label": product_label, "spec": spec, "spec_asked": spec_asked}
+
 GENERIC_WELCOME = (
     "Olá! Sou seu assistente de cotação.\n\n"
     "Me diga o material que você precisa buscar. Ex: cimento, cola, tinta branca, tubo PVC."
+)
+
+PRODUCT_NOT_FOUND_TEMPLATE = (
+    "Não reconheci \"{query}\" no meu catálogo. 🤔\n\n"
+    "Consigo cotar: cimento, areia, brita, tinta, tijolo, ferro/vergalhão, tubo/cano, "
+    "fio elétrico, telha, cerâmica/porcelanato, argamassa, rejunte, cola, gesso, "
+    "parafuso, cal, impermeabilizante, massa corrida e outros.\n\n"
+    "Tente digitar apenas o nome do material."
 )
 
 
@@ -1802,20 +2074,137 @@ def process_message(
     total_products = len(state["detected_products"])
 
     if not state["detected_products"]:
+        msg_stripped = message.strip()
+
+        # Empty / greeting-only input → show welcome
+        if len(msg_stripped) <= 2:
+            return {
+                "message": GENERIC_WELCOME,
+                "ready": False,
+                "search_items": None,
+                "thinking": build_thinking(state),
+                "step": "product",
+                "active_product": None,
+                "progress_current": 0,
+                "progress_total": 0,
+                "input_type": "text",
+                "allow_free_text": True,
+                "options": [],
+                "selected_suppliers": [],
+                "summary": build_ui_summary(state),
+            }
+
+        # ── Generic product flow ──────────────────────────────────────────────
+        # Any product not in the KB is handled here.
+        # Goal: build a precise scraper query  "{product} {brand/model} {spec}"
+        g = _build_generic_product(msg_stripped, history)
+        product_label = g["product_label"]
+
+        _base_summary: dict = {
+            "supplier_label": "Todos os fornecedores",
+            "products": [{
+                "product_key": "_generic",
+                "label": product_label,
+                "ready": False,
+                "active": True,
+                "position": 1,
+                "search_item": product_label,
+                "selected_fields": [],
+            }],
+        }
+
+        # Step 1 — ask for brand/model/spec (skip if query already specific)
+        if not g["spec_asked"] and not _first_message_already_specific(product_label):
+            return {
+                "message": (
+                    f"Sobre **{product_label}**: {_GENERIC_SPEC_Q}\n\n"
+                    "Informe marca, modelo ou medida para uma busca mais precisa.\n"
+                    "Ex: _PADO 20mm_, _Yale 40mm_, _Tramontina residencial_."
+                ),
+                "ready": False,
+                "search_items": None,
+                "thinking": f"generic:{product_label}",
+                "step": "generic_spec",
+                "product": None,
+                "active_product": None,
+                "progress_current": 0,
+                "progress_total": 1,
+                "input_type": "text",
+                "allow_free_text": True,
+                "options": [option("Qualquer")],
+                "suggested_aliases": [],
+                "selected_suppliers": [],
+                "summary": _base_summary,
+            }
+
+        # Build interim search item
+        parts: list[str] = [product_label]
+        if g["spec"] and normalize(g["spec"]) != "qualquer":
+            parts.append(g["spec"])
+        generic_search_item = compact_spaces(" ".join(parts))
+
+        # Step 2 — ask supplier scope (same as KB flow)
+        if state["supplier_scope"] is None:
+            supplier_step = build_supplier_step(supplier_names)
+            return {
+                "message": supplier_step["message"],
+                "ready": False,
+                "search_items": None,
+                "thinking": f"generic:{generic_search_item}",
+                "step": supplier_step["step"],
+                "product": None,
+                "active_product": None,
+                "progress_current": 0,
+                "progress_total": 1,
+                "input_type": supplier_step["input_type"],
+                "allow_free_text": supplier_step["allow_free_text"],
+                "options": supplier_step["options"],
+                "suggested_aliases": [],
+                "selected_suppliers": state["selected_suppliers"],
+                "summary": {
+                    **_base_summary,
+                    "products": [{**_base_summary["products"][0], "search_item": generic_search_item}],
+                },
+            }
+
+        # Step 3 — ready
+        supplier_label = "Todos os fornecedores"
+        if state["supplier_scope"] == "single" and state["selected_suppliers"]:
+            supplier_label = ", ".join(state["selected_suppliers"])
+
+        ready_summary: dict = {
+            "supplier_label": supplier_label,
+            "products": [{
+                "product_key": "_generic",
+                "label": generic_search_item,
+                "ready": True,
+                "active": False,
+                "position": 1,
+                "search_item": generic_search_item,
+                "selected_fields": [{"field": "query", "value": generic_search_item}],
+            }],
+        }
         return {
-            "message": GENERIC_WELCOME,
-            "ready": False,
-            "search_items": None,
-            "thinking": build_thinking(state),
-            "step": "product",
+            "message": (
+                "✅ Pronto para buscar!\n\n"
+                f"📦 Fornecedores: {supplier_label}\n\n"
+                f"📋 Query de busca: **{generic_search_item}**\n\n"
+                "Posso iniciar a cotação agora."
+            ),
+            "ready": True,
+            "search_items": [generic_search_item],
+            "thinking": f"generic:{generic_search_item}",
+            "step": "done",
+            "product": None,
             "active_product": None,
-            "progress_current": 0,
-            "progress_total": 0,
-            "input_type": "text",
+            "progress_current": 1,
+            "progress_total": 1,
+            "input_type": "none",
             "allow_free_text": True,
             "options": [],
-            "selected_suppliers": [],
-            "summary": build_ui_summary(state),
+            "suggested_aliases": [],
+            "selected_suppliers": state["selected_suppliers"],
+            "summary": ready_summary,
         }
 
     if state["supplier_scope"] is None:

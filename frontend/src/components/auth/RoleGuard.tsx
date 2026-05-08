@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "../../context/AuthContext";
-import { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { ReactNode, useEffect } from "react";
 
 type Role = "admin" | "gestor" | "usuario" | "funcionario";
 
@@ -11,14 +12,25 @@ interface RoleGuardProps {
   fallback?: ReactNode;
 }
 
-export function RoleGuard({ roles, children, fallback = null }: RoleGuardProps) {
-  const { user } = useAuth();
+export function RoleGuard({ roles, children, fallback }: RoleGuardProps) {
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
 
-  if (!user || !user.role) return <>{fallback}</>;
+  const allowed = isAuthenticated && user?.role && roles.includes(user.role as Role);
 
-  if (roles.includes(user.role as Role)) {
-    return <>{children}</>;
+  useEffect(() => {
+    if (!isAuthenticated) router.replace("/login");
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) return null;
+
+  if (!allowed) {
+    return fallback ?? (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-950">
+        <p className="text-sm text-neutral-400">Acesso restrito.</p>
+      </div>
+    );
   }
 
-  return <>{fallback}</>;
+  return <>{children}</>;
 }
