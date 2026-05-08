@@ -42,6 +42,7 @@ export default function CompactLayout({ children }: { children: ReactNode }) {
 
           <nav className="flex flex-1 flex-col gap-2">
             {navItems.map((item) => {
+              if (item.label === 'Config') return null;
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
@@ -69,8 +70,19 @@ export default function CompactLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <button
-            onClick={handleLogout}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+<button className='flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800' onClick={() => setShowDropdown(!showDropdown)} title='Perfil'>
+              <User className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
+            </button>
+            {showDropdown && (
+              <div className='absolute bottom-0 left-0 mb-12 ml-12 w-48 rounded-lg bg-white shadow-lg dark:bg-neutral-900'>
+                <Link href='/settings' className='flex w-full items-center gap-2 p-4 hover:bg-neutral-100 dark:hover:bg-neutral-800'>
+                  <Settings className='h-4 w-4' /> Configurações
+                </Link>
+                <button onClick={handleLogout} className='flex w-full items-center gap-2 p-4 hover:bg-neutral-100 dark:hover:bg-neutral-800'>
+                  <LogOut className='h-4 w-4' /> Sair
+                </button>
+              </div>
+            )}            className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
             title="Sair"
           >
             <LogOut className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
