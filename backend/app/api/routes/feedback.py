@@ -385,15 +385,74 @@ async def execute_feedback(
     return {"id": report.id, "status": report.status, "execution_status": "running"}
 
 
+def _create_branch_via_git(report_id: int, changes: list[dict], commit_message: str) -> tuple[str, str]:
+    """
+    Cria branch feedback/<id> usando git local:
+    checkout -b → aplica mudanças → commit → push → volta para branch original.
+    Não depende de token com escopo de API — usa as credenciais git já configuradas.
+    """
+    import subprocess
+    from app.services.auto_fix_agent import PROJECT_ROOT, apply_changes
+
+    branch = f"feedback/{report_id}"
+
+    def git(*args: str, check: bool = True) -> str:
+        r = subprocess.run(
+            ["git", *args],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+        )
+        if check and r.returncode != 0:
+            raise RuntimeError(f"git {args[0]} falhou: {(r.stderr or r.stdout).strip()[:300]}")
+        return r.stdout.strip()
+
+    original_branch = git("rev-parse", "--abbrev-ref", "HEAD")
+
+    # Garante que a branch não existe ainda (força reset se existir)
+    git("branch", "-D", branch, check=False)
+    git("checkout", "-b", branch)
+
+    try:
+        # Pré-valida antes de aplicar
+        from app.services.auto_fix_agent import pre_validate_changes
+        pre_errors = pre_validate_changes(changes)
+        if pre_errors:
+            raise RuntimeError("Pré-validação falhou:\n" + "\n".join(pre_errors))
+
+        results = apply_changes(changes)
+        failed = [r for r in results if r["status"] != "applied"]
+        if failed:
+            raise RuntimeError(f"Mudanças não aplicadas: {failed}")
+
+        # Stage apenas os arquivos alterados
+        for change in changes:
+            git("add", change["file"])
+
+        git("commit", "-m", commit_message)
+        git("push", "origin", branch)
+
+        sha = git("rev-parse", "HEAD")
+        return branch, sha
+
+    except Exception:
+        # Reverte arquivos e volta para a branch original antes de propagar
+        git("checkout", "--", ".", check=False)
+        git("checkout", original_branch, check=False)
+        git("branch", "-D", branch, check=False)
+        raise
+
+    finally:
+        # Sempre volta para branch original (sem erro se já estiver lá)
+        git("checkout", original_branch, check=False)
+
+
 async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> None:
-    """Background: gera diff via IA, cria branch no GitHub via API, commita."""
+    """Background: gera diff via IA → cria branch no GitHub → commita → reporta URL."""
     from app.database import async_session
-    from app.services import github_api
     import importlib
     import app.services.auto_fix_agent as _afa
     importlib.reload(_afa)
-
-    branch: str | None = None
 
     try:
         # 1. IA gera diff
@@ -404,13 +463,23 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
         if not changes:
             raise RuntimeError("IA retornou diff vazio")
 
-        # 2. Cria branch + commit via GitHub API (sem git local)
         commit_msg = f"feedback #{report_id}: {summary[:72]}"
-        branch, sha = await github_api.create_branch_with_changes(report_id, changes, commit_msg)
 
-        # 3. URLs
-        b_url = github_api.branch_url(branch)
-        p_url = github_api.preview_url_for(branch)
+        if os.environ.get("VERCEL"):
+            # Vercel: filesystem read-only → usa GitHub REST API
+            from app.services import github_api
+            branch, sha = await github_api.create_branch_with_changes(report_id, changes, commit_msg)
+            b_url = github_api.branch_url(branch)
+            p_url = github_api.preview_url_for(branch)
+        else:
+            # Local: git checkout -b → aplica → commit → push
+            branch, sha = await asyncio.to_thread(
+                _create_branch_via_git, report_id, changes, commit_msg
+            )
+            from app.config import settings
+            repo = (settings.GITHUB_REPO or "").strip()
+            b_url = f"https://github.com/{repo}/tree/{branch}" if repo else None
+            p_url = None
 
         async with async_session() as db:
             r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
@@ -424,17 +493,15 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
             r.preview_url = p_url
             r.branch_url = b_url
             await db.commit()
-        logger.info(f"feedback #{report_id}: deployed branch={branch} sha={sha[:8]}")
+        logger.info(f"feedback #{report_id}: branch={branch} sha={sha[:8]}")
 
     except Exception as exc:
-        logger.error(f"feedback #{report_id}: execução em branch falhou — {exc}", exc_info=True)
+        logger.error(f"feedback #{report_id}: execução falhou — {exc}", exc_info=True)
         async with async_session() as db:
             r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
-            r.status = FeedbackStatus.validated  # volta a validated para nova tentativa
+            r.status = FeedbackStatus.validated
             r.execution_status = "error"
             r.execution_error = str(exc)
-            if branch:
-                r.branch_name = branch
             await db.commit()
 
 

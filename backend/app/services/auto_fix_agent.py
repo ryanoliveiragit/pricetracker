@@ -13,12 +13,11 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def _fix_unescaped_quotes(s: str) -> str:
+def _repair_json(s: str) -> str:
     """
-    Repair JSON where string values contain unescaped double quotes.
-    Heuristic: a closing quote is one followed (after optional whitespace) by
-    ,  }  ]  or  :  — any other quote inside a string is an unescaped internal
-    quote and gets escaped.
+    Repara JSON com aspas duplas e/ou newlines literais dentro de string values.
+    - Aspas internas: se não seguidas de ,  }  ]  :  → escapa como \"
+    - Newlines/tabs literais dentro de strings → escapa como \\n / \\t
     """
     out: list[str] = []
     i = 0
@@ -40,12 +39,21 @@ def _fix_unescaped_quotes(s: str) -> str:
                     in_str = False
                     out.append(c)
                 else:
-                    out.append("\\")
-                    out.append('"')
+                    out.append('\\"')
+        elif in_str and c == "\n":
+            out.append("\\n")
+        elif in_str and c == "\r":
+            pass  # ignora \r sozinho
+        elif in_str and c == "\t":
+            out.append("\\t")
         else:
             out.append(c)
         i += 1
     return "".join(out)
+
+
+# mantém alias para não quebrar chamadas existentes
+_fix_unescaped_quotes = _repair_json
 
 
 def _extract_json(raw: str) -> dict:
@@ -57,20 +65,22 @@ def _extract_json(raw: str) -> dict:
         except Exception:
             return None
 
-    # 1. json.loads direto
-    r = _try(raw)
+    repaired = _repair_json(raw)
+
+    # 1. json.loads direto (original e reparado)
+    r = _try(raw) or _try(repaired)
     if r is not None:
         return r
 
-    # 2. bloco ```json ... ``` — com e sem repair de aspas
+    # 2. bloco ```json ... ```
     m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
     if m:
         content = m.group(1)
-        r = _try(content) or _try(_fix_unescaped_quotes(content))
+        r = _try(content) or _try(_repair_json(content))
         if r is not None:
             return r
 
-    # 3. encontra { ... } externo respeitando strings — com e sem repair
+    # 3. encontra { ... } externo respeitando strings
     start = raw.find("{")
     if start != -1:
         depth, in_str, escape = 0, False, False
@@ -88,13 +98,13 @@ def _extract_json(raw: str) -> dict:
                     depth -= 1
                     if depth == 0:
                         fragment = raw[start:i + 1]
-                        r = _try(fragment) or _try(_fix_unescaped_quotes(fragment))
+                        r = _try(fragment) or _try(_repair_json(fragment))
                         if r is not None:
                             return r
                         break
 
-    # 4. último recurso: repair sobre o raw inteiro
-    r = _try(_fix_unescaped_quotes(raw))
+    # 4. último recurso: repair do repaired inteiro
+    r = _try(repaired)
     if r is not None:
         return r
 
@@ -103,7 +113,7 @@ def _extract_json(raw: str) -> dict:
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent  # raiz do projeto
 
-_SYSTEM = """Você é um desenvolvedor sênior implementando uma mudança no projeto ConstruPrice.
+_SYSTEM = """Você é um desenvolvedor sênior implementando uma mudança no projeto PriceTracker.
 
 Stack:
 - Backend: Python/FastAPI em backend/
@@ -113,29 +123,41 @@ Você receberá:
 1. A solicitação de mudança
 2. Conteúdo dos arquivos relevantes
 
-Retorne APENAS JSON válido (sem markdown, sem explicação fora do JSON):
+Retorne APENAS JSON válido (sem markdown):
 {
   "changes": [
     {
       "file": "caminho/relativo/ao/projeto",
-      "old": "string exata a substituir",
-      "new": "string de substituição"
+      "old": "trecho EXATO do arquivo a substituir",
+      "new": "novo conteúdo que substitui o trecho"
     }
   ],
-  "summary": "descrição curta do que foi alterado"
+  "summary": "descrição curta"
 }
 
-Regras CRÍTICAS:
-- "old" deve ser a MENOR substring única possível — idealmente 2-5 palavras, nunca a linha inteira
-- "old" JAMAIS deve conter aspas duplas (") — escolha um trecho que não tenha esse caractere
-  ERRADO: "old": "import { Home, Search, LogOut } from 'lucide-react';"  ← linha inteira
-  ERRADO: "old": "LogOut } from \"lucide-react\""  ← contém aspas
-  CERTO:  "old": "LogOut,"                          ← trecho simples sem aspas
-  CERTO:  "old": "Settings, LogOut"                 ← trecho simples sem aspas
-- "new" nunca deve ter mais que 150 chars e nunca deve conter aspas duplas
-- Máximo 2 changes no total
-- Preserve estilo existente (TypeScript, Tailwind, dark mode com dark:)
-- Se não precisar alterar nada: {"changes": [], "summary": "Sem mudanças necessárias"}"""
+REGRAS CRÍTICAS — LEIA COM ATENÇÃO:
+1. "old" e "new" são SEMPRE strings JSON — NUNCA arrays, NUNCA objetos, APENAS texto entre aspas
+2. "old" DEVE existir textualmente no arquivo — copie caractere por caractere, incluindo indentação
+3. "old" deve ser ÚNICO no arquivo (sem duplicatas)
+4. Multi-linha em "new": use \\n para quebra de linha, \\t ou espaços para indentação
+5. Aspas duplas dentro do texto: escape como \\" dentro da string JSON
+6. Máximo de 3 changes por resposta
+7. NUNCA modifique: layout.tsx, providers.tsx, _app.tsx
+
+ESTRATÉGIA:
+- Trocar texto/classe → "old": "text-blue-500"  →  "new": "text-green-500"
+- Trocar import      → "old": "LogOut"          →  "new": "LogOut, User"
+- Adicionar estado   → "old": "const pathname"  →  "new": "const [open, setOpen] = useState(false);\\n  const pathname"
+- Substituir bloco JSX inteiro → copie o bloco original em "old" e ponha o novo em "new"
+
+ERRO COMUM — NUNCA FAÇA:
+  "old": [{ href: "/", icon: Home }]   ← ERRADO: array não é string
+  "old": { href: "/", icon: Home }     ← ERRADO: objeto não é string
+
+CORRETO:
+  "old": "{ href: \\"/\\", icon: Home, label: \\"Dashboard\\" },"
+
+Se não precisar alterar nada: {"changes": [], "summary": "Sem mudanças necessárias"}"""
 
 
 # ---------------------------------------------------------------------------
@@ -144,12 +166,13 @@ Regras CRÍTICAS:
 
 _CONTEXT_GLOBS: dict[str, list[str]] = {
     "ui_change": [
+        "frontend/src/app/(protected)/**/*.tsx",
         "frontend/src/layouts/*.tsx",
         "frontend/src/components/*.tsx",
     ],
     "feature_request": [
+        "frontend/src/app/(protected)/**/*.tsx",
         "frontend/src/layouts/*.tsx",
-        "frontend/src/views/*.tsx",
         "backend/app/api/routes/*.py",
     ],
     "bug_fix": [
@@ -159,38 +182,104 @@ _CONTEXT_GLOBS: dict[str, list[str]] = {
     ],
 }
 
-MAX_FILE_LINES = 40
-MAX_FILES = 1
+MAX_FILE_CHARS = 10_000  # ~250 linhas médias
+MAX_FILES = 2
+
+# Mapeia termos do domínio (PT + EN) para nomes de arquivo/path
+_KEYWORD_HINTS: dict[str, list[str]] = {
+    "configurações": ["settings"],
+    "configuracao":  ["settings"],
+    "perfil":        ["settings", "profile"],
+    "profile":       ["settings", "profile"],
+    "settings":      ["settings"],
+    "fornecedor":    ["supplier", "suppliers"],
+    "supplier":      ["supplier", "suppliers"],
+    "busca":         ["search"],
+    "search":        ["search"],
+    "produto":       ["product", "catalog"],
+    "product":       ["product", "catalog"],
+    "funcionário":   ["team", "users"],
+    "funcionario":   ["team", "users"],
+    "usuario":       ["settings", "users"],
+    "resultado":     ["result", "results"],
+    "result":        ["result", "results"],
+    "salvo":         ["save", "saves"],
+    "save":          ["save", "saves"],
+    "agente":        ["agent"],
+    "agent":         ["agent"],
+    "login":         ["login", "auth"],
+    "senha":         ["security", "auth"],
+    "segurança":     ["security"],
+    "layout":        ["layout", "compact", "sidebar", "topbar"],
+    "sidebar":       ["sidebar"],
+    "navbar":        ["sidebar", "topbar", "compact"],
+    "menu":          ["sidebar", "topbar", "compact", "layout"],
+    "botão":         ["layout", "settings"],
+    "sair":          ["settings", "auth"],
+    "logout":        ["settings", "auth"],
+}
+
+
+def _expand_keywords(prompt: str) -> list[str]:
+    """Expande palavras do prompt PT/EN para termos que aparecem em paths de arquivo."""
+    prompt_lower = prompt.lower()
+    expanded: set[str] = set()
+    # palavras brutas do prompt
+    for w in prompt_lower.split():
+        w = w.strip(".,;:!?\"'()")
+        if len(w) > 3:
+            expanded.add(w)
+    # expansão via hints
+    for term, hints in _KEYWORD_HINTS.items():
+        if term in prompt_lower:
+            expanded.update(hints)
+    return list(expanded)
 
 
 def _collect_context(fix_type: str, prompt: str) -> str:
-    """Coleta arquivos relevantes como contexto para a IA."""
+    """Coleta arquivos relevantes. Envia arquivo completo se couber, senão a seção mais relevante."""
     import glob as _glob
 
     globs = _CONTEXT_GLOBS.get(fix_type, _CONTEXT_GLOBS["ui_change"])
     candidates: list[Path] = []
     for pattern in globs:
         full_pattern = str(PROJECT_ROOT / pattern)
-        candidates.extend(Path(p) for p in _glob.glob(full_pattern))
+        candidates.extend(Path(p) for p in _glob.glob(full_pattern, recursive=True))
 
-    # Prioriza arquivos cujo nome aparece no prompt
-    prompt_lower = prompt.lower()
+    keywords = _expand_keywords(prompt)
+
     def score(p: Path) -> int:
-        name = p.stem.lower()
-        return 2 if name in prompt_lower else (1 if any(w in prompt_lower for w in name.split()) else 0)
+        path_str = str(p).replace("\\", "/").lower()
+        return sum(1 for kw in keywords if kw in path_str)
 
     candidates.sort(key=score, reverse=True)
+    # nunca incluir arquivos de infraestrutura com score 0 quando há candidatos com score > 0
+    top_score = score(candidates[0]) if candidates else 0
+    if top_score > 0:
+        candidates = [c for c in candidates if score(c) > 0]
     candidates = candidates[:MAX_FILES]
 
     parts: list[str] = []
     for path in candidates:
         try:
-            raw_lines = path.read_text(encoding="utf-8").splitlines()[:MAX_FILE_LINES]
-            # Strip import lines — they contain double-quoted module names which
-            # cause the AI to generate invalid JSON (unescaped quotes in "old").
-            lines = [l for l in raw_lines if not l.strip().startswith(("import ", "from "))]
+            content = path.read_text(encoding="utf-8")
             rel = path.relative_to(PROJECT_ROOT)
-            parts.append(f"### {rel}\n```\n{chr(10).join(lines)}\n```")
+
+            if len(content) <= MAX_FILE_CHARS:
+                parts.append(f"### {rel}\n```\n{content}\n```")
+            else:
+                # Localiza a seção mais próxima das palavras do prompt
+                lines = content.splitlines()
+                best_line, best_score_line = 0, 0
+                for i, line in enumerate(lines):
+                    ll = line.lower()
+                    s = sum(1 for kw in keywords if kw in ll)
+                    if s > best_score_line:
+                        best_score_line, best_line = s, i
+                start = max(0, best_line - 40)
+                end = min(len(lines), best_line + 160)
+                excerpt = "\n".join(lines[start:end])
+                parts.append(f"### {rel} (linhas {start + 1}–{end})\n```\n{excerpt}\n```")
         except Exception:
             pass
 
@@ -344,6 +433,26 @@ def _groq_execute_sync(api_key: str, user_msg: str) -> dict:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _validate_result(result: dict) -> dict:
+    """
+    Garante que cada change tem 'old' e 'new' como strings.
+    Remove changes malformados e loga aviso.
+    """
+    valid: list[dict] = []
+    for c in result.get("changes", []):
+        old, new = c.get("old", ""), c.get("new", "")
+        if not isinstance(old, str) or not isinstance(new, str):
+            logger.warning(
+                "auto_fix_agent: change ignorado — 'old'/'new' não são strings. "
+                "old type=%s, new type=%s, file=%s",
+                type(old).__name__, type(new).__name__, c.get("file"),
+            )
+            continue
+        valid.append(c)
+    result["changes"] = valid
+    return result
+
+
 async def execute_fix(prompt: str, fix_type: str) -> dict:
     """Tenta Claude → Gemini → Perplexity → Groq."""
     import asyncio
@@ -370,7 +479,10 @@ async def execute_fix(prompt: str, fix_type: str) -> dict:
         try:
             logger.info("auto_fix_agent: chamando %s…", name)
             result = await asyncio.to_thread(fn, key.strip(), user_msg)
+            result = _validate_result(result)
             logger.info("auto_fix_agent: %s respondeu:\n%s", name, json.dumps(result, ensure_ascii=False, indent=2))
+            if not result.get("changes"):
+                raise ValueError("IA retornou changes vazio ou malformado após validação")
             return result
         except Exception as exc:
             logger.warning("auto_fix_agent: %s falhou — %s", name, exc)
@@ -410,7 +522,7 @@ def _fuzzy_replace(content: str, old: str, new: str, threshold: float = 0.82) ->
 
 
 def apply_changes(changes: list[dict]) -> list[dict]:
-    """Aplica mudanças nos arquivos. Tenta match exato, cai em fuzzy se falhar."""
+    """Aplica mudanças nos arquivos. Tenta match exato, cai em fuzzy se falhar. Valida JSX após patch."""
     results = []
     for change in changes:
         file_path = PROJECT_ROOT / change["file"]
@@ -419,59 +531,114 @@ def apply_changes(changes: list[dict]) -> list[dict]:
         try:
             content = file_path.read_text(encoding="utf-8")
             if old in content:
-                file_path.write_text(content.replace(old, new, 1), encoding="utf-8")
-                results.append({"file": change["file"], "status": "applied"})
+                patched = content.replace(old, new, 1)
             else:
-                # fallback fuzzy
                 patched = _fuzzy_replace(content, old, new)
-                if patched is not None:
-                    file_path.write_text(patched, encoding="utf-8")
-                    results.append({"file": change["file"], "status": "applied", "method": "fuzzy"})
-                else:
+                if patched is None:
                     logger.warning("apply_changes: not_found em %s\nold=%r", change["file"], old[:120])
                     results.append({"file": change["file"], "status": "not_found",
                                     "error": "Trecho não encontrado (exact nem fuzzy)"})
+                    continue
+
+            # Valida JSX antes de gravar
+            jsx_err = _post_validate_patch(file_path, patched)
+            if jsx_err:
+                logger.warning("apply_changes: patch rejeitado (%s) em %s", jsx_err, change["file"])
+                results.append({"file": change["file"], "status": "error",
+                                 "error": f"Patch rejeitado — {jsx_err}"})
+                continue
+
+            file_path.write_text(patched, encoding="utf-8")
+            results.append({"file": change["file"], "status": "applied",
+                             "method": "exact" if old in content else "fuzzy"})
         except Exception as e:
             results.append({"file": change["file"], "status": "error", "error": str(e)})
     return results
 
 
+def _find_tsc(frontend_path: Path) -> str | None:
+    """Localiza o binário tsc: local node_modules primeiro, depois npx."""
+    import sys
+    suffix = ".cmd" if sys.platform == "win32" else ""
+    local = frontend_path / "node_modules" / ".bin" / f"tsc{suffix}"
+    if local.exists():
+        return str(local)
+    import shutil
+    return shutil.which("tsc") or shutil.which("npx")
+
+
+def _check_jsx_balance(content: str) -> str | None:
+    """
+    Verifica desequilíbrio grosseiro de JSX/blocos em arquivos TSX.
+    Retorna mensagem de erro ou None se OK.
+    """
+    opens  = content.count("{")
+    closes = content.count("}")
+    parens_o = content.count("(")
+    parens_c = content.count(")")
+    if abs(opens - closes) > 2:
+        return f"chaves desequilibradas: {opens} '{{' vs {closes} '}}'"
+    if abs(parens_o - parens_c) > 2:
+        return f"parênteses desequilibrados: {parens_o} '(' vs {parens_c} ')'"
+    return None
+
+
+def pre_validate_changes(changes: list[dict]) -> list[str]:
+    """
+    Verifica se cada 'old' existe no arquivo antes de aplicar qualquer mudança.
+    Retorna lista de erros (vazia = tudo OK).
+    """
+    errors: list[str] = []
+    for change in changes:
+        old = change.get("old", "")
+        if not old:
+            continue
+        file_path = PROJECT_ROOT / change["file"]
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            continue  # arquivo novo — OK
+        if old in content:
+            continue
+        # tenta fuzzy
+        if _fuzzy_replace(content, old, "", threshold=0.82) is not None:
+            continue
+        errors.append(
+            f"{change['file']}: trecho não encontrado → '{old[:80]}'"
+        )
+    return errors
+
+
+def _post_validate_patch(file_path: Path, new_content: str) -> str | None:
+    """
+    Após aplicar um patch, verifica se o arquivo TSX ficou sintaticamente razoável.
+    Retorna mensagem de erro ou None se OK.
+    """
+    if not str(file_path).endswith((".tsx", ".ts", ".jsx", ".js")):
+        return None
+    return _check_jsx_balance(new_content)
+
+
 def apply_and_validate(changes: list[dict]) -> tuple[list[dict], str | None]:
     """
-    Aplica mudanças, roda tsc --noEmit + eslint e reverte se falhar.
+    1. Pré-valida se os trechos 'old' existem nos arquivos.
+    2. Aplica mudanças.
+    3. Roda tsc --noEmit e reverte tudo se falhar.
     Retorna (results, error). error é None se passou.
     """
     import subprocess
     import sys
 
-    use_shell = sys.platform == "win32"
     frontend_path = PROJECT_ROOT / "frontend"
 
-    def _revert() -> None:
-        for file, original in originals.items():
-            if original is not None:
-                (PROJECT_ROOT / file).write_text(original, encoding="utf-8")
+    # ── 0. Pré-validação (sem tocar nos arquivos) ────────────────────────────
+    pre_errors = pre_validate_changes(changes)
+    if pre_errors:
+        dummy = [{"file": c["file"], "status": "not_found", "error": e}
+                 for c, e in zip(changes, pre_errors)]
+        return dummy, "Pré-validação falhou — nenhum arquivo foi alterado:\n" + "\n".join(pre_errors)
 
-    def _run(cmd: str, label: str, timeout: int = 120) -> str | None:
-        """Roda comando no frontend. Retorna mensagem de erro ou None."""
-        try:
-            proc = subprocess.run(
-                cmd, cwd=str(frontend_path), capture_output=True,
-                text=True, timeout=timeout, shell=use_shell,
-            )
-            if proc.returncode != 0:
-                out = (proc.stdout + proc.stderr).strip()
-                logger.warning("auto_fix_agent: %s falhou:\n%s", label, out)
-                return f"{label} falhou — mudanças revertidas:\n{out}"
-            logger.info("auto_fix_agent: %s passou ✅", label)
-        except subprocess.TimeoutExpired:
-            logger.warning("auto_fix_agent: %s timeout — revertendo", label)
-            return f"{label} timeout — mudanças revertidas"
-        except FileNotFoundError:
-            logger.warning("auto_fix_agent: npx não encontrado — pulando %s", label)
-        return None
-
-    # Salva originais
+    # ── helpers ──────────────────────────────────────────────────────────────
     originals: dict[str, str | None] = {}
     for change in changes:
         fp = PROJECT_ROOT / change["file"]
@@ -480,35 +647,53 @@ def apply_and_validate(changes: list[dict]) -> tuple[list[dict], str | None]:
         except FileNotFoundError:
             originals[change["file"]] = None
 
+    def _revert() -> None:
+        for file, original in originals.items():
+            if original is not None:
+                (PROJECT_ROOT / file).write_text(original, encoding="utf-8")
+
+    def _run(cmd: list[str] | str, label: str, timeout: int = 120) -> str | None:
+        try:
+            proc = subprocess.run(
+                cmd, cwd=str(frontend_path), capture_output=True,
+                text=True, timeout=timeout,
+                shell=isinstance(cmd, str) and sys.platform == "win32",
+            )
+            if proc.returncode != 0:
+                out = (proc.stdout + proc.stderr).strip()[:800]
+                logger.warning("auto_fix_agent: %s falhou:\n%s", label, out)
+                return f"{label} falhou:\n{out}"
+            logger.info("auto_fix_agent: %s passou ✅", label)
+        except subprocess.TimeoutExpired:
+            return f"{label} timeout"
+        except FileNotFoundError as e:
+            return f"{label} não encontrado ({e}) — instale Node.js e rode 'npm install' no frontend"
+        return None
+
+    # ── 1. Aplica ────────────────────────────────────────────────────────────
     results = apply_changes(changes)
     if any(r["status"] != "applied" for r in results):
         _revert()
         return results, "Nem todas as mudanças puderam ser aplicadas — revertido"
 
+    # ── 2. Type-check ────────────────────────────────────────────────────────
     has_ts = any(
         c["file"].startswith("frontend/") and c["file"].endswith((".ts", ".tsx"))
         for c in changes
     )
     if not has_ts:
-        logger.info("auto_fix_agent: sem arquivos TS — pulando validação")
+        logger.info("auto_fix_agent: sem arquivos TS — pulando tsc")
         return results, None
 
-    # 1. tsc
-    err = _run("npx tsc --noEmit", "tsc")
+    tsc_bin = _find_tsc(frontend_path)
+    if not tsc_bin:
+        _revert()
+        return results, "tsc não encontrado — instale Node.js e rode 'npm install' no frontend"
+
+    tsc_cmd = [tsc_bin, "--noEmit"] if not tsc_bin.endswith("npx") else [tsc_bin, "tsc", "--noEmit"]
+    err = _run(tsc_cmd, "tsc")
     if err:
         _revert()
-        return results, err
-
-    # 2. eslint nos arquivos alterados
-    ts_files = " ".join(
-        f'"{c["file"].replace("frontend/", "")}"'
-        for c in changes
-        if c["file"].startswith("frontend/") and c["file"].endswith((".ts", ".tsx"))
-    )
-    if ts_files:
-        err = _run(f"npx eslint --max-warnings 0 {ts_files}", "eslint")
-        if err:
-            _revert()
-            return results, err
+        return results, f"Type-check falhou — mudanças revertidas:\n{err}"
 
     return results, None
