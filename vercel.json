@@ -1,6 +1,6 @@
 {
   "functions": {
-    "main.py": {
+    "api/index.py": {
       "runtime": "python3.12",
       "maxDuration": 60,
       "memory": 1024,
@@ -8,6 +8,6 @@
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "main.py" }
+    { "source": "/(.*)", "destination": "/api/index.py" }
   ]
 }
