@@ -11,7 +11,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_connect_args = {"ssl": "require"} if "supabase.co" in settings.DATABASE_URL else {}
+_connect_args = {"ssl": "require"} if "supabase." in settings.DATABASE_URL else {}
 
 engine = create_async_engine(
     settings.DATABASE_URL,
