@@ -1,12 +1,12 @@
 {
-  "builds": [
-    {
-      "src": "backend/main.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "50mb" }
+  "functions": {
+    "backend/main.py": {
+      "runtime": "python3.11",
+      "maxDuration": 60,
+      "memory": 1024
     }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "backend/main.py" }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "backend/main.py" }
   ]
 }

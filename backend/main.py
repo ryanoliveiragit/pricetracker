@@ -148,8 +148,9 @@ app.include_router(feedback.router, prefix="/api/feedback", tags=["feedback"])
 # Serve uploaded screenshots statically
 from fastapi.staticfiles import StaticFiles
 import os as _os
-_os.makedirs("uploads/feedback", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+_upload_dir = "/tmp/uploads" if _os.environ.get("VERCEL") else "uploads"
+_os.makedirs(f"{_upload_dir}/feedback", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
 
 
 @app.get("/api/admin/scraper-sessions")
