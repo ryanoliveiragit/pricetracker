@@ -93,7 +93,8 @@
       "Bash(grep -n \"env\" .gitignore)",
       "Bash(git push *)",
       "mcp__vercel__get_runtime_logs",
-      "mcp__vercel__get_deployment_build_logs"
+      "mcp__vercel__get_deployment_build_logs",
+      "mcp__vercel__get_deployment"
     ],
     "deny": [],
     "ask": []
