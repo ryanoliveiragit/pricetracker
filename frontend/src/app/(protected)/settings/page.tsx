@@ -96,6 +96,8 @@ interface NavItem {
   label: string;
   icon: any;
   roles?: string[] | null;
+  iconColor: string;
+  iconBg: string;
 }
 
 interface NavGroup {
@@ -104,7 +106,7 @@ interface NavGroup {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const { render: renderToasts } = useToasts();
 
@@ -112,46 +114,69 @@ export default function SettingsPage() {
     {
       label: "Pessoal",
       items: [
-        { id: "profile", label: "Informações", icon: UserCircle },
-        { id: "security", label: "Segurança", icon: Shield },
+        { id: "profile", label: "Informações", icon: UserCircle, iconColor: "text-blue-500", iconBg: "bg-blue-50" },
+        { id: "security", label: "Segurança", icon: Shield, iconColor: "text-blue-500", iconBg: "bg-blue-50" },
       ],
     },
     {
       label: "Administração",
       items: [
-        { id: "suppliers", label: "Fornecedores", icon: Store },
-        { id: "team", label: "Funcionários", icon: Users, roles: ["admin", "gestor", "usuario"] },
+        { id: "suppliers", label: "Fornecedores", icon: Store, iconColor: "text-amber-500", iconBg: "bg-amber-50" },
+        { id: "team", label: "Funcionários", icon: Users, iconColor: "text-amber-500", iconBg: "bg-amber-50", roles: ["admin", "gestor", "usuario"] },
       ],
     },
     {
       label: "Conta",
-      items: [{ id: "plan", label: "Assinatura", icon: CreditCard }],
+      items: [{ id: "plan", label: "Assinatura", icon: CreditCard, iconColor: "text-emerald-500", iconBg: "bg-emerald-50" }],
     },
   ];
 
   return (
     <div className="flex h-full min-h-screen bg-[#F7F7F5]">
       {/* Left Nav Sidebar */}
-      <aside className="w-64 shrink-0 border-r border-[#E8E8E4] bg-white hidden lg:flex flex-col h-screen sticky top-0">
-        <div className="px-5 py-6 flex-1 overflow-y-auto space-y-6">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#A0A09A] mb-1 px-2">Configurações</p>
+      <aside className="w-60 shrink-0 border-r border-[#E8E8E4] bg-white hidden lg:flex flex-col h-screen sticky top-0">
+        {/* User card */}
+        <div className="px-4 py-4 border-b border-[#E8E8E4]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#1A1A18] flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
+              {(user as any)?.avatar
+                ? <img src={(user as any).avatar} alt="avatar" className="w-full h-full object-cover" />
+                : (user?.displayName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-[#1A1A18] truncate leading-tight">{user?.displayName || user?.email?.split("@")[0] || "Usuário"}</p>
+              <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase tracking-widest bg-[#F7F7F5] border border-[#E8E8E4] text-[#6B6B63] px-1.5 py-0.5 rounded-md">
+                {user?.role || "admin"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Nav groups */}
+        <div className="px-3 py-4 flex-1 overflow-y-auto space-y-5">
           {navGroups.map((group) => (
             <div key={group.label} className="space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A] px-2 mb-1">{group.label}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#A0A09A] px-2 mb-1.5">{group.label}</p>
               {group.items.map((item) => {
                 const ItemIcon = item.icon;
+                const active = activeTab === item.id;
                 const btn = (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
                     className={cn(
-                      "w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left",
-                      activeTab === item.id
+                      "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors text-left",
+                      active
                         ? "bg-[rgb(var(--primary-500))] text-[#1A1A18]"
                         : "text-[#6B6B63] hover:bg-[#F7F7F5] hover:text-[#1A1A18]"
                     )}
                   >
-                    <ItemIcon className={cn("h-4 w-4 flex-shrink-0", activeTab === item.id ? "text-[#1A1A18]" : "text-[#A0A09A]")} />
+                    <div className={cn(
+                      "w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition-colors",
+                      active ? "bg-[#1A1A18]/10" : item.iconBg
+                    )}>
+                      <ItemIcon className={cn("h-3.5 w-3.5", active ? "text-[#1A1A18]" : item.iconColor)} />
+                    </div>
                     {item.label}
                   </button>
                 );
@@ -167,31 +192,57 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
+
+        {/* Logout at bottom */}
+        <div className="px-3 py-3 border-t border-[#E8E8E4]">
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <div className="w-6 h-6 rounded-md bg-red-100 flex items-center justify-center flex-shrink-0">
+              <LogOut className="h-3.5 w-3.5 text-red-500" />
+            </div>
+            Sair da conta
+          </button>
+        </div>
       </aside>
 
       {/* Main content */}
       <div className="flex-1 min-w-0 max-w-4xl px-6 py-8 mx-auto w-full">
         {/* Mobile tab row */}
-        <div className="flex gap-2 mb-8 lg:hidden overflow-x-auto pb-1">
+        <div className="flex gap-2 mb-6 lg:hidden overflow-x-auto pb-1">
           {navGroups.flatMap(g => g.items).map(item => {
             const ItemIcon = item.icon;
+            const active = activeTab === item.id;
             const content = (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                  "flex-shrink-0 flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
-                  activeTab === item.id
+                  "flex-shrink-0 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                  active
                     ? "bg-[rgb(var(--primary-500))] border-[rgb(var(--primary-500))] text-[#1A1A18]"
                     : "border-[#E8E8E4] bg-white text-[#6B6B63] hover:text-[#1A1A18]"
                 )}
               >
-                <ItemIcon className="h-3.5 w-3.5" />{item.label}
+                <div className={cn("w-5 h-5 rounded flex items-center justify-center", active ? "bg-[#1A1A18]/10" : item.iconBg)}>
+                  <ItemIcon className={cn("h-3 w-3", active ? "text-[#1A1A18]" : item.iconColor)} />
+                </div>
+                {item.label}
               </button>
             );
             if (item.roles) return <RoleGuard key={item.id} roles={item.roles as any}>{content}</RoleGuard>;
             return content;
           })}
+          <button
+            onClick={logout}
+            className="flex-shrink-0 flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <div className="w-5 h-5 rounded bg-red-100 flex items-center justify-center">
+              <LogOut className="h-3 w-3 text-red-500" />
+            </div>
+            Sair
+          </button>
         </div>
 
         {activeTab === "profile" && <ProfileTab user={user} />}
@@ -220,7 +271,7 @@ function applyPhoneMask(value: string): string {
 // PROFILE TAB
 // ─────────────────────────────────────────────────── //
 function ProfileTab({ user }: { user: any }) {
-  const { logout, updateUser } = useAuth();
+  const { updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -349,24 +400,9 @@ function ProfileTab({ user }: { user: any }) {
     <form onSubmit={handleSave} className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#A0A09A]">Configurações</p>
-          <h1 className="text-2xl font-bold text-[#1A1A18] mt-0.5">Informações do Perfil</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-widest bg-white border border-[#E8E8E4] text-[#6B6B63] px-2.5 py-1 rounded-lg shadow-sm">
-            {user?.role || "admin"}
-          </span>
-          <button
-            type="button"
-            onClick={logout}
-            className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors shadow-sm"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Sair
-          </button>
-        </div>
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-[#A0A09A]">Pessoal</p>
+        <h1 className="text-2xl font-bold text-[#1A1A18] mt-0.5">Informações do Perfil</h1>
       </div>
 
       {/* Avatar + core info card */}
@@ -604,8 +640,8 @@ function SuppliersTab() {
             { label: "Ativos", value: suppliers.filter(s => s.isActive).length },
             { label: "Inativos", value: suppliers.filter(s => !s.isActive).length },
           ].map(stat => (
-            <div key={stat.label} className="bg-white border border-[#E8E8E4] rounded-xl px-5 py-4 shadow-sm">
-              <p className="text-[11px] font-medium uppercase tracking-widest text-[#A0A09A] mb-1">{stat.label}</p>
+            <div key={stat.label} className="bg-white border border-[#E8E8E4] rounded-xl px-5 py-3 shadow-sm">
+              <p className="text-[10px] font-medium uppercase tracking-widest text-[#A0A09A] mb-1">{stat.label}</p>
               <p className="text-2xl font-bold text-[#1A1A18]">{stat.value}</p>
             </div>
           ))}
@@ -786,8 +822,8 @@ function TeamTab({ user }: { user: any }) {
             { label: "Ativos", value: employees.filter(e => e.is_active).length },
             { label: "Suspensos", value: employees.filter(e => !e.is_active).length },
           ].map(stat => (
-            <div key={stat.label} className="bg-white border border-[#E8E8E4] rounded-xl px-5 py-4 shadow-sm">
-              <p className="text-[11px] font-medium uppercase tracking-widest text-[#A0A09A] mb-1">{stat.label}</p>
+            <div key={stat.label} className="bg-white border border-[#E8E8E4] rounded-xl px-5 py-3 shadow-sm">
+              <p className="text-[10px] font-medium uppercase tracking-widest text-[#A0A09A] mb-1">{stat.label}</p>
               <p className="text-2xl font-bold text-[#1A1A18]">{stat.value}</p>
             </div>
           ))}
