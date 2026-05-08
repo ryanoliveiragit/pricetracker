@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Home, Search, Package, BarChart3, Store, Settings, LogOut } from "lucide-react";
+import { Home, Search, Package, BarChart3, Store, Settings, LogOut, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
 const navItems = [
@@ -13,13 +14,19 @@ const navItems = [
   { href: "/products", icon: Package, label: "Produtos" },
   { href: "/suppliers", icon: Store, label: "Fornecedores" },
   { href: "/results", icon: BarChart3, label: "Resultados" },
-  { href: "/settings", icon: Settings, label: "Config" }
+];
+  { href: "/", icon: Home, label: "Dashboard" },
+  { href: "/search", icon: Search, label: "Buscar" },
+  { href: "/products", icon: Package, label: "Produtos" },
+  { href: "/suppliers", icon: Store, label: "Fornecedores" },
+  { href: "/results", icon: BarChart3, label: "Resultados" },
 ];
 
 export default function CompactLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
+  const [showDropdown, setShowDropdown] = useState(false);
 
   function handleLogout() {
     logout();
@@ -42,7 +49,6 @@ export default function CompactLayout({ children }: { children: ReactNode }) {
 
           <nav className="flex flex-1 flex-col gap-2">
             {navItems.map((item) => {
-              if (item.label === 'Config') return null;
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
@@ -68,25 +74,77 @@ export default function CompactLayout({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
+          <div className="mt-auto flex justify-center">
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                title="Perfil"
+              >
+                <User className="h-5 w-5" />
+              </button>
 
-          <button
-<button className='flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800' onClick={() => setShowDropdown(!showDropdown)} title='Perfil'>
-              <User className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
+              {showDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowDropdown(false)}
+                  />
+                  <div className="absolute bottom-0 left-12 z-20 mb-1 w-48 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                    <Link
+                      href="/settings"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex w-full items-center gap-2.5 rounded-t-xl px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Configurações
+                    </Link>
+                    <div className="border-t border-neutral-100 dark:border-neutral-800" />
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2.5 rounded-b-xl px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sair
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+              title="Perfil"
+            >
+              <User className="h-5 w-5" />
             </button>
+
             {showDropdown && (
-              <div className='absolute bottom-0 left-0 mb-12 ml-12 w-48 rounded-lg bg-white shadow-lg dark:bg-neutral-900'>
-                <Link href='/settings' className='flex w-full items-center gap-2 p-4 hover:bg-neutral-100 dark:hover:bg-neutral-800'>
-                  <Settings className='h-4 w-4' /> Configurações
-                </Link>
-                <button onClick={handleLogout} className='flex w-full items-center gap-2 p-4 hover:bg-neutral-100 dark:hover:bg-neutral-800'>
-                  <LogOut className='h-4 w-4' /> Sair
-                </button>
-              </div>
-            )}            className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            title="Sair"
-          >
-            <LogOut className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
-          </button>
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
+                <div className="absolute bottom-0 left-12 z-20 mb-1 w-48 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                  <Link
+                    href="/settings"
+                    onClick={() => setShowDropdown(false)}
+                    className="flex w-full items-center gap-2.5 rounded-t-xl px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Configurações
+                  </Link>
+                  <div className="border-t border-neutral-100 dark:border-neutral-800" />
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2.5 rounded-b-xl px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </aside>
 
