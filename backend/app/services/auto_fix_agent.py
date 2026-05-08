@@ -512,3 +512,161 @@ def apply_and_validate(changes: list[dict]) -> tuple[list[dict], str | None]:
             return results, err
 
     return results, None
+
+
+# ---------------------------------------------------------------------------
+# Chat Agent — acesso completo ao código-fonte
+# ---------------------------------------------------------------------------
+
+_CHAT_SYSTEM = """Você é um desenvolvedor sênior especialista no projeto ConstruPrice (plataforma de cotação de preços para construção civil).
+
+Stack: Next.js 14, TypeScript, Tailwind CSS, framer-motion (frontend) | Python/FastAPI (backend)
+
+Você recebe o histórico da conversa + conteúdo COMPLETO dos arquivos do projeto abaixo.
+
+## Formato de resposta
+Responda SEMPRE com JSON válido (sem markdown fora do JSON):
+
+Apenas texto (sem mudanças de código):
+{"text": "Sua resposta", "changes": null}
+
+Com mudanças de código:
+{"text": "Explicação clara do que foi feito", "changes": [{"file": "caminho/relativo/ao/projeto", "old": "trecho exato copiado do arquivo abaixo", "new": "substituição completa"}]}
+
+## REGRAS CRÍTICAS para mudanças de código
+1. "file": caminho relativo à raiz do projeto (ex: "frontend/src/layouts/CompactLayout.tsx")
+2. "old": SUBSTRING EXATA — copie da fonte fornecida abaixo, caractere por caractere, sem omitir nada
+3. "new": substituição completa do trecho (pode ser multiline com \\n)
+4. Máximo 3 changes por resposta
+5. Nunca quebrar imports TypeScript, tipos ou balanço de JSX
+6. Se não tiver certeza do conteúdo exato de um arquivo, diga no "text" e use "changes": null
+7. Preserve dark mode (classes dark:), Tailwind e padrões do projeto
+
+## Código-fonte do projeto
+"""
+
+_CHAT_KEYWORD_MAP: dict[str, list[str]] = {
+    "dashboard": ["dashboard", "home", "index"],
+    "sidebar": ["layout", "sidebar", "compact", "wide"],
+    "perfil": ["profile", "settings", "auth"],
+    "configurações": ["settings", "config"],
+    "busca": ["search", "agent"],
+    "produto": ["product", "catalog"],
+    "fornecedor": ["supplier"],
+    "resultado": ["result"],
+    "salvas": ["save", "saved"],
+    "login": ["login", "auth"],
+    "feedback": ["feedback", "ticket"],
+    "layout": ["layout", "compact", "wide", "minimal"],
+    "botão": ["button", "component"],
+    "modal": ["modal", "dialog"],
+    "menu": ["nav", "menu", "layout"],
+    "header": ["header", "banner", "layout"],
+    "cor": ["theme", "color", "style"],
+    "tema": ["theme", "color"],
+    "ícone": ["icon", "lucide"],
+}
+
+
+def _collect_chat_context(prompt: str, ticket_desc: str = "") -> str:
+    """Lê conteúdo real dos arquivos para o agente de chat (contexto mais amplo)."""
+    combined = (prompt + " " + ticket_desc).lower()
+
+    keywords: set[str] = set()
+    for word in combined.split():
+        w = word.strip(".,!?():;\"'")
+        keywords.add(w)
+        for pt_key, en_vals in _CHAT_KEYWORD_MAP.items():
+            if pt_key in w or w in pt_key:
+                keywords.update(en_vals)
+
+    frontend_src = PROJECT_ROOT / "frontend" / "src"
+
+    core_rels = [
+        "frontend/src/layouts/CompactLayout.tsx",
+        "frontend/src/layouts/WideLayout.tsx",
+        "frontend/src/layouts/LayoutSelector.tsx",
+    ]
+
+    try:
+        all_ts: list[Path] = list(frontend_src.rglob("*.tsx")) + list(frontend_src.rglob("*.ts"))
+    except Exception:
+        all_ts = []
+
+    core_names = {Path(r).name for r in core_rels}
+    scored: list[tuple[int, Path]] = []
+    for p in all_ts:
+        if p.name in core_names:
+            continue
+        rel_lower = p.relative_to(PROJECT_ROOT).as_posix().lower()
+        score = sum(1 for kw in keywords if kw in rel_lower)
+        if score > 0:
+            scored.append((score, p))
+    scored.sort(key=lambda x: -x[0])
+
+    tree_lines = sorted(p.relative_to(PROJECT_ROOT).as_posix() for p in all_ts)[:80]
+    parts: list[str] = ["### Árvore de arquivos (frontend/src)\n" + "\n".join(tree_lines)]
+
+    read_pairs: list[tuple[str, Path]] = [
+        (r, PROJECT_ROOT / Path(r)) for r in core_rels
+    ]
+    seen_paths = {str(p) for _, p in read_pairs}
+    for _, p in scored[:8]:
+        sp = str(p)
+        if sp not in seen_paths:
+            rel = p.relative_to(PROJECT_ROOT).as_posix()
+            read_pairs.append((rel, p))
+            seen_paths.add(sp)
+
+    MAX_PER = 15_000
+    MAX_TOTAL = 90_000
+    total = 0
+
+    for rel, fp in read_pairs:
+        try:
+            content = fp.read_text(encoding="utf-8")
+            if len(content) > MAX_PER:
+                content = content[:MAX_PER] + "\n... [arquivo truncado]"
+            parts.append(f"### {rel}\n```\n{content}\n```")
+            total += len(content)
+            if total >= MAX_TOTAL:
+                break
+        except Exception:
+            pass
+
+    return "\n\n".join(parts)
+
+
+def _claude_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
+    """Chamada síncrona ao Claude para o agente de chat."""
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+    resp = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=4096,
+        system=system,
+        messages=messages,
+    )
+    raw = resp.content[0].text
+    result = _extract_json(raw)
+    if "text" not in result:
+        result["text"] = raw[:500]
+    if "changes" not in result:
+        result["changes"] = None
+    return result
+
+
+async def chat_agent_execute(message: str, history: list[dict], ticket_context: str) -> dict:
+    """Chat com agente de IA com acesso completo ao código. Retorna {text, changes}."""
+    import asyncio as _asyncio
+    from app.config import settings
+
+    codebase = await _asyncio.to_thread(_collect_chat_context, message, ticket_context)
+    system = _CHAT_SYSTEM + codebase
+    messages = history[-10:] if len(history) > 10 else list(history)
+
+    api_key = (settings.ANTHROPIC_API_KEY or "").strip()
+    if api_key:
+        return await _asyncio.to_thread(_claude_chat_sync, api_key, system, messages)
+
+    raise RuntimeError("ANTHROPIC_API_KEY não configurado — adicione no .env")

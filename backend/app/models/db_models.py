@@ -239,6 +239,7 @@ class FeedbackReportDB(Base):
     # URL do deploy preview (Vercel ou similar)
     preview_url: Mapped[str] = mapped_column(Text, nullable=True)
     branch_url: Mapped[str] = mapped_column(Text, nullable=True)
+    chat_history: Mapped[list] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

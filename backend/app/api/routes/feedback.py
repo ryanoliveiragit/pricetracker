@@ -411,7 +411,21 @@ def _create_branch_via_git(report_id: int, changes: list[dict], commit_message: 
 
     try:
         from app.services.auto_fix_agent import apply_changes
+        from pathlib import Path as _Path
         apply_changes(changes)
+
+        # Build check: só commita se o frontend compilar
+        _project_root = _Path(__file__).parent.parent.parent.parent.parent
+        _build = subprocess.run(
+            ["npm", "run", "build"],
+            capture_output=True, text=True,
+            cwd=str(_project_root / "frontend"),
+            timeout=180,
+        )
+        if _build.returncode != 0:
+            _err = (_build.stdout + "\n" + _build.stderr)[-3000:]
+            raise RuntimeError(f"Build falhou — não commitado:\n{_err}")
+        logger.info("feedback: build OK ✅")
 
         for change in changes:
             f = change.get("file", "").strip()
@@ -545,6 +559,81 @@ async def resolve_feedback_legacy(
     raise HTTPException(status_code=400, detail="action deve ser 'approve' ou 'reject'")
 
 
+# ─── POST /api/feedback/{id}/chat ─────────────────────────────────────────────
+
+@router.post("/{report_id}/chat")
+async def chat_with_ticket(
+    report_id: int,
+    message: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    admin: UserDB = Depends(require_admin),
+):
+    """Chat com agente de IA com acesso completo ao código. Aplica + builda + commita se gerar mudanças."""
+    report = await _load_report(db, report_id)
+
+    history: list[dict] = list(report.chat_history or [])
+    history.append({"role": "user", "content": message})
+
+    ticket_context = f"{report.description} {report.validated_prompt or ''}".strip()
+
+    try:
+        import app.services.auto_fix_agent as _afa
+        result = await asyncio.wait_for(
+            _afa.chat_agent_execute(message, history, ticket_context),
+            timeout=90.0,
+        )
+    except Exception as exc:
+        err_text = f"Erro no agente: {exc}"
+        history.append({"role": "assistant", "content": err_text})
+        report.chat_history = history
+        await db.commit()
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    text: str = result.get("text", "")
+    changes: list[dict] = result.get("changes") or []
+    build_ok: bool | None = None
+    branch = report.branch_name
+    commit_sha_new: str | None = None
+    apply_error: str | None = None
+
+    if changes:
+        try:
+            commit_msg = f"chat #{report_id}: {text[:60]}"
+            branch_new, sha_new = await asyncio.get_event_loop().run_in_executor(
+                None, _create_branch_via_git, report_id, changes, commit_msg
+            )
+            branch = branch_new
+            commit_sha_new = sha_new
+            build_ok = True
+            report.branch_name = branch
+            report.commit_sha = sha_new
+            try:
+                from app.services.github_api import branch_url as _burl
+                report.branch_url = _burl(branch)
+            except Exception:
+                pass
+            if report.status in (FeedbackStatus.validated, FeedbackStatus.analyzed):
+                report.status = FeedbackStatus.deployed
+                report.execution_status = "deployed"
+        except Exception as exc:
+            build_ok = False
+            apply_error = str(exc)[:500]
+            text = f"{text}\n\n⚠️ Não foi possível aplicar: {apply_error[:200]}"
+
+    history.append({"role": "assistant", "content": text})
+    report.chat_history = history
+    await db.commit()
+
+    return {
+        "text": text,
+        "changes": changes or None,
+        "build_ok": build_ok,
+        "branch": branch,
+        "commit_sha": commit_sha_new,
+        "error": apply_error,
+    }
+
+
 # ─── Serialização ──────────────────────────────────────────────────────────────
 
 def _serialize(r: FeedbackReportDB) -> dict:
@@ -576,4 +665,5 @@ def _serialize(r: FeedbackReportDB) -> dict:
         "commit_sha": r.commit_sha,
         "preview_url": r.preview_url,
         "branch_url": r.branch_url,
+        "chat_history": r.chat_history or [],
     }

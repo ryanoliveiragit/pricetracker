@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  type ChatMessage,
   type FeedbackReport,
   type FileDiff,
+  chatWithTicket,
   executeFeedback,
   listFeedback,
   markFeedbackMerged,
@@ -22,13 +24,15 @@ import {
   ExternalLink,
   GitBranch,
   Loader2,
+  MessageCircle,
   Pencil,
   RotateCcw,
+  Send,
   XCircle,
   Zap,
 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
@@ -130,6 +134,88 @@ function DiffView({ diff }: { diff: FileDiff[] }) {
   );
 }
 
+// ─── TicketChat ────────────────────────────────────────────────────────────────
+
+function TicketChat({ reportId, initialHistory, onBranchUpdate }: {
+  reportId: number;
+  initialHistory: ChatMessage[];
+  onBranchUpdate: () => void;
+}) {
+  const [history, setHistory] = useState<ChatMessage[]>(initialHistory);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [history]);
+
+  async function send() {
+    const msg = input.trim();
+    if (!msg || busy) return;
+    setInput("");
+    setHistory(h => [...h, { role: "user", content: msg }]);
+    setBusy(true);
+    try {
+      const res = await chatWithTicket(reportId, msg);
+      setHistory(h => [...h, { role: "assistant", content: res.text }]);
+      if (res.changes) onBranchUpdate();
+    } catch (e) {
+      setHistory(h => [...h, { role: "assistant", content: `Erro: ${e instanceof Error ? e.message : e}` }]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-slate-100 dark:border-neutral-800 mt-3">
+      <div className="px-4 pt-3 pb-1 flex items-center gap-1.5">
+        <Bot className="h-3.5 w-3.5 text-violet-500" />
+        <span className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400">Agente IA — acesso completo ao código</span>
+      </div>
+
+      {history.length > 0 && (
+        <div className="px-4 max-h-72 overflow-y-auto space-y-2 py-2">
+          {history.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[12px] whitespace-pre-wrap leading-relaxed ${
+                msg.role === "user"
+                  ? "bg-violet-500 text-white"
+                  : "bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300"
+              }`}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {busy && (
+            <div className="flex justify-start">
+              <div className="bg-slate-100 dark:bg-neutral-800 rounded-xl px-3 py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+      )}
+
+      <div className="px-4 pb-3 pt-1 flex gap-2">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+          placeholder="Descreva o que quer mudar no código…"
+          disabled={busy}
+          className="flex-1 rounded-xl border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-[12px] text-slate-700 dark:text-neutral-300 placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-violet-400 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-400/20 disabled:opacity-50"
+        />
+        <button onClick={send} disabled={busy || !input.trim()}
+          className="flex items-center justify-center h-9 w-9 rounded-xl bg-violet-500 hover:bg-violet-600 text-white disabled:opacity-40 transition-colors shrink-0">
+          <Send className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── ReportCard ────────────────────────────────────────────────────────────────
 
 function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: (silent?: boolean) => void }) {
@@ -137,6 +223,7 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptDraft, setPromptDraft] = useState(report.validated_prompt ?? "");
   const [busy, setBusy] = useState<"validate" | "execute" | "reject" | "merge" | "save" | "reanalyze" | null>(null);
+  const [showChat, setShowChat] = useState(false);
 
   const isPending   = report.status === "pending";
   const isAnalyzed  = report.status === "analyzed";
@@ -429,6 +516,29 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
                   {isMerged ? "Mergeado" : "Rejeitado"} por {report.admin_email}
                   {report.resolved_at && ` · ${new Date(report.resolved_at).toLocaleDateString("pt-BR")}`}
                 </p>
+              )}
+
+              {/* ── Chat IA ── */}
+              <div className="pt-1">
+                <button
+                  onClick={() => setShowChat(s => !s)}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                    showChat
+                      ? "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+                      : "border border-slate-200 dark:border-neutral-700 text-slate-500 dark:text-neutral-400 hover:bg-slate-50 dark:hover:bg-neutral-800"
+                  }`}
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Chat IA
+                </button>
+              </div>
+
+              {showChat && (
+                <TicketChat
+                  reportId={report.id}
+                  initialHistory={report.chat_history ?? []}
+                  onBranchUpdate={() => onRefresh(true)}
+                />
               )}
 
               {/* ── Ações ── */}

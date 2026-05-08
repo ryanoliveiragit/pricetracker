@@ -32,6 +32,20 @@ export type FeedbackStatus =
   | "merged"
   | "rejected";
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResponse {
+  text: string;
+  changes: FileDiff[] | null;
+  build_ok: boolean | null;
+  branch: string | null;
+  commit_sha: string | null;
+  error: string | null;
+}
+
 export interface FeedbackReport {
   id: number;
   user_email: string;
@@ -78,6 +92,7 @@ export interface FeedbackReport {
   commit_sha: string | null;
   preview_url: string | null;
   branch_url: string | null;
+  chat_history: ChatMessage[];
 }
 
 export async function submitFeedback(data: {
@@ -198,6 +213,21 @@ export async function resolveFeedback(
     return { id: r.id, status: r.status };
   }
   return rejectFeedback(id, adminNotes);
+}
+
+export async function chatWithTicket(
+  id: number,
+  message: string,
+): Promise<ChatResponse> {
+  const form = new FormData();
+  form.append("message", message);
+  const res = await fetch(`${BASE}/api/feedback/${id}/chat`, {
+    method: "POST",
+    headers: authHeader(),
+    body: form,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
 
 // applyFeedbackChanges removido — mudanças agora são commitadas em branch.
