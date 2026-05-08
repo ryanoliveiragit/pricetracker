@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from app.api.routes import agent, auth, feedback, products, saves, search, suppliers, users
@@ -88,9 +89,15 @@ app = FastAPI(
 
 # Configurar CORS
 # JWT via Authorization header — precisa de allow_credentials=True e origem explícita
+_extra_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        *_extra_origins,
+    ],
+    allow_origin_regex=r"https://pricetracker[^.]*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
