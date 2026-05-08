@@ -17,6 +17,10 @@ const navItems = [
 ];
 
 export default function CompactLayout({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <h1 className='text-2xl font-bold mb-4 dark:text-white'>Bem-vindo</h1>
+
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
