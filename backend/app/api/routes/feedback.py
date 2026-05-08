@@ -385,8 +385,49 @@ async def execute_feedback(
     return {"id": report.id, "status": report.status, "execution_status": "running"}
 
 
+def _git(*args: str, check: bool = True) -> str:
+    """Run a git command synchronously from project root, return stdout stripped."""
+    import subprocess
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent.parent.parent.parent
+    result = subprocess.run(
+        ["git", *args],
+        capture_output=True, text=True, check=check,
+        cwd=str(project_root)
+    )
+    return result.stdout.strip()
+
+
+def _create_branch_via_git(report_id: int, changes: list[dict], commit_message: str) -> tuple[str, str]:
+    """Local git: checkout main → new branch → apply patches → commit → push → back to main."""
+    import subprocess
+    branch = f"feedback/{report_id}"
+
+    # Always base from main, never from whatever branch the process is on
+    _git("checkout", "main")
+    _git("pull", "origin", "main", check=False)
+    _git("branch", "-D", branch, check=False)
+    _git("checkout", "-b", branch)
+
+    try:
+        from app.services.auto_fix_agent import apply_changes
+        apply_changes(changes)
+
+        for change in changes:
+            f = change.get("file", "").strip()
+            if f:
+                _git("add", f)
+
+        _git("commit", "-m", commit_message)
+        _git("push", "origin", branch, "--force")
+        sha = _git("rev-parse", "HEAD")
+        return branch, sha
+    finally:
+        _git("checkout", "main", check=False)
+
+
 async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> None:
-    """Background: gera diff via IA, cria branch no GitHub via API, commita."""
+    """Background: gera diff via IA, cria branch, commita e faz push."""
     from app.database import async_session
     from app.services import github_api
     import importlib
@@ -394,6 +435,7 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
     importlib.reload(_afa)
 
     branch: str | None = None
+    on_vercel = bool(os.environ.get("VERCEL"))
 
     try:
         # 1. IA gera diff
@@ -404,9 +446,17 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
         if not changes:
             raise RuntimeError("IA retornou diff vazio")
 
-        # 2. Cria branch + commit via GitHub API (sem git local)
         commit_msg = f"feedback #{report_id}: {summary[:72]}"
-        branch, sha = await github_api.create_branch_with_changes(report_id, changes, commit_msg)
+
+        # 2. Cria branch + commit
+        if on_vercel:
+            # Vercel: sem git local, usa GitHub REST API
+            branch, sha = await github_api.create_branch_with_changes(report_id, changes, commit_msg)
+        else:
+            # Local dev: git local (não depende de token com escopo git/blobs)
+            branch, sha = await asyncio.get_event_loop().run_in_executor(
+                None, _create_branch_via_git, report_id, changes, commit_msg
+            )
 
         # 3. URLs
         b_url = github_api.branch_url(branch)
