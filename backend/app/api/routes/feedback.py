@@ -43,8 +43,13 @@ from app.utils.auth import get_current_user_email
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-UPLOAD_DIR = "uploads/feedback"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = os.path.join(
+    "/tmp" if os.environ.get("VERCEL") else ".", "uploads", "feedback"
+)
+
+
+def _ensure_upload_dir() -> None:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 AUTO_FIX_TYPES = {"add_abbreviation", "add_synonym"}
 PROMPT_FIX_TYPES = {"ui_change", "feature_request", "bug_fix"}
@@ -154,6 +159,7 @@ async def create_feedback(
         ext = os.path.splitext(screenshot.filename)[1].lower()
         if ext not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
             raise HTTPException(status_code=400, detail="Formato de imagem não suportado")
+        _ensure_upload_dir()
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(UPLOAD_DIR, filename)
         content = await screenshot.read()
