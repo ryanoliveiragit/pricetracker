@@ -5,9 +5,9 @@ import traceback
 _backend = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
 sys.path.insert(0, _backend)
 
-_import_error = None
-_import_tb = None
+_errors = []
 
+# Layer 1: import real backend app via importlib (avoids name collision with this file)
 try:
     import importlib.util as _ilu
     _spec = _ilu.spec_from_file_location("_bm", os.path.join(_backend, "main.py"))
@@ -16,17 +16,37 @@ try:
     _spec.loader.exec_module(_mod)
     app = _mod.app
 except Exception as _e:
-    _import_error = str(_e)
-    _import_tb = traceback.format_exc()
+    _errors.append({"stage": "backend_import", "error": str(_e), "tb": traceback.format_exc()})
 
-    from fastapi import FastAPI as _FA
-    from fastapi.responses import JSONResponse as _JR
-    app = _FA()
+    # Layer 2: minimal FastAPI app that returns the error as JSON
+    try:
+        from fastapi import FastAPI
+        from fastapi.responses import JSONResponse
 
-    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
-    async def _catch_all(path: str = ""):
-        return _JR({"import_error": _import_error, "traceback": _import_tb}, status_code=500)
+        app = FastAPI()
+        _snap = list(_errors)
 
-    @app.get("/")
-    async def _root():
-        return _JR({"import_error": _import_error, "traceback": _import_tb}, status_code=500)
+        @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+        async def _err_handler(path: str = ""):
+            return JSONResponse({"startup_errors": _snap}, status_code=500)
+
+    except Exception as _e2:
+        _errors.append({"stage": "fastapi_fallback", "error": str(_e2)})
+
+        # Layer 3: raw ASGI — zero dependencies, always works
+        import json as _json
+        _body = _json.dumps({"startup_errors": _errors}).encode()
+
+        async def app(scope, receive, send):  # type: ignore[misc]
+            if scope["type"] == "http":
+                await send({
+                    "type": "http.response.start",
+                    "status": 500,
+                    "headers": [(b"content-type", b"application/json")],
+                })
+                await send({"type": "http.response.body", "body": _body})
+            elif scope["type"] == "lifespan":
+                await receive()
+                await send({"type": "lifespan.startup.complete"})
+                await receive()
+                await send({"type": "lifespan.shutdown.complete"})
