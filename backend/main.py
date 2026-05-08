@@ -54,63 +54,77 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Startup / shutdown events."""
-    from app.database import create_tables
-    from app.services.catalog_scraper import run_catalog_scrape
-    from app.services.seed import seed_defaults
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    _is_vercel = os.environ.get("VERCEL")
 
-    await create_tables()
-    await seed_defaults()
+    try:
+        from app.database import create_tables
+        await create_tables()
+    except Exception as _e:
+        logger.error(f"DB create_tables failed (continuing): {_e}")
 
-    # Carrega abreviações e sinônimos dinâmicos aprovados via feedback
-    from app.database import async_session as _session
-    from app.models.db_models import DynamicAbbreviationDB, DynamicSynonymDB
-    from app.services.synonyms import load_dynamic_abbreviations, load_dynamic_synonyms
-    from sqlalchemy import select as _select
-    async with _session() as _db:
-        _abbrev_rows = await _db.execute(_select(DynamicAbbreviationDB))
-        _pairs = [(r.long_form, r.short_forms) for r in _abbrev_rows.scalars().all()]
-        load_dynamic_abbreviations(_pairs)
+    try:
+        from app.services.seed import seed_defaults
+        await seed_defaults()
+    except Exception as _e:
+        logger.error(f"seed_defaults failed (continuing): {_e}")
 
-        _syn_rows = await _db.execute(_select(DynamicSynonymDB))
-        _groups = [r.group for r in _syn_rows.scalars().all()]
-        load_dynamic_synonyms(_groups)
+    try:
+        from app.database import async_session as _session
+        from app.models.db_models import DynamicAbbreviationDB, DynamicSynonymDB
+        from app.services.synonyms import load_dynamic_abbreviations, load_dynamic_synonyms
+        from sqlalchemy import select as _select
+        async with _session() as _db:
+            _abbrev_rows = await _db.execute(_select(DynamicAbbreviationDB))
+            _pairs = [(r.long_form, r.short_forms) for r in _abbrev_rows.scalars().all()]
+            load_dynamic_abbreviations(_pairs)
 
-        if _pairs or _groups:
-            logger.info(f"📚 {len(_pairs)} abreviações e {len(_groups)} grupos de sinônimos dinâmicos carregados")
+            _syn_rows = await _db.execute(_select(DynamicSynonymDB))
+            _groups = [r.group for r in _syn_rows.scalars().all()]
+            load_dynamic_synonyms(_groups)
 
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(
-        run_catalog_scrape,
-        "interval",
-        hours=2,
-        id="catalog_scrape",
-        name="Pre-scrape catalog products",
-        misfire_grace_time=300,
-    )
-    scheduler.start()
-    logger.info("🚀 ConstruPrice API pronta (scheduler ativo — scraping a cada 2h)")
+            if _pairs or _groups:
+                logger.info(f"📚 {len(_pairs)} abreviações e {len(_groups)} grupos de sinônimos dinâmicos carregados")
+    except Exception as _e:
+        logger.error(f"Dynamic data load failed (continuing): {_e}")
 
-    # Auto-trigger: se catálogo vazio, dispara primeiro scraping
-    import asyncio
+    scheduler = None
+    if not _is_vercel:
+        try:
+            import asyncio
+            from app.database import async_session
+            from app.models.db_models import ScrapedProductDB
+            from app.services.catalog_scraper import run_catalog_scrape
+            from apscheduler.schedulers.asyncio import AsyncIOScheduler
+            from sqlalchemy import func, select
 
-    from app.database import async_session
-    from app.models.db_models import ScrapedProductDB
-    from sqlalchemy import func, select
-
-    async with async_session() as session:
-        count = await session.execute(
-            select(func.count()).select_from(ScrapedProductDB)
-        )
-        if (count.scalar() or 0) == 0:
-            logger.info(
-                "📦 Catálogo vazio — disparando primeiro scraping automaticamente"
+            scheduler = AsyncIOScheduler()
+            scheduler.add_job(
+                run_catalog_scrape,
+                "interval",
+                hours=2,
+                id="catalog_scrape",
+                name="Pre-scrape catalog products",
+                misfire_grace_time=300,
             )
-            asyncio.create_task(run_catalog_scrape())
+            scheduler.start()
+            logger.info("🚀 ConstruPrice API pronta (scheduler ativo — scraping a cada 2h)")
+
+            async with async_session() as session:
+                count = await session.execute(
+                    select(func.count()).select_from(ScrapedProductDB)
+                )
+                if (count.scalar() or 0) == 0:
+                    logger.info("📦 Catálogo vazio — disparando primeiro scraping automaticamente")
+                    asyncio.create_task(run_catalog_scrape())
+        except Exception as _e:
+            logger.error(f"Scheduler setup failed (continuing): {_e}")
+    else:
+        logger.info("🚀 ConstruPrice API pronta (Vercel — scheduler desabilitado)")
 
     yield
 
-    scheduler.shutdown(wait=False)
+    if scheduler:
+        scheduler.shutdown(wait=False)
     logger.info("👋 ConstruPrice API encerrando")
 
 

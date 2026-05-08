@@ -1,13 +1,15 @@
-from fastapi import FastAPI
+import sys
+import os
+import importlib.util
 
-app = FastAPI()
+_backend = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
+sys.path.insert(0, _backend)
 
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "version": "minimal"}
-
-
-@app.get("/")
-async def root():
-    return {"message": "ok"}
+_spec = importlib.util.spec_from_file_location(
+    "_backend_main",
+    os.path.join(_backend, "main.py"),
+)
+_mod = importlib.util.module_from_spec(_spec)
+sys.modules["_backend_main"] = _mod
+_spec.loader.exec_module(_mod)
+app = _mod.app
