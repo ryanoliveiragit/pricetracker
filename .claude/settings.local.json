@@ -81,7 +81,17 @@
       "Bash(echo \"exit=$?\")",
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_snapshot",
-      "mcp__playwright__browser_evaluate"
+      "mcp__playwright__browser_evaluate",
+      "Bash(gh pr *)",
+      "mcp__vercel__list_teams",
+      "mcp__vercel__list_projects",
+      "mcp__vercel__list_deployments",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__execute_sql",
+      "mcp__vercel__get_project",
+      "Bash(grep -n \"env\" frontend/.gitignore)",
+      "Bash(grep -n \"env\" .gitignore)",
+      "Bash(git push *)"
     ],
     "deny": [],
     "ask": []

@@ -377,8 +377,8 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
                 </div>
               )}
 
-              {/* Branch + preview info (após deploy) */}
-              {(isDeployed || isMerged) && (report.branch_name || report.preview_url) && (
+              {/* Branch + preview info (sempre que branch ou preview existir) */}
+              {(report.branch_name || report.preview_url || report.branch_url) && (
                 <div className="rounded-xl border border-cyan-200 dark:border-cyan-500/20 bg-cyan-50/50 dark:bg-cyan-500/5 px-3 py-2.5 space-y-2">
                   {report.branch_name && (
                     <div className="flex items-center gap-2 text-[12px]">
@@ -398,11 +398,15 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
                         <ExternalLink className="h-3 w-3" />Ver branch no GitHub
                       </a>
                     )}
-                    {report.preview_url && (
+                    {report.preview_url ? (
                       <a href={report.preview_url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-lg bg-cyan-500 hover:bg-cyan-600 px-2.5 py-1 text-white">
                         <ExternalLink className="h-3 w-3" />Abrir preview
                       </a>
+                    ) : report.branch_name && (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-lg bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 px-2.5 py-1 text-cyan-500 dark:text-cyan-400">
+                        <Loader2 className="h-3 w-3 animate-spin" />Vercel building…
+                      </span>
                     )}
                   </div>
                 </div>

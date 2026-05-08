@@ -49,8 +49,8 @@ def _slugify(text: str, max_len: int = 40) -> str:
     return s[:max_len] or "feedback"
 
 
-def branch_name_for(report_id: int, summary: str | None) -> str:
-    return f"feedback/{report_id}-{_slugify(summary or f'report-{report_id}')}"
+def branch_name_for(report_id: int, summary: str | None = None) -> str:
+    return f"feedback/{report_id}"
 
 
 def preview_url_for(branch: str) -> str | None:
