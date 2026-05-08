@@ -91,7 +91,9 @@
       "mcp__vercel__get_project",
       "Bash(grep -n \"env\" frontend/.gitignore)",
       "Bash(grep -n \"env\" .gitignore)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "mcp__vercel__get_runtime_logs",
+      "mcp__vercel__get_deployment_build_logs"
     ],
     "deny": [],
     "ask": []
