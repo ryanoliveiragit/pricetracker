@@ -48,19 +48,19 @@ const TYPE_META: Record<string, { label: string; cls: string }> = {
 
 const AUTO_FIX_TYPES = ["add_abbreviation", "add_synonym"];
 
-// Stepper: 4 etapas visuais. Cada status do backend mapeia em uma delas.
-type Step = 0 | 1 | 2 | 3;
-const STEP_LABELS = ["Transcrever", "Validar", "Executar", "Deploy"] as const;
+// Stepper: 5 etapas visuais. Cada status do backend mapeia em uma delas.
+type Step = 0 | 1 | 2 | 3 | 4;
+const STEP_LABELS = ["Transcrever", "Planejar", "Validar", "Testar", "Deploy"] as const;
 
 function statusToStep(status: FeedbackReport["status"]): Step {
   switch (status) {
-    case "pending":   return 0;
-    case "analyzed":  return 1;          // transcrito, aguarda validação
+    case "pending":   return 0;          // transcrevendo
+    case "analyzed":  return 1;          // planejado, aguarda validação
     case "approved":                     // legado
-    case "validated": return 2;          // pronto para executar
-    case "executing": return 2;          // executando
-    case "deployed":  return 3;
-    case "merged":    return 3;
+    case "validated": return 2;          // validado, pronto para testar
+    case "executing": return 3;          // testando (rodando build + branch)
+    case "deployed":  return 4;
+    case "merged":    return 4;
     default:          return 0;          // rejected
   }
 }
@@ -341,7 +341,7 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
               {new Date(report.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
             </span>
             {isPending && <span className="flex items-center gap-1 text-[11px] text-amber-500"><Loader2 className="h-3 w-3 animate-spin" />transcrevendo…</span>}
-            {isExecuting && <span className="flex items-center gap-1 text-[11px] text-indigo-500"><Loader2 className="h-3 w-3 animate-spin" />executando…</span>}
+            {isExecuting && <span className="flex items-center gap-1 text-[11px] text-indigo-500"><Loader2 className="h-3 w-3 animate-spin" />testando em branch…</span>}
           </div>
         </div>
         <button onClick={() => setOpen(o => !o)}
@@ -609,7 +609,7 @@ function ReportCard({ report, onRefresh }: { report: FeedbackReport; onRefresh: 
                 {isExecuting && (
                   <span className="flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Criando branch + aplicando…
+                    Testando — criando branch e verificando build…
                   </span>
                 )}
 
@@ -672,7 +672,7 @@ export default function FeedbackAdminView() {
     try {
       setReports(await listFeedback(tab || undefined));
     } catch (e) {
-      if (!silent) setError(e instanceof Error ? e.message : "Erro ao carregar feedbacks");
+      if (!silent) setError(e instanceof Error ? e.message : "Erro ao carregar tickets");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -692,9 +692,9 @@ export default function FeedbackAdminView() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[20px] font-bold text-slate-900 dark:text-neutral-100">Feedbacks</h1>
+          <h1 className="text-[20px] font-bold text-slate-900 dark:text-neutral-100">Tickets</h1>
           <p className="text-[12px] text-slate-400 dark:text-neutral-500 mt-0.5">
-            Tarefa → IA transcreve → você valida → executa em branch isolada
+            Tarefa → IA transcreve → você valida → testa em branch isolada
           </p>
         </div>
         <button onClick={() => load()} disabled={loading}
@@ -745,7 +745,7 @@ export default function FeedbackAdminView() {
       ) : reports.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-2 text-center">
           <CheckCircle2 className="h-8 w-8 text-slate-200 dark:text-neutral-700" />
-          <p className="text-[13px] text-slate-400 dark:text-neutral-500">Nenhum feedback encontrado</p>
+          <p className="text-[13px] text-slate-400 dark:text-neutral-500">Nenhum ticket encontrado</p>
         </div>
       ) : (
         <div className="space-y-2">

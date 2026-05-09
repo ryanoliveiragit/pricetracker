@@ -93,6 +93,11 @@ export interface FeedbackReport {
   chat_history: ChatMessage[];
 }
 
+export interface DuplicateError extends Error {
+  status: 409;
+  similarId: string | null;
+}
+
 export async function submitFeedback(data: {
   problem_type: string;
   search_query: string;
@@ -100,6 +105,7 @@ export async function submitFeedback(data: {
   description: string;
   reference_url?: string;
   screenshot?: File | null;
+  force?: boolean;
 }): Promise<{ id: number; status: string; message: string }> {
   const form = new FormData();
   form.append("problem_type", data.problem_type);
@@ -107,6 +113,7 @@ export async function submitFeedback(data: {
   form.append("search_query", data.search_query);
   form.append("expected_result", data.expected_result);
   form.append("reference_url", data.reference_url ?? "");
+  form.append("force", data.force ? "true" : "false");
   if (data.screenshot) form.append("screenshot", data.screenshot);
 
   const res = await fetch(`${BASE}/api/feedback`, {
@@ -114,6 +121,15 @@ export async function submitFeedback(data: {
     headers: authHeader(),
     body: form,
   });
+
+  if (res.status === 409) {
+    const body = await res.json();
+    const err = new Error(body.detail) as DuplicateError;
+    err.status = 409;
+    err.similarId = res.headers.get("X-Similar-Id");
+    throw err;
+  }
+
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }

@@ -13,6 +13,45 @@ import re
 
 logger = logging.getLogger(__name__)
 
+
+def _extract_json_safe(raw: str) -> dict:
+    """Extrai JSON de resposta que pode conter bloco markdown (``` json ```)."""
+    # 1. direto
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+    # 2. bloco ```json ... ``` ou ``` ... ```
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
+    if m:
+        try:
+            return json.loads(m.group(1))
+        except Exception:
+            pass
+    # 3. primeiro objeto { ... } balanceado
+    start = raw.find("{")
+    if start != -1:
+        depth, in_str, esc = 0, False, False
+        for i, ch in enumerate(raw[start:], start):
+            if esc:
+                esc = False
+            elif ch == "\\" and in_str:
+                esc = True
+            elif ch == '"':
+                in_str = not in_str
+            elif not in_str:
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            return json.loads(raw[start:i + 1])
+                        except Exception:
+                            break
+    raise ValueError(f"Resposta da IA não contém JSON válido: {raw[:200]}")
+
+
 # ---------------------------------------------------------------------------
 # System prompt — genérico para qualquer tipo de feedback
 # ---------------------------------------------------------------------------
@@ -111,21 +150,7 @@ def _groq_analyze_sync(api_key: str, user_msg: str) -> dict:
         raise RuntimeError(f"Groq {e.code}: {detail}")
 
     raw = body["choices"][0]["message"]["content"].strip()
-    # extrai primeiro objeto JSON balanceado
-    start = raw.find("{")
-    if start != -1:
-        depth, end = 0, -1
-        for i, ch in enumerate(raw[start:], start):
-            if ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    end = i
-                    break
-        if end != -1:
-            return json.loads(raw[start:end + 1])
-    raise ValueError(f"Resposta da IA não contém JSON válido: {raw[:200]}")
+    return _extract_json_safe(raw)
 
 
 async def _groq_analyze(api_key: str, problem_type: str, search_query: str, expected_result: str, description: str) -> dict:
@@ -155,20 +180,7 @@ def _gemini_analyze_sync(api_key: str, user_msg: str) -> dict:
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Gemini {e.code}: {e.read().decode(errors='ignore')[:200]}")
     raw = body["candidates"][0]["content"]["parts"][0]["text"].strip()
-    start = raw.find("{")
-    if start != -1:
-        depth, in_str, esc = 0, False, False
-        for i, ch in enumerate(raw[start:], start):
-            if esc: esc = False
-            elif ch == "\\" and in_str: esc = True
-            elif ch == '"': in_str = not in_str
-            elif not in_str:
-                if ch == "{": depth += 1
-                elif ch == "}":
-                    depth -= 1
-                    if depth == 0:
-                        return json.loads(raw[start:i + 1])
-    raise ValueError(f"Gemini: JSON inválido: {raw[:200]}")
+    return _extract_json_safe(raw)
 
 
 async def _gemini_analyze(api_key: str, problem_type: str, search_query: str, expected_result: str, description: str) -> dict:
@@ -200,20 +212,7 @@ def _perplexity_analyze_sync(api_key: str, user_msg: str) -> dict:
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Perplexity {e.code}: {e.read().decode(errors='ignore')[:200]}")
     raw = body["choices"][0]["message"]["content"].strip()
-    start = raw.find("{")
-    if start != -1:
-        depth, in_str, esc = 0, False, False
-        for i, ch in enumerate(raw[start:], start):
-            if esc: esc = False
-            elif ch == "\\" and in_str: esc = True
-            elif ch == '"': in_str = not in_str
-            elif not in_str:
-                if ch == "{": depth += 1
-                elif ch == "}":
-                    depth -= 1
-                    if depth == 0:
-                        return json.loads(raw[start:i + 1])
-    raise ValueError(f"Perplexity: JSON inválido: {raw[:200]}")
+    return _extract_json_safe(raw)
 
 
 async def _perplexity_analyze(api_key: str, problem_type: str, search_query: str, expected_result: str, description: str) -> dict:

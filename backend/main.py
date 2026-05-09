@@ -150,6 +150,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Similar-Id"],
 )
 app.add_middleware(_OptionsCORSMiddleware)
 

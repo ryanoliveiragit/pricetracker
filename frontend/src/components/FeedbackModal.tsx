@@ -1,6 +1,6 @@
 "use client";
 
-import { submitFeedback } from "@/services/feedbackApi";
+import { type DuplicateError, submitFeedback } from "@/services/feedbackApi";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -24,7 +24,7 @@ interface Props {
   prefillQuery?: string;
 }
 
-type Step = "form" | "sending" | "done" | "error";
+type Step = "form" | "sending" | "done" | "error" | "duplicate";
 
 type ProblemType = "search" | "ui" | "bug" | "suggestion";
 
@@ -83,6 +83,7 @@ export default function FeedbackModal({ open, onClose, prefillQuery = "" }: Prop
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [duplicateMsg, setDuplicateMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -111,9 +112,7 @@ export default function FeedbackModal({ open, onClose, prefillQuery = "" }: Prop
     reader.readAsDataURL(file);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!description.trim()) return;
+  async function doSubmit(force: boolean) {
     setStep("sending");
     try {
       await submitFeedback({
@@ -123,12 +122,25 @@ export default function FeedbackModal({ open, onClose, prefillQuery = "" }: Prop
         description,
         reference_url: refUrl,
         screenshot,
+        force,
       });
       setStep("done");
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Erro desconhecido");
-      setStep("error");
+      const e = err as DuplicateError;
+      if (e?.status === 409) {
+        setDuplicateMsg(e.message);
+        setStep("duplicate");
+      } else {
+        setErrorMsg(err instanceof Error ? (err as Error).message : "Erro desconhecido");
+        setStep("error");
+      }
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!description.trim()) return;
+    doSubmit(false);
   }
 
   function handleClose() {
@@ -141,6 +153,7 @@ export default function FeedbackModal({ open, onClose, prefillQuery = "" }: Prop
     setScreenshot(null);
     setPreview(null);
     setErrorMsg("");
+    setDuplicateMsg("");
     onClose();
   }
 
@@ -404,6 +417,38 @@ export default function FeedbackModal({ open, onClose, prefillQuery = "" }: Prop
                   >
                     Fechar
                   </button>
+                </div>
+              )}
+
+              {step === "duplicate" && (
+                <div className="flex flex-col items-center justify-center py-8 gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-500/10">
+                    <AlertCircle className="h-7 w-7 text-amber-500" />
+                  </div>
+                  <div className="text-center space-y-1.5">
+                    <p className="text-[15px] font-bold text-slate-900 dark:text-neutral-100">Ticket similar encontrado</p>
+                    <p className="text-[12px] text-slate-500 dark:text-neutral-400 max-w-[300px] leading-relaxed">
+                      {duplicateMsg}
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-neutral-500 mt-1">
+                      Deseja criar mesmo assim?
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setStep("form")}
+                      className="px-4 py-2 rounded-xl text-[13px] font-medium text-slate-600 dark:text-neutral-400 bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => doSubmit(true)}
+                      className="px-4 py-2 rounded-xl text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                      style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}
+                    >
+                      Criar mesmo assim
+                    </button>
+                  </div>
                 </div>
               )}
 

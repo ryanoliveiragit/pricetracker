@@ -48,6 +48,48 @@ def _fix_unescaped_quotes(s: str) -> str:
     return "".join(out)
 
 
+def _repair_truncated_json(raw: str) -> str:
+    """
+    Tenta fechar brackets/braces abertos de um JSON truncado.
+    Extrai o primeiro { ... } (possivelmente incompleto), completa e retorna.
+    """
+    start = raw.find("{")
+    if start == -1:
+        # Tenta extrair de bloco markdown
+        m = re.search(r"```(?:json)?\s*(\{[\s\S]*)", raw)
+        if not m:
+            return raw
+        start = raw.find("{", m.start())
+
+    fragment = raw[start:]
+    stack: list[str] = []
+    in_str = False
+    escape = False
+
+    for ch in fragment:
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_str:
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch in ("{", "["):
+            stack.append("}" if ch == "{" else "]")
+        elif ch in ("}", "]"):
+            if stack and stack[-1] == ch:
+                stack.pop()
+
+    # Remove trailing comma/whitespace before closing
+    trimmed = fragment.rstrip().rstrip(",").rstrip()
+    closing = "".join(reversed(stack))
+    return trimmed + closing
+
+
 def _extract_json(raw: str) -> dict:
     """Extrai JSON de uma resposta que pode ter markdown ou texto ao redor."""
 
@@ -96,6 +138,12 @@ def _extract_json(raw: str) -> dict:
     # 4. último recurso: repair sobre o raw inteiro
     r = _try(_fix_unescaped_quotes(raw))
     if r is not None:
+        return r
+
+    # 5. Truncated JSON repair — close open brackets/braces and retry
+    r = _try(_repair_truncated_json(raw))
+    if r is not None:
+        logger.warning("auto_fix_agent: JSON reparado (truncado)")
         return r
 
     logger.error("auto_fix_agent: resposta bruta não contém JSON válido:\n%s", raw)
@@ -341,42 +389,611 @@ def _groq_execute_sync(api_key: str, user_msg: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Agentic executor — Claude Haiku 4.5 com tool use
+# ---------------------------------------------------------------------------
+
+MAX_AGENT_ITERATIONS = 15
+
+_SKIP_DIRS = ("node_modules", ".next", "dist", ".git", "__pycache__", "uploads", ".venv", "build")
+
+_AGENT_SYSTEM = """Você é um agente de engenharia que altera código no projeto ConstruPrice.
+
+Stack:
+- Backend: Python/FastAPI em `backend/`
+- Frontend: Next.js 14 / TypeScript / Tailwind CSS em `frontend/src/`
+
+Você tem acesso a tools para explorar o código e propor mudanças. Workflow esperado:
+
+1. Use `grep` para descobrir TODOS os arquivos afetados pelo pedido (não chute, busque)
+2. Use `read_file` para ver o trecho exato a alterar (com algumas linhas de contexto)
+3. Use `propose_change` para cada edição. Pode ser chamada múltiplas vezes, em vários arquivos
+4. Quando terminar, chame `done` com um summary curto
+
+Regras:
+- SEMPRE use grep antes de propor mudanças — não invente paths nem trechos
+- Para mudanças amplas (rename, troca de texto), GREP primeiro pra encontrar TODOS os locais
+- Cada `old` em propose_change deve ser único o suficiente pra dar match único — adicione contexto se aparecer múltiplas vezes
+- Preserve o estilo existente (TypeScript strict, Tailwind dark mode com `dark:`)
+- Você tem no máximo 15 iterações — seja eficiente, não leia o mesmo arquivo duas vezes
+- NUNCA modifique arquivos em `.git/`, `node_modules/`, `dist/`, `.next/`, `uploads/`
+"""
+
+_AGENT_TOOLS = [
+    {
+        "name": "grep",
+        "description": "Busca substring literal (case-insensitive) em arquivos do projeto. Retorna até 30 matches no formato 'path:linha: conteúdo'. Reflete edições pendentes feitas via propose_change.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "pattern": {"type": "string", "description": "Texto literal a buscar"},
+                "glob": {"type": "string", "description": "Filtro opcional (ex: 'frontend/src/**/*.tsx'). Default: todos arquivos .ts/.tsx/.py/.md."},
+            },
+            "required": ["pattern"],
+        },
+    },
+    {
+        "name": "read_file",
+        "description": "Lê arquivo do projeto com numeração de linhas. Trunca arquivos muito grandes em 250 linhas. Reflete edições pendentes.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Caminho relativo à raiz do projeto"},
+                "line_start": {"type": "integer", "description": "Linha inicial (1-indexed)"},
+                "line_end": {"type": "integer", "description": "Linha final (inclusiva)"},
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "list_files",
+        "description": "Lista arquivos que casam com um glob. Útil para descobrir estrutura.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "glob": {"type": "string", "description": "Padrão glob, ex: 'frontend/src/views/*.tsx'"},
+            },
+            "required": ["glob"],
+        },
+    },
+    {
+        "name": "propose_change",
+        "description": "Aplica substituição exata em arquivo. 'old' precisa ser único no arquivo (ou ter match fuzzy >=82%). Reads subsequentes refletem a mudança.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Caminho relativo à raiz do projeto"},
+                "old": {"type": "string", "description": "Texto exato a substituir (precisa ser único)"},
+                "new": {"type": "string", "description": "Texto de substituição"},
+            },
+            "required": ["path", "old", "new"],
+        },
+    },
+    {
+        "name": "done",
+        "description": "Encerra a tarefa. Chame quando todas as edições estiverem feitas.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string", "description": "Descrição curta (1 frase) das mudanças"},
+            },
+            "required": ["summary"],
+        },
+    },
+]
+
+
+def _safe_rel(path: str) -> str | None:
+    """Normaliza path relativo. Retorna None se inválido ou fora de PROJECT_ROOT."""
+    try:
+        cleaned = path.strip().replace("\\", "/").lstrip("/")
+        if not cleaned or ".." in cleaned.split("/"):
+            return None
+        target = (PROJECT_ROOT / cleaned).resolve()
+        root = PROJECT_ROOT.resolve()
+        if root != target and root not in target.parents:
+            return None
+        return cleaned
+    except Exception:
+        return None
+
+
+class _AgentState:
+    def __init__(self) -> None:
+        self.file_state: dict[str, str] = {}
+        self.original: dict[str, str] = {}
+        self.summary: str = ""
+        self.done: bool = False
+
+    def get_content(self, rel: str) -> str | None:
+        if rel in self.file_state:
+            return self.file_state[rel]
+        p = PROJECT_ROOT / rel
+        if not p.is_file():
+            return None
+        try:
+            content = p.read_text(encoding="utf-8")
+        except Exception:
+            return None
+        if rel not in self.original:
+            self.original[rel] = content
+        return content
+
+    def consolidated_changes(self) -> list[dict]:
+        out: list[dict] = []
+        for rel, modified in self.file_state.items():
+            original = self.original.get(rel, "")
+            if original != modified:
+                out.append({"file": rel, "old": original, "new": modified})
+        return out
+
+
+def _tool_grep(state: _AgentState, pattern: str, glob: str | None = None) -> str:
+    if not pattern:
+        return "Error: pattern vazio"
+    pat_lower = pattern.lower()
+    results: list[str] = []
+    default_globs = [
+        "frontend/src/**/*.tsx",
+        "frontend/src/**/*.ts",
+        "frontend/src/**/*.css",
+        "backend/app/**/*.py",
+        "backend/main.py",
+    ]
+    globs = [glob] if glob else default_globs
+    seen: set[str] = set()
+
+    for g in globs:
+        try:
+            for fp in PROJECT_ROOT.glob(g):
+                if not fp.is_file():
+                    continue
+                try:
+                    rel = fp.relative_to(PROJECT_ROOT).as_posix()
+                except Exception:
+                    continue
+                if rel in seen or any(s in rel for s in _SKIP_DIRS):
+                    continue
+                seen.add(rel)
+                content = state.get_content(rel)
+                if not content:
+                    continue
+                for i, line in enumerate(content.splitlines(), 1):
+                    if pat_lower in line.lower():
+                        snippet = line.strip()[:180]
+                        results.append(f"{rel}:{i}: {snippet}")
+                        if len(results) >= 30:
+                            results.append("... (truncado em 30 matches; refine pattern ou glob)")
+                            return "\n".join(results)
+        except Exception as e:
+            results.append(f"(glob '{g}' erro: {e})")
+
+    return "\n".join(results) if results else f"Nenhum match para '{pattern}'"
+
+
+def _tool_read_file(state: _AgentState, path: str, line_start: int | None = None, line_end: int | None = None) -> str:
+    rel = _safe_rel(path)
+    if rel is None:
+        return f"Error: path inválido '{path}'"
+    content = state.get_content(rel)
+    if content is None:
+        return f"Error: arquivo '{rel}' não existe ou não é legível"
+    lines = content.splitlines()
+    n = len(lines)
+    if line_start is None and line_end is None:
+        if n > 250:
+            shown = lines[:250]
+            return "\n".join(f"{i+1}: {l}" for i, l in enumerate(shown)) + f"\n... ({n} linhas total, mostrando primeiras 250 — use line_start/line_end p/ ver mais)"
+        return "\n".join(f"{i+1}: {l}" for i, l in enumerate(lines))
+    s = max(1, line_start or 1)
+    e = min(n, line_end or n)
+    if e - s > 300:
+        e = s + 300
+    return "\n".join(f"{i}: {lines[i-1]}" for i in range(s, e + 1))
+
+
+def _tool_list_files(glob: str) -> str:
+    if not glob:
+        return "Error: glob vazio"
+    try:
+        rels: list[str] = []
+        for fp in sorted(PROJECT_ROOT.glob(glob)):
+            try:
+                rel = fp.relative_to(PROJECT_ROOT).as_posix()
+            except Exception:
+                continue
+            if any(s in rel for s in _SKIP_DIRS):
+                continue
+            rels.append(rel)
+            if len(rels) >= 100:
+                rels.append("... (truncado em 100)")
+                break
+        return "\n".join(rels) if rels else f"Nenhum arquivo casa com '{glob}'"
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def _tool_propose_change(state: _AgentState, path: str, old: str, new: str) -> str:
+    rel = _safe_rel(path)
+    if rel is None:
+        return f"Error: path inválido '{path}'"
+    content = state.get_content(rel)
+    if content is None:
+        return f"Error: arquivo '{rel}' não existe"
+    if old == new:
+        return "Error: old e new são idênticos"
+    if not old:
+        return "Error: old vazio"
+
+    occurrences = content.count(old)
+    method: str
+    if occurrences == 1:
+        new_content = content.replace(old, new, 1)
+        method = "exact"
+    elif occurrences > 1:
+        return f"Error: 'old' aparece {occurrences}x em {rel} — adicione mais contexto pra match único"
+    else:
+        new_content = _fuzzy_replace(content, old, new)
+        if new_content is None:
+            return f"Error: 'old' não encontrado em {rel} (nem fuzzy >=82%). Re-leia o arquivo e use texto exato."
+        method = "fuzzy"
+
+    state.file_state[rel] = new_content
+    pending = sum(1 for k, v in state.file_state.items() if state.original.get(k, "") != v)
+    return f"ok ({method}) — {rel} atualizado em memória. Total arquivos pendentes: {pending}"
+
+
+def _execute_tool(state: _AgentState, name: str, inp: dict) -> str:
+    try:
+        if name == "grep":
+            return _tool_grep(state, inp.get("pattern", ""), inp.get("glob"))
+        if name == "read_file":
+            return _tool_read_file(state, inp.get("path", ""), inp.get("line_start"), inp.get("line_end"))
+        if name == "list_files":
+            return _tool_list_files(inp.get("glob", ""))
+        if name == "propose_change":
+            return _tool_propose_change(state, inp.get("path", ""), inp.get("old", ""), inp.get("new", ""))
+        if name == "done":
+            state.done = True
+            state.summary = (inp.get("summary") or "").strip()
+            return "ok — finalizando"
+        return f"Error: tool desconhecida '{name}'"
+    except Exception as e:
+        logger.exception("auto_fix_agent: erro executando tool %s", name)
+        return f"Error executando {name}: {e}"
+
+
+def _claude_agent_call_sync(api_key: str, messages: list[dict]) -> dict:
+    import urllib.request
+    import urllib.error
+    payload = json.dumps({
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 4096,
+        "system": _AGENT_SYSTEM,
+        "tools": _AGENT_TOOLS,
+        "messages": messages,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=payload,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="ignore")
+        raise RuntimeError(f"Claude API {e.code}: {detail[:300]}")
+
+
+def _agentic_execute_sync(api_key: str, prompt: str, fix_type: str) -> dict:
+    state = _AgentState()
+    user_prompt = (
+        f"## Pedido de mudança (tipo: {fix_type})\n\n{prompt}\n\n"
+        "Use as tools para implementar. Lembre-se: GREP PRIMEIRO para encontrar TODOS os locais afetados, "
+        "depois read_file para ver contexto, depois propose_change para cada edição, depois done."
+    )
+    messages: list[dict] = [{"role": "user", "content": user_prompt}]
+
+    for i in range(MAX_AGENT_ITERATIONS):
+        logger.info("auto_fix_agent: iteração %d/%d", i + 1, MAX_AGENT_ITERATIONS)
+        response = _claude_agent_call_sync(api_key, messages)
+        assistant_blocks = response.get("content", []) or []
+        messages.append({"role": "assistant", "content": assistant_blocks})
+
+        tool_results: list[dict] = []
+        text_thoughts: list[str] = []
+        for block in assistant_blocks:
+            btype = block.get("type")
+            if btype == "text":
+                text_thoughts.append(block.get("text", ""))
+            elif btype == "tool_use":
+                tool_id = block.get("id", "")
+                tool_name = block.get("name", "")
+                tool_input = block.get("input", {}) or {}
+                logger.info("  → tool: %s(%s)", tool_name, json.dumps(tool_input, ensure_ascii=False)[:200])
+                result = _execute_tool(state, tool_name, tool_input)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_id,
+                    "content": result[:8000] if isinstance(result, str) else str(result)[:8000],
+                })
+
+        if state.done:
+            break
+        if not tool_results:
+            if text_thoughts and not state.summary:
+                state.summary = " ".join(text_thoughts)[:200]
+            break
+        if response.get("stop_reason") not in ("tool_use", None):
+            break
+
+        messages.append({"role": "user", "content": tool_results})
+    else:
+        logger.warning("auto_fix_agent: limite de %d iterações atingido", MAX_AGENT_ITERATIONS)
+
+    changes = state.consolidated_changes()
+    summary = state.summary or (text_thoughts and " ".join(text_thoughts)[:200]) or "Mudanças aplicadas pelo agente"
+    logger.info("auto_fix_agent: agente concluiu — %d arquivo(s), summary=%s", len(changes), summary[:120])
+    return {"changes": changes, "summary": summary}
+
+
+async def _agentic_execute(api_key: str, prompt: str, fix_type: str) -> dict:
+    import asyncio
+    return await asyncio.to_thread(_agentic_execute_sync, api_key.strip(), prompt, fix_type)
+
+
+# ---------------------------------------------------------------------------
+# Agentic executor — Gemini 2.0 Flash (function calling)
+# ---------------------------------------------------------------------------
+
+def _to_gemini_func(tool: dict) -> dict:
+    schema = dict(tool.get("input_schema", {}))
+    return {"name": tool["name"], "description": tool["description"], "parameters": schema}
+
+
+def _gemini_agentic_execute_sync(api_key: str, prompt: str, fix_type: str) -> dict:
+    import time
+    import urllib.request
+    import urllib.error
+
+    state = _AgentState()
+    user_prompt = (
+        f"## Pedido de mudança (tipo: {fix_type})\n\n{prompt}\n\n"
+        "Use as tools para implementar. GREP PRIMEIRO para encontrar TODOS os locais afetados, "
+        "depois read_file para ver contexto, depois propose_change para cada edição, depois done."
+    )
+    func_decls = [_to_gemini_func(t) for t in _AGENT_TOOLS]
+    contents: list[dict] = [{"role": "user", "parts": [{"text": user_prompt}]}]
+
+    for i in range(MAX_AGENT_ITERATIONS):
+        logger.info("auto_fix_agent (Gemini): iteração %d/%d", i + 1, MAX_AGENT_ITERATIONS)
+        payload = json.dumps({
+            "system_instruction": {"parts": [{"text": _AGENT_SYSTEM}]},
+            "tools": [{"function_declarations": func_decls}],
+            "tool_config": {"function_calling_config": {"mode": "AUTO"}},
+            "generationConfig": {"temperature": 0.0, "maxOutputTokens": 4096},
+            "contents": contents,
+        }).encode()
+        req = urllib.request.Request(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    body = json.loads(resp.read().decode())
+                break
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode(errors="ignore")
+                if e.code == 429 and attempt < 2:
+                    logger.warning("auto_fix_agent (Gemini): 429 — aguardando 30s…")
+                    time.sleep(30)
+                    continue
+                raise RuntimeError(f"Gemini {e.code}: {detail[:200]}")
+        else:
+            raise RuntimeError("Gemini: 3 tentativas com 429 esgotadas")
+
+        candidate = body.get("candidates", [{}])[0]
+        parts = (candidate.get("content") or {}).get("parts") or []
+        contents.append({"role": "model", "parts": parts})
+
+        func_responses: list[dict] = []
+        for part in parts:
+            fc = part.get("functionCall")
+            if not fc:
+                continue
+            name = fc.get("name", "")
+            args = fc.get("args") or {}
+            logger.info("  → tool: %s(%s)", name, json.dumps(args, ensure_ascii=False)[:200])
+            result = _execute_tool(state, name, args)
+            func_responses.append({
+                "functionResponse": {
+                    "name": name,
+                    "response": {"result": result[:8000] if isinstance(result, str) else str(result)[:8000]},
+                }
+            })
+
+        if state.done:
+            break
+        if not func_responses:
+            break
+        contents.append({"role": "user", "parts": func_responses})
+    else:
+        logger.warning("auto_fix_agent (Gemini): limite de %d iterações atingido", MAX_AGENT_ITERATIONS)
+
+    return {
+        "changes": state.consolidated_changes(),
+        "summary": state.summary or "Mudanças aplicadas pelo agente (Gemini)",
+    }
+
+
+async def _gemini_agentic_execute(api_key: str, prompt: str, fix_type: str) -> dict:
+    import asyncio
+    return await asyncio.to_thread(_gemini_agentic_execute_sync, api_key.strip(), prompt, fix_type)
+
+
+# ---------------------------------------------------------------------------
+# Agentic executor — Groq Llama 4 (OpenAI-compatible tool use)
+# ---------------------------------------------------------------------------
+
+def _to_openai_func(tool: dict) -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool["description"],
+            "parameters": tool.get("input_schema", {}),
+        },
+    }
+
+
+def _groq_agentic_execute_sync(api_key: str, prompt: str, fix_type: str) -> dict:
+    import time
+    import urllib.request
+    import urllib.error
+
+    state = _AgentState()
+    user_prompt = (
+        f"## Pedido de mudança (tipo: {fix_type})\n\n{prompt}\n\n"
+        "Use as tools para implementar. GREP PRIMEIRO para encontrar TODOS os locais afetados, "
+        "depois read_file, depois propose_change, depois done."
+    )
+    tools_oa = [_to_openai_func(t) for t in _AGENT_TOOLS]
+    messages: list[dict] = [
+        {"role": "system", "content": _AGENT_SYSTEM},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    for i in range(MAX_AGENT_ITERATIONS):
+        logger.info("auto_fix_agent (Groq): iteração %d/%d", i + 1, MAX_AGENT_ITERATIONS)
+        payload = json.dumps({
+            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "messages": messages,
+            "tools": tools_oa,
+            "tool_choice": "auto",
+            "max_tokens": 4096,
+            "temperature": 0.0,
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "groq-python/0.9.0",
+            },
+            method="POST",
+        )
+        # Retry loop for 429 TPM rate limit (resets each minute)
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    body = json.loads(resp.read().decode())
+                break
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode(errors="ignore")
+                if e.code == 429:
+                    wait = 30
+                    m = re.search(r"try again in (\d+(?:\.\d+)?)s", detail)
+                    if m:
+                        wait = min(int(float(m.group(1))) + 2, 65)
+                    if attempt < 2:
+                        logger.warning("auto_fix_agent (Groq): 429 — aguardando %ds…", wait)
+                        time.sleep(wait)
+                        continue
+                raise RuntimeError(f"Groq {e.code}: {detail[:200]}")
+        else:
+            raise RuntimeError("Groq: 3 tentativas com 429 esgotadas")
+
+        choice = body["choices"][0]
+        msg = choice["message"]
+        messages.append(msg)
+
+        tool_calls = msg.get("tool_calls") or []
+        if not tool_calls:
+            if not state.done and msg.get("content"):
+                state.summary = state.summary or (msg["content"] or "")[:200]
+            break
+
+        for tc in tool_calls:
+            fn = tc.get("function", {})
+            name = fn.get("name", "")
+            try:
+                args = json.loads(fn.get("arguments") or "{}")
+            except Exception:
+                args = {}
+            logger.info("  → tool: %s(%s)", name, json.dumps(args, ensure_ascii=False)[:200])
+            result = _execute_tool(state, name, args)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.get("id", ""),
+                "content": result[:8000] if isinstance(result, str) else str(result)[:8000],
+            })
+
+        if state.done:
+            break
+        if choice.get("finish_reason") == "stop":
+            break
+    else:
+        logger.warning("auto_fix_agent (Groq): limite de %d iterações atingido", MAX_AGENT_ITERATIONS)
+
+    return {
+        "changes": state.consolidated_changes(),
+        "summary": state.summary or "Mudanças aplicadas pelo agente (Groq)",
+    }
+
+
+async def _groq_agentic_execute(api_key: str, prompt: str, fix_type: str) -> dict:
+    import asyncio
+    return await asyncio.to_thread(_groq_agentic_execute_sync, api_key.strip(), prompt, fix_type)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 async def execute_fix(prompt: str, fix_type: str) -> dict:
-    """Tenta Claude → Gemini → Perplexity → Groq."""
+    """Agente com tool use: Claude Haiku 4.5 → Gemini 2.0 Flash → Groq Llama 4 → fallback one-shot."""
     import asyncio
     from app.config import settings
 
-    context = _collect_context(fix_type, prompt)
-    user_msg = f"{prompt}\n\n---\nArquivos relevantes do projeto:\n\n{context}"
-
-    providers = []
+    agentic_providers: list[tuple[str, object, str]] = []
     if (settings.ANTHROPIC_API_KEY or "").strip():
-        providers.append(("Claude",      _claude_execute_sync,      settings.ANTHROPIC_API_KEY))
+        agentic_providers.append(("Claude Haiku 4.5", _agentic_execute, settings.ANTHROPIC_API_KEY))
     if (settings.GEMINI_API_KEY or "").strip():
-        providers.append(("Gemini",      _gemini_execute_sync,      settings.GEMINI_API_KEY))
-    if (settings.PERPLEXITY_API_KEY or "").strip():
-        providers.append(("Perplexity",  _perplexity_execute_sync,  settings.PERPLEXITY_API_KEY))
+        agentic_providers.append(("Gemini 2.0 Flash", _gemini_agentic_execute, settings.GEMINI_API_KEY))
     if (settings.GROQ_API_KEY or "").strip():
-        providers.append(("Groq",        _groq_execute_sync,        settings.GROQ_API_KEY))
+        agentic_providers.append(("Groq Llama 4", _groq_agentic_execute, settings.GROQ_API_KEY))
 
-    if not providers:
-        raise RuntimeError("Nenhum provider configurado — adicione GEMINI_API_KEY, ANTHROPIC_API_KEY ou GROQ_API_KEY no .env")
+    if not agentic_providers:
+        raise RuntimeError("Nenhum provider configurado — adicione ANTHROPIC_API_KEY, GEMINI_API_KEY ou GROQ_API_KEY no .env")
 
-    last_exc: Exception = RuntimeError("providers esgotados")
-    for name, fn, key in providers:
+    errors: list[str] = []
+    for name, fn, key in agentic_providers:
         try:
-            logger.info("auto_fix_agent: chamando %s…", name)
-            result = await asyncio.to_thread(fn, key.strip(), user_msg)
-            logger.info("auto_fix_agent: %s respondeu:\n%s", name, json.dumps(result, ensure_ascii=False, indent=2))
-            return result
+            logger.info("auto_fix_agent: agente %s (tool use)…", name)
+            result = await fn(key, prompt, fix_type)  # type: ignore[operator]
+            if result.get("changes"):
+                logger.info("auto_fix_agent: %s concluiu — %d arquivo(s)", name, len(result["changes"]))
+                return result
+            logger.warning("auto_fix_agent: %s retornou 0 mudanças — próximo provider", name)
+            errors.append(f"{name}: sem mudanças")
         except Exception as exc:
-            logger.warning("auto_fix_agent: %s falhou — %s", name, exc)
-            last_exc = exc
+            logger.warning("auto_fix_agent: %s falhou — %s — próximo provider", name, exc)
+            errors.append(f"{name}: {exc}")
 
-    raise last_exc
+    raise RuntimeError(
+        "Todos os providers agênticos falharam ou retornaram 0 mudanças. "
+        "Tente novamente em alguns minutos (rate limit) ou adicione créditos.\n"
+        + "\n".join(errors)
+    )
 
 
 def _fuzzy_replace(content: str, old: str, new: str, threshold: float = 0.82) -> str | None:

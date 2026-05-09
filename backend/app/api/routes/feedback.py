@@ -1,5 +1,5 @@
 """
-Rotas de feedback — fluxo agente de 4 etapas:
+Rotas de tickets — fluxo agente de 4 etapas:
 
     pending  ──IA──▶  analyzed (transcrito)  ──admin edita+valida──▶  validated
                                                                           │
@@ -18,6 +18,7 @@ aplicando na DB de sinônimos — não criam branch.
 from __future__ import annotations
 
 import asyncio
+import difflib
 import logging
 import os
 import uuid
@@ -87,6 +88,24 @@ async def _load_report(db: AsyncSession, report_id: int) -> FeedbackReportDB:
     return report
 
 
+# ─── Duplicate detection ──────────────────────────────────────────────────────
+
+async def _find_similar_ticket(db: AsyncSession, description: str, threshold: float = 0.80) -> Optional[FeedbackReportDB]:
+    """Retorna o ticket mais similar em andamento, se similaridade >= threshold."""
+    result = await db.execute(
+        select(FeedbackReportDB).where(
+            FeedbackReportDB.status.notin_(["merged", "rejected"])
+        )
+    )
+    desc_lower = description.lower()
+    best_ratio, best_ticket = 0.0, None
+    for ticket in result.scalars().all():
+        ratio = difflib.SequenceMatcher(None, desc_lower, (ticket.description or "").lower()).ratio()
+        if ratio > best_ratio:
+            best_ratio, best_ticket = ratio, ticket
+    return best_ticket if best_ratio >= threshold else None
+
+
 # ─── Background analysis (etapa 1: transcrever) ───────────────────────────────
 
 async def _persist_analysis(report_id: int, analysis: dict) -> None:
@@ -148,11 +167,23 @@ async def create_feedback(
     expected_result: str = Form(default=""),
     description: str = Form(...),
     reference_url: str = Form(default=""),
+    force: str = Form(default="false"),
     screenshot: Optional[UploadFile] = File(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserDB = Depends(get_current_user),
 ):
     """Cria um novo relatório. IA transcreve em background → status='analyzed'."""
+    # Verifica duplicata (pula se force=true)
+    if force.lower() != "true":
+        similar = await _find_similar_ticket(db, description.strip())
+        if similar:
+            title = similar.ai_summary or similar.description
+            raise HTTPException(
+                status_code=409,
+                detail=f"Já existe um ticket similar em andamento: #{similar.id} — {title[:60]}",
+                headers={"X-Similar-Id": str(similar.id)},
+            )
+
     screenshot_path: str | None = None
 
     if screenshot and screenshot.filename:
@@ -372,6 +403,15 @@ async def execute_feedback(
     if not prompt:
         raise HTTPException(status_code=400, detail="Sem prompt validado para executar")
 
+    # Inclui contexto do erro anterior para a IA corrigir na nova tentativa
+    if report.execution_error:
+        prompt = (
+            f"{prompt}\n\n---\n"
+            f"ATENÇÃO: A tentativa anterior falhou com o seguinte erro:\n"
+            f"{report.execution_error[:500]}\n\n"
+            f"Corrija esse problema nesta nova tentativa."
+        )
+
     report.status = FeedbackStatus.executing
     report.execution_status = "running"
     report.execution_diff = None
@@ -388,13 +428,22 @@ async def execute_feedback(
 def _git(*args: str, check: bool = True) -> str:
     """Run a git command synchronously from project root, return stdout stripped."""
     import subprocess
+    import sys
     from pathlib import Path
     project_root = Path(__file__).parent.parent.parent.parent.parent
+    on_win = sys.platform == "win32"
+    # list2cmdline quotes each arg correctly for cmd.exe (handles spaces, # etc.)
+    cmd = subprocess.list2cmdline(["git", *args]) if on_win else ["git", *args]
     result = subprocess.run(
-        ["git", *args],
-        capture_output=True, text=True, check=check,
-        cwd=str(project_root)
+        cmd,
+        capture_output=True, text=True,
+        cwd=str(project_root),
+        shell=on_win,
     )
+    if check and result.returncode != 0:
+        raise subprocess.CalledProcessError(
+            result.returncode, cmd, result.stdout, result.stderr
+        )
     return result.stdout.strip()
 
 
@@ -416,11 +465,15 @@ def _create_branch_via_git(report_id: int, changes: list[dict], commit_message: 
 
         # Build check: só commita se o frontend compilar
         _project_root = _Path(__file__).parent.parent.parent.parent.parent
+        import sys as _sys
+        _on_win = _sys.platform == "win32"
+        _npm_cmd = "npm run build" if _on_win else ["npm", "run", "build"]
         _build = subprocess.run(
-            ["npm", "run", "build"],
+            _npm_cmd,
             capture_output=True, text=True,
             cwd=str(_project_root / "frontend"),
             timeout=180,
+            shell=_on_win,
         )
         if _build.returncode != 0:
             _err = (_build.stdout + "\n" + _build.stderr)[-3000:]
@@ -432,10 +485,81 @@ def _create_branch_via_git(report_id: int, changes: list[dict], commit_message: 
             if f:
                 _git("add", f)
 
+        # Verifica se há algo staged antes de commitar
+        staged = _git("diff", "--cached", "--name-only", check=False).strip()
+        if not staged:
+            raise RuntimeError("Nenhuma mudança foi staged — apply_changes não encontrou os trechos nos arquivos")
+
         _git("commit", "-m", commit_message)
         _git("push", "origin", branch, "--force")
         sha = _git("rev-parse", "HEAD")
         return branch, sha
+    finally:
+        _git("checkout", "main", check=False)
+
+
+def _create_branch_via_claude_cli(report_id: int, prompt: str, commit_message: str) -> tuple[str, str, str]:
+    """
+    Cria branch feedback/<id>, roda 'claude --print [prompt]' como subprocess
+    para aplicar mudanças diretamente no codebase, commita e faz push.
+    Retorna (branch, sha, summary).
+    """
+    import shutil
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).parent.parent.parent.parent.parent
+    on_win = sys.platform == "win32"
+    branch = f"feedback/{report_id}"
+
+    _git("checkout", "main")
+    _git("pull", "origin", "main", check=False)
+    _git("branch", "-D", branch, check=False)
+    _git("checkout", "-b", branch)
+
+    try:
+        claude_bin = shutil.which("claude") or ("claude.cmd" if on_win else "claude")
+
+        full_prompt = (
+            f"{prompt}\n\n"
+            "Aplique as mudanças diretamente nos arquivos do projeto usando as ferramentas disponíveis. "
+            "Use Grep para localizar todos os locais afetados, Read para ver o contexto, "
+            "e Edit/Write para aplicar. Não crie arquivos desnecessários."
+        )
+
+        cli_cmd = [claude_bin, "--print", full_prompt, "--dangerously-skip-permissions"]
+        if on_win:
+            cli_cmd_str = subprocess.list2cmdline(cli_cmd)
+            proc = subprocess.run(
+                cli_cmd_str, shell=True, capture_output=True, text=True,
+                cwd=str(project_root), timeout=300,
+            )
+        else:
+            proc = subprocess.run(
+                cli_cmd, capture_output=True, text=True,
+                cwd=str(project_root), timeout=300,
+            )
+
+        summary = (proc.stdout or "").strip()[-500:] or "Mudanças aplicadas pelo Claude Code"
+
+        if proc.returncode != 0 and not summary:
+            err = (proc.stderr or "")[-500:]
+            raise RuntimeError(f"claude CLI falhou (exit {proc.returncode}): {err}")
+
+        logger.info("feedback #%d: claude CLI concluiu — %s", report_id, summary[:120])
+
+        # Commita tudo que mudou (ignora erros de arquivos reservados do Windows)
+        _git("add", "-A", "--ignore-errors", check=False)
+        _git("add", "-u", check=False)  # garante tracked files staged
+        staged = _git("diff", "--cached", "--name-only", check=False).strip()
+        if not staged:
+            raise RuntimeError("Claude CLI não modificou nenhum arquivo")
+
+        _git("commit", "-m", commit_message)
+        _git("push", "origin", branch, "--force")
+        sha = _git("rev-parse", "HEAD")
+        return branch, sha, summary
     finally:
         _git("checkout", "main", check=False)
 
@@ -452,25 +576,34 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
     on_vercel = bool(os.environ.get("VERCEL"))
 
     try:
-        # 1. IA gera diff
-        result = await asyncio.wait_for(_afa.execute_fix(prompt, fix_type), timeout=90.0)
-        changes = result.get("changes", [])
-        summary = result.get("summary", "") or "feedback fix"
+        commit_msg_base = f"feedback #{report_id}"
+        changes: list[dict] = []
+        summary = ""
 
-        if not changes:
-            raise RuntimeError("IA retornou diff vazio")
-
-        commit_msg = f"feedback #{report_id}: {summary[:72]}"
-
-        # 2. Cria branch + commit
-        if on_vercel:
-            # Vercel: sem git local, usa GitHub REST API
-            branch, sha = await github_api.create_branch_with_changes(report_id, changes, commit_msg)
-        else:
-            # Local dev: git local (não depende de token com escopo git/blobs)
-            branch, sha = await asyncio.get_event_loop().run_in_executor(
-                None, _create_branch_via_git, report_id, changes, commit_msg
+        # Caminho 1: Claude Code CLI local (melhor qualidade — acesso real ao codebase)
+        import shutil as _shutil
+        claude_available = bool(_shutil.which("claude") or _shutil.which("claude.cmd"))
+        if not on_vercel and claude_available:
+            branch, sha, summary = await asyncio.get_event_loop().run_in_executor(
+                None, _create_branch_via_claude_cli, report_id, prompt, f"{commit_msg_base}: {prompt[:60]}"
             )
+        else:
+            # Caminho 2: agente externo (Gemini/Groq tool use) ou GitHub API (Vercel)
+            result = await asyncio.wait_for(_afa.execute_fix(prompt, fix_type), timeout=300.0)
+            changes = result.get("changes", [])
+            summary = result.get("summary", "") or "feedback fix"
+
+            if not changes:
+                raise RuntimeError("IA retornou diff vazio")
+
+            commit_msg = f"{commit_msg_base}: {summary[:72]}"
+
+            if on_vercel:
+                branch, sha = await github_api.create_branch_with_changes(report_id, changes, commit_msg)
+            else:
+                branch, sha = await asyncio.get_event_loop().run_in_executor(
+                    None, _create_branch_via_git, report_id, changes, commit_msg
+                )
 
         # 3. URLs
         b_url = github_api.branch_url(branch)
@@ -491,12 +624,21 @@ async def _run_branch_execution(report_id: int, prompt: str, fix_type: str) -> N
         logger.info(f"feedback #{report_id}: deployed branch={branch} sha={sha[:8]}")
 
     except Exception as exc:
-        logger.error(f"feedback #{report_id}: execução em branch falhou — {exc}", exc_info=True)
+        import subprocess as _sp
+        err_msg = str(exc)
+        if isinstance(exc, _sp.CalledProcessError):
+            parts = [err_msg]
+            if exc.stderr and exc.stderr.strip():
+                parts.append(f"stderr:\n{exc.stderr.strip()}")
+            if exc.stdout and exc.stdout.strip():
+                parts.append(f"stdout:\n{exc.stdout.strip()}")
+            err_msg = "\n".join(parts)
+        logger.error(f"feedback #{report_id}: execução em branch falhou — {err_msg}", exc_info=True)
         async with async_session() as db:
             r = (await db.execute(select(FeedbackReportDB).where(FeedbackReportDB.id == report_id))).scalar_one()
-            r.status = FeedbackStatus.validated  # volta a validated para nova tentativa
+            r.status = FeedbackStatus.validated
             r.execution_status = "error"
-            r.execution_error = str(exc)
+            r.execution_error = err_msg
             if branch:
                 r.branch_name = branch
             await db.commit()
