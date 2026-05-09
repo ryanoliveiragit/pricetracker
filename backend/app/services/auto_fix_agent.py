@@ -180,6 +180,43 @@ Regras CRÍTICAS para "old":
 - Se não precisar alterar nada: changes = []"""
 
 
+# System prompt para providers de texto sem tool_use — formato arquivo completo
+# (evita o problema de embeder código com aspas dentro de JSON)
+_SYSTEM_FULLFILE = """Você é um desenvolvedor sênior implementando uma mudança no projeto ConstruPrice.
+
+Você receberá a solicitação de mudança e o conteúdo real dos arquivos relevantes.
+
+FORMATO DE SAÍDA OBRIGATÓRIO — retorne APENAS este bloco, sem explicação extra:
+
+>>>FILE:caminho/relativo/ao/projeto/arquivo.tsx
+[conteúdo COMPLETO e CORRETO do arquivo após a mudança — não omita nada]
+<<<END
+SUMMARY:descrição curta da mudança
+
+Regras:
+- Retorne o arquivo COMPLETO — preserve todo código que não precisa mudar
+- Modifique APENAS o que foi solicitado
+- Máximo 1 arquivo por resposta
+- Se nenhuma mudança for necessária, retorne somente: SUMMARY:Sem mudanças necessárias
+"""
+
+
+def _parse_fullfile_response(raw: str) -> dict:
+    """Parseia formato >>>FILE:path\\n[conteúdo]<<<END\\nSUMMARY:texto"""
+    changes = []
+    matches = re.findall(r">>>FILE:(.+?)\n(.*?)<<<END", raw, re.DOTALL)
+    for filepath, content in matches:
+        changes.append({
+            "file": filepath.strip(),
+            "old": "",        # old vazio = substituir arquivo inteiro
+            "new": content,
+        })
+
+    summary_m = re.search(r"SUMMARY:(.+)", raw)
+    summary = summary_m.group(1).strip() if summary_m else "mudança aplicada"
+    return {"changes": changes, "summary": summary}
+
+
 # ---------------------------------------------------------------------------
 # Seleção de arquivos de contexto por fix_type
 # ---------------------------------------------------------------------------
@@ -276,9 +313,9 @@ def _claude_execute_sync(api_key: str, user_msg: str) -> dict:
 def _gemini_execute_sync(api_key: str, user_msg: str) -> dict:
     import urllib.request, urllib.error
     payload = json.dumps({
-        "systemInstruction": {"parts": [{"text": _SYSTEM}]},
+        "systemInstruction": {"parts": [{"text": _SYSTEM_FULLFILE}]},
         "contents": [{"parts": [{"text": user_msg}]}],
-        "generationConfig": {"maxOutputTokens": 3072, "temperature": 0.1},
+        "generationConfig": {"maxOutputTokens": 8192, "temperature": 0.1},
     }).encode()
     req = urllib.request.Request(
         f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
@@ -293,7 +330,7 @@ def _gemini_execute_sync(api_key: str, user_msg: str) -> dict:
         detail = e.read().decode(errors="ignore")
         raise RuntimeError(f"Gemini API {e.code}: {detail[:200]}")
     raw = body["candidates"][0]["content"]["parts"][0]["text"].strip()
-    return _extract_json(raw)
+    return _parse_fullfile_response(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -305,10 +342,10 @@ def _perplexity_execute_sync(api_key: str, user_msg: str) -> dict:
     payload = json.dumps({
         "model": "sonar",
         "messages": [
-            {"role": "system", "content": _SYSTEM},
+            {"role": "system", "content": _SYSTEM_FULLFILE},
             {"role": "user", "content": user_msg},
         ],
-        "max_tokens": 3072,
+        "max_tokens": 8192,
         "temperature": 0.1,
     }).encode()
     req = urllib.request.Request(
@@ -324,7 +361,7 @@ def _perplexity_execute_sync(api_key: str, user_msg: str) -> dict:
         detail = e.read().decode(errors="ignore")
         raise RuntimeError(f"Perplexity API {e.code}: {detail[:200]}")
     raw = body["choices"][0]["message"]["content"].strip()
-    return _extract_json(raw)
+    return _parse_fullfile_response(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -378,7 +415,7 @@ def _groq_execute_sync(api_key: str, user_msg: str) -> dict:
             raise RuntimeError(f"Groq API {e.code}: {detail}")
 
     raw = body["choices"][0]["message"]["content"].strip()
-    return _extract_json(raw)
+    return _parse_fullfile_response(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -453,19 +490,25 @@ def _fuzzy_replace(content: str, old: str, new: str, threshold: float = 0.82) ->
 
 
 def apply_changes(changes: list[dict]) -> list[dict]:
-    """Aplica mudanças nos arquivos. Tenta match exato, cai em fuzzy se falhar."""
+    """Aplica mudanças nos arquivos. old='' = substituição completa; senão tenta exato → fuzzy."""
     results = []
     for change in changes:
         file_path = PROJECT_ROOT / change["file"]
         old = change.get("old", "")
         new = change.get("new", "")
         try:
+            if not old:
+                # Formato arquivo-completo: substitui o arquivo inteiro
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text(new, encoding="utf-8")
+                results.append({"file": change["file"], "status": "applied", "method": "full"})
+                continue
+
             content = file_path.read_text(encoding="utf-8")
             if old in content:
                 file_path.write_text(content.replace(old, new, 1), encoding="utf-8")
                 results.append({"file": change["file"], "status": "applied"})
             else:
-                # fallback fuzzy
                 patched = _fuzzy_replace(content, old, new)
                 if patched is not None:
                     file_path.write_text(patched, encoding="utf-8")
