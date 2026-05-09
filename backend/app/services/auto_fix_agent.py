@@ -111,14 +111,14 @@ Stack:
 
 Você receberá:
 1. A solicitação de mudança
-2. Conteúdo dos arquivos relevantes
+2. Conteúdo real dos arquivos relevantes
 
 Retorne APENAS JSON válido (sem markdown, sem explicação fora do JSON):
 {
   "changes": [
     {
       "file": "caminho/relativo/ao/projeto",
-      "old": "string exata a substituir",
+      "old": "string exata a substituir (copiada literalmente do arquivo)",
       "new": "string de substituição"
     }
   ],
@@ -126,14 +126,11 @@ Retorne APENAS JSON válido (sem markdown, sem explicação fora do JSON):
 }
 
 Regras CRÍTICAS:
-- "old" deve ser a MENOR substring única possível — idealmente 2-5 palavras, nunca a linha inteira
-- "old" JAMAIS deve conter aspas duplas (") — escolha um trecho que não tenha esse caractere
-  ERRADO: "old": "import { Home, Search, LogOut } from 'lucide-react';"  ← linha inteira
-  ERRADO: "old": "LogOut } from \"lucide-react\""  ← contém aspas
-  CERTO:  "old": "LogOut,"                          ← trecho simples sem aspas
-  CERTO:  "old": "Settings, LogOut"                 ← trecho simples sem aspas
-- "new" nunca deve ter mais que 150 chars e nunca deve conter aspas duplas
-- Máximo 2 changes no total
+- "old" deve ser copiado LITERALMENTE do código fornecido — não invente, não parafraseie
+- "old" deve ser único no arquivo (não repita trechos genéricos como chaves ou parênteses soltos)
+- Aspas duplas dentro de "old" e "new" devem ser escapadas como \" no JSON
+- Prefira trechos de 1-3 linhas que sejam únicos no contexto
+- Máximo 3 changes no total
 - Preserve estilo existente (TypeScript, Tailwind, dark mode com dark:)
 - Se não precisar alterar nada: {"changes": [], "summary": "Sem mudanças necessárias"}"""
 
@@ -349,7 +346,9 @@ async def execute_fix(prompt: str, fix_type: str) -> dict:
     import asyncio
     from app.config import settings
 
-    context = _collect_context(fix_type, prompt)
+    # Usa o mesmo contexto rico do chat: lê arquivos completos (até 90KB),
+    # priorizados por relevância ao prompt — ao invés dos 40 linhas de 1 arquivo.
+    context = await asyncio.to_thread(_collect_chat_context, prompt, "")
     user_msg = f"{prompt}\n\n---\nArquivos relevantes do projeto:\n\n{context}"
 
     providers = []
