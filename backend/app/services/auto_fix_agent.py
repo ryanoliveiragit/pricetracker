@@ -381,13 +381,17 @@ def _groq_execute_sync(api_key: str, user_msg: str) -> dict:
     import urllib.error
     import urllib.request
 
+    # Groq free: 12k TPM — trunca contexto para caber com folga
+    if len(user_msg) > _GROQ_MAX_CHARS:
+        user_msg = user_msg[:_GROQ_MAX_CHARS] + "\n... [contexto truncado]"
+
     payload = json.dumps({
         "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": _SYSTEM_FULLFILE},
             {"role": "user", "content": user_msg},
         ],
-        "max_tokens": 8192,
+        "max_tokens": 4096,
         "temperature": 0.1,
     }).encode()
 
@@ -780,6 +784,9 @@ def _groq_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
     with urllib.request.urlopen(req, timeout=60) as r:
         data = json.loads(r.read())
     return _extract_chat_result(data["choices"][0]["message"]["content"])
+
+
+_GROQ_MAX_CHARS = 24_000   # ~6k tokens de contexto — seguro para o plano free (12k TPM)
 
 
 def _perplexity_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
