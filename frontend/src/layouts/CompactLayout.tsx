@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Home, Search, Package, BarChart3, Store, Settings, LogOut, User } from "lucide-react";
+import { Home, Search, Package, BarChart3, Store, Settings, LogOut, User, MessageSquarePlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import FeedbackButton from "../components/FeedbackButton";
 
 const navItems = [
   { href: "/", icon: Home, label: "Dashboard" },
@@ -19,7 +20,8 @@ const navItems = [
 export default function CompactLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const isAdmin = (user as any)?.role === "admin";
   const [showDropdown, setShowDropdown] = useState(false);
 
   function handleLogout() {
@@ -69,6 +71,20 @@ export default function CompactLayout({ children }: { children: ReactNode }) {
             })}
           </nav>
 
+          {isAdmin && (
+            <Link
+              href="/feedback"
+              className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors mb-1 ${
+                isActive("/feedback")
+                  ? "bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
+                  : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+              }`}
+              title="Tickets"
+            >
+              <MessageSquarePlus className="h-5 w-5" />
+            </Link>
+          )}
+
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
@@ -110,6 +126,8 @@ export default function CompactLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+
+      <FeedbackButton />
     </div>
   );
 }
