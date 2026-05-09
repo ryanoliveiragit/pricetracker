@@ -202,7 +202,8 @@ Regras:
 
 
 def _parse_fullfile_response(raw: str) -> dict:
-    """Parseia formato >>>FILE:path\\n[conteúdo]<<<END\\nSUMMARY:texto"""
+    """Parseia formato >>>FILE:path\\n[conteúdo]<<<END\\nSUMMARY:texto.
+    Fallback: tenta extrair JSON caso o modelo ignore os marcadores."""
     changes = []
     matches = re.findall(r">>>FILE:(.+?)\n(.*?)<<<END", raw, re.DOTALL)
     for filepath, content in matches:
@@ -211,6 +212,13 @@ def _parse_fullfile_response(raw: str) -> dict:
             "old": "",        # old vazio = substituir arquivo inteiro
             "new": content,
         })
+
+    if not changes:
+        # Modelo não seguiu o formato de marcadores — tenta JSON como fallback
+        try:
+            return _extract_json(raw)
+        except Exception:
+            pass
 
     summary_m = re.search(r"SUMMARY:(.+)", raw)
     summary = summary_m.group(1).strip() if summary_m else "mudança aplicada"
@@ -374,12 +382,12 @@ def _groq_execute_sync(api_key: str, user_msg: str) -> dict:
     import urllib.request
 
     payload = json.dumps({
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "model": "llama-3.3-70b-versatile",
         "messages": [
-            {"role": "system", "content": _SYSTEM},
+            {"role": "system", "content": _SYSTEM_FULLFILE},
             {"role": "user", "content": user_msg},
         ],
-        "max_tokens": 3072,
+        "max_tokens": 8192,
         "temperature": 0.1,
     }).encode()
 
