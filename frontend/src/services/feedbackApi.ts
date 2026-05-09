@@ -228,6 +228,15 @@ export async function chatWithTicket(
   return res.json();
 }
 
+export async function deleteAllFeedback(): Promise<{ deleted: number }> {
+  const res = await fetch(`${BASE}/api/feedback`, {
+    method: "DELETE",
+    headers: authHeader(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 // applyFeedbackChanges removido — mudanças agora são commitadas em branch.
 // Mantido como no-op para evitar erro de import durante a transição.
 export async function applyFeedbackChanges(

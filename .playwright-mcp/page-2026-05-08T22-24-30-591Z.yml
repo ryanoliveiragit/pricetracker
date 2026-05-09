@@ -1,0 +1,155 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e38]:
+      - complementary [ref=e39]:
+        - generic [ref=e41]:
+          - generic [ref=e43]:
+            - generic [ref=e44]: C
+            - generic [ref=e45]:
+              - paragraph [ref=e46]: ConstruPrice
+              - generic [ref=e47]:
+                - generic [ref=e48]: v2.4
+                - generic [ref=e49]: beta
+          - generic [ref=e50]: Navegação
+          - navigation [ref=e51]:
+            - link "Agente IA IA" [ref=e52] [cursor=pointer]:
+              - /url: /agent
+              - img [ref=e55]
+              - paragraph [ref=e59]: Agente IA
+              - generic [ref=e60]: IA
+            - link "Fornecedores Gerir lojas" [ref=e61] [cursor=pointer]:
+              - /url: /suppliers
+              - img [ref=e63]
+              - generic [ref=e67]:
+                - paragraph [ref=e68]: Fornecedores
+                - paragraph [ref=e69]: Gerir lojas
+            - link "Resultados Cotações recentes" [ref=e70] [cursor=pointer]:
+              - /url: /results
+              - img [ref=e72]
+              - generic [ref=e74]:
+                - paragraph [ref=e75]: Resultados
+                - paragraph [ref=e76]: Cotações recentes
+            - link "Ofertas Salvas Itens guardados" [ref=e77] [cursor=pointer]:
+              - /url: /saves
+              - img [ref=e79]
+              - generic [ref=e81]:
+                - paragraph [ref=e82]: Ofertas Salvas
+                - paragraph [ref=e83]: Itens guardados
+            - link "Catálogo Produtos locais Plus" [ref=e84] [cursor=pointer]:
+              - /url: /catalog
+              - img [ref=e86]
+              - generic [ref=e90]:
+                - paragraph [ref=e91]: Catálogo
+                - paragraph [ref=e92]: Produtos locais
+              - generic [ref=e93]:
+                - img [ref=e94]
+                - text: Plus
+          - generic [ref=e97]:
+            - generic [ref=e98]: Admin
+            - link "Tickets" [ref=e99] [cursor=pointer]:
+              - /url: /feedback
+              - img [ref=e100]
+              - generic [ref=e102]: Tickets
+            - generic [ref=e104]: Sistema
+            - link "Configurações" [ref=e105] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e106]
+              - generic [ref=e109]: Configurações
+            - button "Sair" [ref=e110] [cursor=pointer]:
+              - img [ref=e111]
+              - generic [ref=e114]: Sair
+            - generic [ref=e119]:
+              - paragraph [ref=e120]: Ryan Oliveira
+              - generic [ref=e121]: Administrador
+      - button "Recolher sidebar" [expanded] [ref=e122] [cursor=pointer]:
+        - img [ref=e123]
+      - generic [ref=e125]:
+        - banner [ref=e126]:
+          - generic [ref=e127]:
+            - generic [ref=e128]:
+              - img [ref=e130]
+              - generic [ref=e133]:
+                - paragraph [ref=e134]: Agente IA
+                - paragraph [ref=e135]: Busca inteligente
+            - button "Comandos e navegação… K" [ref=e136] [cursor=pointer]:
+              - img [ref=e137]
+              - generic [ref=e139]: Comandos e navegação…
+              - generic [ref=e140]:
+                - img [ref=e141]
+                - text: K
+            - generic [ref=e143]:
+              - button [ref=e145] [cursor=pointer]:
+                - img [ref=e146]
+              - button "Alternar tema" [ref=e150] [cursor=pointer]:
+                - img [ref=e152]
+              - button "Iniciar Tour" [ref=e158] [cursor=pointer]:
+                - img [ref=e159]
+              - generic [ref=e166]:
+                - paragraph [ref=e167]: Ryan Oliveira
+                - paragraph [ref=e168]: Administrador
+        - main [ref=e169]:
+          - generic [ref=e172]:
+            - generic [ref=e174]:
+              - img [ref=e176]
+              - generic [ref=e179]: powered by construprice.ai · v2.4
+            - heading "O que você precisa cotar hoje?" [level=1] [ref=e180]
+            - paragraph [ref=e181]: Descreva em linguagem natural — do material à quantidade. O agente identifica os itens, cruza mais de 10 mil produtos e monta a cotação ideal em segundos.
+            - generic [ref=e182]:
+              - generic [ref=e184]:
+                - generic [ref=e185]:
+                  - img [ref=e186]
+                  - generic [ref=e189]:
+                    - textbox [active] [ref=e190]
+                    - generic: tinta acrílica branca 18L para área externa
+                  - button "Buscar" [disabled] [ref=e191]:
+                    - text: Buscar
+                    - img [ref=e192]
+                - generic [ref=e194]:
+                  - button "Busca Padrão" [ref=e195] [cursor=pointer]:
+                    - img [ref=e196]
+                    - text: Busca Padrão
+                  - button "Busca Avançada" [ref=e200] [cursor=pointer]:
+                    - img [ref=e201]
+                    - text: Busca Avançada
+                  - generic [ref=e204]:
+                    - generic [ref=e205]:
+                      - img [ref=e206]
+                      - text: campinas/sp
+                    - generic [ref=e209]:
+                      - img [ref=e210]
+                      - text: 4 fornecedores
+                    - generic [ref=e214]:
+                      - generic [ref=e215]: ⏎
+                      - text: enviar
+              - paragraph [ref=e216]: Pesquisa todos os fornecedores conectados e retorna o melhor preço de imediato.
+            - generic [ref=e217]:
+              - generic [ref=e218]: ou comece com
+              - generic [ref=e219]:
+                - button "Cotação para obra residencial 100m²" [ref=e220] [cursor=pointer]:
+                  - img [ref=e221]
+                  - text: Cotação para obra residencial 100m²
+                - button "Vergalhões 10mm e areia média" [ref=e225] [cursor=pointer]:
+                  - img [ref=e226]
+                  - text: Vergalhões 10mm e areia média
+                - button "Tinta acrílica branca 18L" [ref=e231] [cursor=pointer]:
+                  - img [ref=e232]
+                  - text: Tinta acrílica branca 18L
+                - button "Cimento CP-II ao melhor preço" [ref=e235] [cursor=pointer]:
+                  - img [ref=e236]
+                  - text: Cimento CP-II ao melhor preço
+            - generic [ref=e239]:
+              - generic [ref=e240]: conectado com
+              - generic [ref=e242]:
+                - generic [ref=e243]: SUPER ABC DISTRIBUIDORA
+                - generic [ref=e244]: ESTOQUE ATACADISTA
+                - generic [ref=e245]: COFEMA MATERIAIS
+                - generic [ref=e246]: ESTOQUE MEGALESTE
+                - generic [ref=e247]: SUPER ABC DISTRIBUIDORA
+                - generic [ref=e248]: ESTOQUE ATACADISTA
+                - generic [ref=e249]: COFEMA MATERIAIS
+                - generic [ref=e250]: ESTOQUE MEGALESTE
+          - button "Reportar problema de busca" [ref=e251] [cursor=pointer]:
+            - img [ref=e252]
+            - generic [ref=e254]: Reportar
+    - region "Notifications alt+T"
+  - alert [ref=e37]

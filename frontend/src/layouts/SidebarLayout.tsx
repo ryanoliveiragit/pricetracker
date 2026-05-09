@@ -15,6 +15,7 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sun,
   Moon,
   Home,
@@ -168,6 +169,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   function handleLogout() {
     logout();
@@ -382,115 +384,83 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
           </>
         )}
 
-        {!collapsed && (
-          <div className="px-2 pb-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">
-              Sistema
-            </span>
-          </div>
-        )}
-
-        {bottomItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              id={item.id}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-xl transition-all duration-150",
-                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
-                active
-                  ? ""
-                  : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
-              )}
-              style={
-                active
-                  ? { background: `color-mix(in srgb, ${ACC} 9%, transparent)` }
-                  : {}
-              }
+        {/* User card with dropdown */}
+        <div className="relative mt-1.5 pt-2 border-t border-slate-100/80 dark:border-neutral-800/50">
+          {collapsed ? (
+            <button
+              onClick={() => setShowUserMenu(v => !v)}
+              className="group relative flex h-10 w-10 mx-auto items-center justify-center rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800/40 transition-colors"
+              title="Perfil"
             >
-              <Icon
-                className={cn(
-                  "shrink-0 h-[15px] w-[15px] transition-colors duration-150",
-                  active
-                    ? "text-[rgb(var(--primary-500))]"
-                    : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300",
-                )}
-              />
-              {!collapsed && (
-                <span
-                  className={cn(
-                    "text-[13px] font-medium",
-                    active
-                      ? "text-[rgb(var(--primary-600))] dark:text-[rgb(var(--primary-400))]"
-                      : "text-slate-600 dark:text-neutral-400 group-hover:text-slate-800 dark:group-hover:text-neutral-200",
-                  )}
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
+              ) : (
+                <div
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                  style={{ background: `linear-gradient(140deg, ${ACC}, ${ACC6})` }}
                 >
-                  {item.label}
-                </span>
+                  {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
+                </div>
               )}
-              {collapsed && <NavTooltip label={item.label} />}
-            </Link>
-          );
-        })}
-
-        <button
-          onClick={handleLogout}
-          className={cn(
-            "group relative flex w-full items-center gap-3 rounded-xl transition-all duration-150 text-[13px] font-medium",
-            collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
-            "text-slate-400 dark:text-neutral-500 hover:bg-red-50/80 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400",
-          )}
-        >
-          <LogOut className="shrink-0 h-[15px] w-[15px]" />
-          {!collapsed && <span>Sair</span>}
-          {collapsed && <NavTooltip label="Sair" />}
-        </button>
-
-        {/* User card */}
-        {!collapsed && (
-          <div className="mt-1.5 pt-2 border-t border-slate-100/80 dark:border-neutral-800/50">
-            <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800/40 transition-colors cursor-default">
+              <NavTooltip label="Perfil" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowUserMenu(v => !v)}
+              className="flex w-full items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800/40 transition-colors"
+            >
               <div className="relative shrink-0">
                 {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt=""
-                    className="h-7 w-7 rounded-full object-cover"
-                  />
+                  <img src={user.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
                 ) : (
                   <div
                     className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                    style={{
-                      background: `linear-gradient(140deg, ${ACC}, ${ACC6})`,
-                    }}
+                    style={{ background: `linear-gradient(140deg, ${ACC}, ${ACC6})` }}
                   >
                     {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
                   </div>
                 )}
                 <div className="absolute -bottom-px -right-px h-2 w-2 rounded-full bg-emerald-400 ring-[1.5px] ring-white dark:ring-neutral-950" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 text-left">
                 <p className="text-[12px] font-semibold text-slate-800 dark:text-neutral-200 truncate leading-tight">
                   {user?.displayName ?? "Usuário"}
                 </p>
                 <span
                   className="inline-flex items-center rounded px-1.5 py-px mt-0.5 text-[9px] font-medium"
-                  style={{
-                    background: `color-mix(in srgb, ${ACC} 8%, transparent)`,
-                    color: ACC,
-                  }}
+                  style={{ background: `color-mix(in srgb, ${ACC} 8%, transparent)`, color: ACC }}
                 >
                   {ROLE_LABEL[userRole ?? "funcionario"] ?? "Funcionário"}
                 </span>
               </div>
-            </div>
-          </div>
-        )}
+              <ChevronDown className={`h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform ${showUserMenu ? "rotate-180" : ""}`} />
+            </button>
+          )}
+
+          {showUserMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
+              <div className="absolute bottom-full left-0 mb-1 z-20 w-52 rounded-xl border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg">
+                <Link
+                  href="/settings"
+                  onClick={() => { setShowUserMenu(false); setMobileOpen(false); }}
+                  className="flex w-full items-center gap-2.5 rounded-t-xl px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurações
+                </Link>
+                <div className="border-t border-slate-100 dark:border-neutral-800" />
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2.5 rounded-b-xl px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

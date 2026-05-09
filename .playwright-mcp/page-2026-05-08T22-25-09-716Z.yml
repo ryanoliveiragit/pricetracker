@@ -1,0 +1,167 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e8]:
+      - complementary [ref=e9]:
+        - generic [ref=e11]:
+          - generic [ref=e13]:
+            - generic [ref=e14]: C
+            - generic [ref=e15]:
+              - paragraph [ref=e16]: ConstruPrice
+              - generic [ref=e17]:
+                - generic [ref=e18]: v2.4
+                - generic [ref=e19]: beta
+          - generic [ref=e20]: Navegação
+          - navigation [ref=e21]:
+            - link "Agente IA Busca inteligente IA" [ref=e22] [cursor=pointer]:
+              - /url: /agent
+              - img [ref=e24]
+              - generic [ref=e27]:
+                - paragraph [ref=e28]: Agente IA
+                - paragraph [ref=e29]: Busca inteligente
+              - generic [ref=e30]: IA
+            - link "Fornecedores Gerir lojas" [ref=e31] [cursor=pointer]:
+              - /url: /suppliers
+              - img [ref=e33]
+              - generic [ref=e37]:
+                - paragraph [ref=e38]: Fornecedores
+                - paragraph [ref=e39]: Gerir lojas
+            - link "Resultados Cotações recentes" [ref=e40] [cursor=pointer]:
+              - /url: /results
+              - img [ref=e42]
+              - generic [ref=e44]:
+                - paragraph [ref=e45]: Resultados
+                - paragraph [ref=e46]: Cotações recentes
+            - link "Ofertas Salvas Itens guardados" [ref=e47] [cursor=pointer]:
+              - /url: /saves
+              - img [ref=e49]
+              - generic [ref=e51]:
+                - paragraph [ref=e52]: Ofertas Salvas
+                - paragraph [ref=e53]: Itens guardados
+            - link "Catálogo Produtos locais Plus" [ref=e54] [cursor=pointer]:
+              - /url: /catalog
+              - img [ref=e56]
+              - generic [ref=e60]:
+                - paragraph [ref=e61]: Catálogo
+                - paragraph [ref=e62]: Produtos locais
+              - generic [ref=e63]:
+                - img [ref=e64]
+                - text: Plus
+          - generic [ref=e67]:
+            - generic [ref=e68]: Admin
+            - link "Tickets" [ref=e69] [cursor=pointer]:
+              - /url: /feedback
+              - img [ref=e70]
+              - generic [ref=e72]: Tickets
+            - generic [ref=e74]: Sistema
+            - link "Configurações" [ref=e75] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e76]
+              - generic [ref=e79]: Configurações
+            - button "Sair" [ref=e80] [cursor=pointer]:
+              - img [ref=e81]
+              - generic [ref=e84]: Sair
+            - generic [ref=e89]:
+              - paragraph [ref=e90]: Ryan Oliveira
+              - generic [ref=e91]: Administrador
+      - button "Recolher sidebar" [expanded] [ref=e92] [cursor=pointer]:
+        - img [ref=e93]
+      - generic [ref=e95]:
+        - banner [ref=e96]:
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - img [ref=e100]
+              - generic [ref=e103]:
+                - paragraph [ref=e104]: ConstruPrice
+                - paragraph [ref=e105]: Plataforma de cotação
+            - button "Comandos e navegação… K" [ref=e106] [cursor=pointer]:
+              - img [ref=e107]
+              - generic [ref=e109]: Comandos e navegação…
+              - generic [ref=e110]:
+                - img [ref=e111]
+                - text: K
+            - generic [ref=e113]:
+              - button [ref=e115] [cursor=pointer]:
+                - img [ref=e116]
+              - button "Alternar tema" [ref=e120] [cursor=pointer]:
+                - img [ref=e122]
+              - button "Iniciar Tour" [ref=e128] [cursor=pointer]:
+                - img [ref=e129]
+              - generic [ref=e136]:
+                - paragraph [ref=e137]: Ryan Oliveira
+                - paragraph [ref=e138]: Administrador
+        - main [ref=e139]:
+          - generic [ref=e140]:
+            - generic [ref=e141]:
+              - generic [ref=e142]:
+                - heading "Feedbacks" [level=1] [ref=e143]
+                - paragraph [ref=e144]: Tarefa → IA transcreve → você valida → executa em branch isolada
+              - button "Atualizar" [ref=e145] [cursor=pointer]
+            - generic [ref=e146]:
+              - button "Todos" [ref=e1279] [cursor=pointer]
+              - button "Pendentes" [ref=e149] [cursor=pointer]
+              - button "Transcritos" [ref=e150] [cursor=pointer]
+              - button "Validados" [ref=e151] [cursor=pointer]
+              - button "Deployed" [ref=e1280] [cursor=pointer]
+              - button "Mergeados" [ref=e1281] [cursor=pointer]
+              - button "Rejeitados" [ref=e1282] [cursor=pointer]
+            - generic [ref=e158]:
+              - img [ref=e1283]
+              - paragraph [ref=e1286]: Nenhum feedback encontrado
+          - button "Reportar problema de busca" [active] [ref=e1275] [cursor=pointer]:
+            - img [ref=e1276]
+            - generic [ref=e1278]: Reportar
+    - region "Notifications alt+T"
+  - alert [ref=e7]
+  - generic [ref=e1289]:
+    - generic [ref=e1290]:
+      - generic [ref=e1291]:
+        - img [ref=e1293]
+        - generic [ref=e1295]:
+          - paragraph [ref=e1296]: Reportar problema
+          - paragraph [ref=e1297]: Nossa IA analisa e gera um prompt de correção
+      - button [ref=e1298] [cursor=pointer]:
+        - img [ref=e1299]
+    - generic [ref=e1303]:
+      - generic [ref=e1304]:
+        - generic [ref=e1305]: Tipo de problema
+        - generic [ref=e1306]:
+          - button "Busca" [ref=e1307] [cursor=pointer]:
+            - img [ref=e1308]
+            - generic [ref=e1311]: Busca
+          - button "Interface" [ref=e1312] [cursor=pointer]:
+            - img [ref=e1313]
+            - generic [ref=e1317]: Interface
+          - button "Bug" [ref=e1318] [cursor=pointer]:
+            - img [ref=e1319]
+            - generic [ref=e1321]: Bug
+          - button "Sugestão" [ref=e1322] [cursor=pointer]:
+            - img [ref=e1323]
+            - generic [ref=e1325]: Sugestão
+      - generic [ref=e1327]:
+        - generic [ref=e1328]:
+          - generic [ref=e1329]: O que buscou?
+          - generic [ref=e1330]:
+            - img
+            - textbox "cad, cx sif…" [ref=e1331]
+        - generic [ref=e1332]:
+          - generic [ref=e1333]: O que esperava?
+          - textbox "cadeado, caixa sifonada…" [ref=e1334]
+      - generic [ref=e1335]:
+        - generic [ref=e1336]: Descrição *
+        - 'textbox "Ex: busquei ''cad'' mas não encontrou ''cadeado''. O produto existe no sistema com nome diferente..." [ref=e1337]'
+      - generic [ref=e1338]:
+        - generic [ref=e1339]:
+          - generic [ref=e1340]: Print de tela(opcional)
+          - button "Anexar print" [ref=e1341] [cursor=pointer]:
+            - img [ref=e1342]
+            - generic [ref=e1346]: Anexar print
+        - generic [ref=e1347]:
+          - generic [ref=e1348]: Link de referência(opcional)
+          - generic [ref=e1349]:
+            - img
+            - textbox "https://..." [ref=e1350]
+      - generic [ref=e1351]:
+        - paragraph [ref=e1352]: Campos marcados com * são obrigatórios
+        - generic [ref=e1353]:
+          - button "Cancelar" [ref=e1354] [cursor=pointer]
+          - button "Enviar relatório" [disabled] [ref=e1355]

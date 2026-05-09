@@ -387,13 +387,15 @@ async def execute_feedback(
 
 def _git(*args: str, check: bool = True) -> str:
     """Run a git command synchronously from project root, return stdout stripped."""
-    import subprocess
+    import subprocess, sys
     from pathlib import Path
     project_root = Path(__file__).parent.parent.parent.parent.parent
+    use_shell = sys.platform == "win32"
+    cmd: list[str] | str = ["git", *args] if not use_shell else " ".join(["git", *args])
     result = subprocess.run(
-        ["git", *args],
+        cmd,
         capture_output=True, text=True, check=check,
-        cwd=str(project_root)
+        cwd=str(project_root), shell=use_shell,
     )
     return result.stdout.strip()
 
@@ -415,12 +417,15 @@ def _create_branch_via_git(report_id: int, changes: list[dict], commit_message: 
         apply_changes(changes)
 
         # Build check: só commita se o frontend compilar
+        import sys as _sys
         _project_root = _Path(__file__).parent.parent.parent.parent.parent
+        _use_shell = _sys.platform == "win32"
+        _npm_cmd: list[str] | str = "npm run build" if _use_shell else ["npm", "run", "build"]
         _build = subprocess.run(
-            ["npm", "run", "build"],
+            _npm_cmd,
             capture_output=True, text=True,
             cwd=str(_project_root / "frontend"),
-            timeout=180,
+            timeout=180, shell=_use_shell,
         )
         if _build.returncode != 0:
             _err = (_build.stdout + "\n" + _build.stderr)[-3000:]
@@ -560,6 +565,25 @@ async def resolve_feedback_legacy(
 
 
 # ─── POST /api/feedback/{id}/chat ─────────────────────────────────────────────
+
+@router.delete("", status_code=200)
+async def delete_all_reports(
+    db: AsyncSession = Depends(get_db),
+    current_user_email: str = Depends(get_current_user_email),
+):
+    result = await db.execute(select(UserDB).where(UserDB.email == current_user_email))
+    user = result.scalar_one_or_none()
+    if not user or user.role not in (UserRole.ADMIN,):
+        raise HTTPException(status_code=403, detail="Apenas admins podem deletar tickets")
+
+    result = await db.execute(select(FeedbackReportDB))
+    reports = result.scalars().all()
+    count = len(reports)
+    for r in reports:
+        await db.delete(r)
+    await db.commit()
+    return {"deleted": count}
+
 
 @router.post("/{report_id}/chat")
 async def chat_with_ticket(
