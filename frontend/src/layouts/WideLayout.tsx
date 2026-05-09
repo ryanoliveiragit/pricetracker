@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   X,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -23,7 +24,6 @@ const navItems = [
   { href: "/products", label: "Produtos", icon: Package },
   { href: "/suppliers", label: "Fornecedores", icon: Store },
   { href: "/results", label: "Resultados", icon: BarChart3 },
-  { href: "/settings", label: "Configurações", icon: Settings },
 ];
 
 export default function WideLayout({ children }: { children: ReactNode }) {
@@ -31,6 +31,7 @@ export default function WideLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   function handleLogout() {
     logout();
@@ -94,30 +95,53 @@ export default function WideLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-950/50">
-              {user?.avatar ? (
-                <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
-              ) : (
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-sm font-semibold text-white">
-                {user?.displayName?.charAt(0).toUpperCase()}
-              </div>
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => setShowProfileMenu(v => !v)}
+                className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 transition-colors hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950/50 dark:hover:bg-neutral-800"
+              >
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-sm font-semibold text-white">
+                    {user?.displayName?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="text-left">
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    {user?.displayName}
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {user?.email}
+                  </p>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${showProfileMenu ? "rotate-180" : ""}`} />
+              </button>
+
+              {showProfileMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowProfileMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 z-20 w-52 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                    <Link
+                      href="/settings"
+                      onClick={() => setShowProfileMenu(false)}
+                      className="flex w-full items-center gap-2.5 rounded-t-xl px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Configurações
+                    </Link>
+                    <div className="border-t border-neutral-100 dark:border-neutral-800" />
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2.5 rounded-b-xl px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sair
+                    </button>
+                  </div>
+                </>
               )}
-              <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  {user?.displayName}
-                </p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {user?.email}
-                </p>
-              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="hidden md:flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            >
-              <LogOut className="h-4 w-4" />
-              Sair
-            </button>
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

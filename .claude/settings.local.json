@@ -97,7 +97,8 @@
       "mcp__vercel__get_deployment",
       "mcp__vercel__web_fetch_vercel_url",
       "Bash(git *)",
-      "Bash(where git *)"
+      "Bash(where git *)",
+      "Bash(powershell *)"
     ],
     "deny": [],
     "ask": []

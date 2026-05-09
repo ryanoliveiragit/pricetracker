@@ -1,0 +1,984 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e8]:
+      - complementary [ref=e9]:
+        - generic [ref=e11]:
+          - generic [ref=e13]:
+            - generic [ref=e14]: C
+            - generic [ref=e15]:
+              - paragraph [ref=e16]: ConstruPrice
+              - generic [ref=e17]:
+                - generic [ref=e18]: v2.4
+                - generic [ref=e19]: beta
+          - generic [ref=e20]: Navegação
+          - navigation [ref=e21]:
+            - link "Agente IA Busca inteligente IA" [ref=e22] [cursor=pointer]:
+              - /url: /agent
+              - img [ref=e24]
+              - generic [ref=e27]:
+                - paragraph [ref=e28]: Agente IA
+                - paragraph [ref=e29]: Busca inteligente
+              - generic [ref=e30]: IA
+            - link "Fornecedores Gerir lojas" [ref=e31] [cursor=pointer]:
+              - /url: /suppliers
+              - img [ref=e33]
+              - generic [ref=e37]:
+                - paragraph [ref=e38]: Fornecedores
+                - paragraph [ref=e39]: Gerir lojas
+            - link "Resultados Cotações recentes" [ref=e40] [cursor=pointer]:
+              - /url: /results
+              - img [ref=e42]
+              - generic [ref=e44]:
+                - paragraph [ref=e45]: Resultados
+                - paragraph [ref=e46]: Cotações recentes
+            - link "Ofertas Salvas Itens guardados" [ref=e47] [cursor=pointer]:
+              - /url: /saves
+              - img [ref=e49]
+              - generic [ref=e51]:
+                - paragraph [ref=e52]: Ofertas Salvas
+                - paragraph [ref=e53]: Itens guardados
+            - link "Catálogo Produtos locais Plus" [ref=e54] [cursor=pointer]:
+              - /url: /catalog
+              - img [ref=e56]
+              - generic [ref=e60]:
+                - paragraph [ref=e61]: Catálogo
+                - paragraph [ref=e62]: Produtos locais
+              - generic [ref=e63]:
+                - img [ref=e64]
+                - text: Plus
+          - generic [ref=e67]:
+            - generic [ref=e68]: Admin
+            - link "Tickets" [ref=e69] [cursor=pointer]:
+              - /url: /feedback
+              - img [ref=e70]
+              - generic [ref=e72]: Tickets
+            - generic [ref=e74]: Sistema
+            - link "Configurações" [ref=e75] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e76]
+              - generic [ref=e79]: Configurações
+            - button "Sair" [ref=e80] [cursor=pointer]:
+              - img [ref=e81]
+              - generic [ref=e84]: Sair
+            - generic [ref=e89]:
+              - paragraph [ref=e90]: Ryan Oliveira
+              - generic [ref=e91]: Administrador
+      - button "Recolher sidebar" [expanded] [ref=e92] [cursor=pointer]:
+        - img [ref=e93]
+      - generic [ref=e95]:
+        - banner [ref=e96]:
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - img [ref=e100]
+              - generic [ref=e103]:
+                - paragraph [ref=e104]: ConstruPrice
+                - paragraph [ref=e105]: Plataforma de cotação
+            - button "Comandos e navegação… K" [ref=e106] [cursor=pointer]:
+              - img [ref=e107]
+              - generic [ref=e109]: Comandos e navegação…
+              - generic [ref=e110]:
+                - img [ref=e111]
+                - text: K
+            - generic [ref=e113]:
+              - button [ref=e115] [cursor=pointer]:
+                - img [ref=e116]
+              - button "Alternar tema" [ref=e120] [cursor=pointer]:
+                - img [ref=e122]
+              - button "Iniciar Tour" [ref=e128] [cursor=pointer]:
+                - img [ref=e129]
+              - generic [ref=e136]:
+                - paragraph [ref=e137]: Ryan Oliveira
+                - paragraph [ref=e138]: Administrador
+        - main [ref=e139]:
+          - generic [ref=e140]:
+            - generic [ref=e141]:
+              - generic [ref=e142]:
+                - heading "Feedbacks" [level=1] [ref=e143]
+                - paragraph [ref=e144]: Tarefa → IA transcreve → você valida → executa em branch isolada
+              - button "Atualizar" [ref=e145] [cursor=pointer]
+            - generic [ref=e146]:
+              - button "Todos 22" [active] [ref=e1510] [cursor=pointer]:
+                - text: Todos
+                - generic [ref=e1511]: "22"
+              - button "Pendentes" [ref=e149] [cursor=pointer]
+              - button "Transcritos" [ref=e1436] [cursor=pointer]
+              - button "Validados 1" [ref=e1512] [cursor=pointer]:
+                - text: Validados
+                - generic [ref=e1513]: "1"
+              - button "Deployed 4" [ref=e1514] [cursor=pointer]:
+                - text: Deployed
+                - generic [ref=e1515]: "4"
+              - button "Mergeados 3" [ref=e1516] [cursor=pointer]:
+                - text: Mergeados
+                - generic [ref=e1517]: "3"
+              - button "Rejeitados 1" [ref=e1518] [cursor=pointer]:
+                - text: Rejeitados
+                - generic [ref=e1519]: "1"
+            - generic [ref=e158]:
+              - generic [ref=e1520]:
+                - generic [ref=e1521]:
+                  - generic [ref=e1523] [cursor=pointer]:
+                    - generic [ref=e1524]:
+                      - generic [ref=e1525]: Interface
+                      - generic [ref=e1526]: Adicionar título 'Bem-vindo' na página principal do dashboard
+                    - generic [ref=e1527]:
+                      - generic [ref=e1528]: Ryan Oliveira
+                      - generic [ref=e1529]: ·
+                      - generic [ref=e1530]: 08 de mai.
+                  - button [ref=e1531] [cursor=pointer]:
+                    - img [ref=e1532]
+                - generic [ref=e1535]:
+                  - generic [ref=e1536]:
+                    - img [ref=e1538]
+                    - generic [ref=e1540]: Transcrever
+                  - generic [ref=e1542]:
+                    - img [ref=e1544]
+                    - generic [ref=e1546]: Validar
+                  - generic [ref=e1548]:
+                    - generic [ref=e1549]: "3"
+                    - generic [ref=e1550]: Executar
+                  - generic [ref=e1552]:
+                    - generic [ref=e1553]: "4"
+                    - generic [ref=e1554]: Deploy
+                - generic [ref=e1556]:
+                  - paragraph [ref=e1557]: Adicionar um título 'Bem-vindo' na página principal do dashboard
+                  - generic [ref=e1558]:
+                    - generic [ref=e1559]:
+                      - generic [ref=e1560]:
+                        - img [ref=e1561]
+                        - generic [ref=e1564]: Prompt transcrito pela IA
+                      - button "Editar" [ref=e1565] [cursor=pointer]:
+                        - img [ref=e1566]
+                        - text: Editar
+                    - generic [ref=e1569]: Adicionar um título 'Bem-vindo' na página principal do dashboard. Isso pode ser feito inserindo um elemento de título (h1, h2, etc.) no início da página principal do dashboard com o texto 'Bem-vindo'. O estilo e o posicionamento do título devem ser consistentes com o design existente do dashboard.
+                  - generic [ref=e1570]:
+                    - generic [ref=e1571]:
+                      - img [ref=e1572]
+                      - generic [ref=e1574]: Execução falhou — voltou para validado para nova tentativa
+                    - generic [ref=e1575]: "Nenhuma mudança pôde ser aplicada: [{'file': 'frontend/src/layouts/CompactLayout.tsx', 'status': 'error', 'error': 'HTTP 403: {\"message\":\"Resource not accessible by personal access token\",\"documentation_url\":\"https://docs.github.com/rest/git/blob'}]"
+                  - generic [ref=e1576]:
+                    - button "Executar em branch" [ref=e1577] [cursor=pointer]:
+                      - img [ref=e1578]
+                      - text: Executar em branch
+                    - button "Cancelar" [ref=e1580] [cursor=pointer]:
+                      - img [ref=e1581]
+                      - text: Cancelar
+              - generic [ref=e1585]:
+                - generic [ref=e1586]:
+                  - generic [ref=e1588] [cursor=pointer]:
+                    - generic [ref=e1589]:
+                      - generic [ref=e1590]: Interface
+                      - generic [ref=e1591]: Melhorar layout do sidebar e menu para organizar opções de perfil
+                    - generic [ref=e1592]:
+                      - generic [ref=e1593]: Ryan Oliveira
+                      - generic [ref=e1594]: ·
+                      - generic [ref=e1595]: 08 de mai.
+                  - button [ref=e1596] [cursor=pointer]:
+                    - img [ref=e1597]
+                - generic [ref=e1600]:
+                  - generic [ref=e1601]:
+                    - img [ref=e1603]
+                    - generic [ref=e1605]: Transcrever
+                  - generic [ref=e1607]:
+                    - img [ref=e1609]
+                    - generic [ref=e1611]: Validar
+                  - generic [ref=e1613]:
+                    - img [ref=e1615]
+                    - generic [ref=e1617]: Executar
+                  - generic [ref=e1619]:
+                    - generic [ref=e1620]: "4"
+                    - generic [ref=e1621]: Deploy
+                - generic [ref=e1623]:
+                  - paragraph [ref=e1624]: NO SIDEBAR GERAL E MENU GERAL Modificar o layout do sidebar lateral e do header menu para que as opções 'Configurações' e 'Sair' sejam movidas para dentro do perfil do usuário. Ao clicar no perfil, um dropdown deve aparecer com essas duas opções. Isso melhora a organização e a experiência do usuário.
+                  - generic [ref=e1625]:
+                    - generic [ref=e1627]:
+                      - img [ref=e1628]
+                      - generic [ref=e1631]: Prompt transcrito pela IA
+                    - generic [ref=e1632]: Modificar o layout do sidebar lateral e do header menu para que as opções 'Configurações' e 'Sair' sejam movidas para dentro do perfil do usuário. Ao clicar no perfil, um dropdown deve aparecer com essas duas opções. Isso envolve alterar a estrutura de navegação para uma mais centralizada e organizada, melhorando a experiência do usuário.
+                  - generic [ref=e1633]:
+                    - paragraph [ref=e1634]: Modificou o layout do sidebar para mover as opções 'Configurações' e 'Sair' para dentro do perfil do usuário.
+                    - generic [ref=e1635]:
+                      - generic [ref=e1636]:
+                        - generic [ref=e1637]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e1639]: −const navItems = [
+                        - generic [ref=e1640]:
+                          - generic [ref=e1641]: +const navItems = [
+                          - generic [ref=e1642]: "+ { href: \"/\", icon: Home, label: \"Dashboard\" },"
+                          - generic [ref=e1643]: "+ { href: \"/search\", icon: Search, label: \"Buscar\" },"
+                          - generic [ref=e1644]: "+ { href: \"/products\", icon: Package, label: \"Produtos\" },"
+                          - generic [ref=e1645]: "+ { href: \"/suppliers\", icon: Store, label: \"Fornecedores\" },"
+                          - generic [ref=e1646]: "+ { href: \"/results\", icon: BarChart3, label: \"Resultados\" },"
+                          - generic [ref=e1647]: +];
+                      - generic [ref=e1648]:
+                        - generic [ref=e1649]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e1650]:
+                          - generic [ref=e1651]: − <nav className="flex flex-1 flex-col gap-2">
+                          - generic [ref=e1652]: "− {navItems.map((item) => {"
+                          - generic [ref=e1653]: − const Icon = item.icon;
+                          - generic [ref=e1654]: − const active = isActive(item.href);
+                          - generic [ref=e1655]: − return (
+                          - generic [ref=e1656]: − <Link
+                          - generic [ref=e1657]: "− key={item.href}"
+                          - generic [ref=e1658]: "− href={item.href}"
+                          - generic [ref=e1659]: "− className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${"
+                          - generic [ref=e1660]: − active
+                          - generic [ref=e1661]: − ? "bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
+                          - generic [ref=e1662]: "− : \"text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800\""
+                          - generic [ref=e1663]: "− }`}"
+                          - generic [ref=e1664]: "− title={item.label}"
+                          - generic [ref=e1665]: − >
+                          - generic [ref=e1666]: "− {active && ("
+                          - generic [ref=e1667]: − <motion.div
+                          - generic [ref=e1668]: − layoutId="activeCompactItem"
+                          - generic [ref=e1669]: − className="absolute inset-0 rounded-lg bg-purple-100 dark:bg-purple-500/10"
+                          - generic [ref=e1670]: "− transition={{ type: \"spring\", bounce: 0.2, duration: 0.6 }}"
+                          - generic [ref=e1671]: − />
+                          - generic [ref=e1672]: "− )}"
+                          - generic [ref=e1673]: − <Icon className="relative h-5 w-5" />
+                          - generic [ref=e1674]: − </Link>
+                          - generic [ref=e1675]: − );
+                          - generic [ref=e1676]: "− })}"
+                          - generic [ref=e1677]: − </nav>
+                          - generic [ref=e1678]: −
+                          - generic [ref=e1679]: "− {/* Profile dropdown */}"
+                        - generic [ref=e1680]:
+                          - generic [ref=e1681]: + <nav className="flex flex-1 flex-col gap-2">
+                          - generic [ref=e1682]: "+ {navItems.map((item) => {"
+                          - generic [ref=e1683]: + const Icon = item.icon;
+                          - generic [ref=e1684]: + const active = isActive(item.href);
+                          - generic [ref=e1685]: + return (
+                          - generic [ref=e1686]: + <Link
+                          - generic [ref=e1687]: "+ key={item.href}"
+                          - generic [ref=e1688]: "+ href={item.href}"
+                          - generic [ref=e1689]: "+ className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${"
+                          - generic [ref=e1690]: + active
+                          - generic [ref=e1691]: + ? "bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
+                          - generic [ref=e1692]: "+ : \"text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800\""
+                          - generic [ref=e1693]: "+ }`}"
+                          - generic [ref=e1694]: "+ title={item.label}"
+                          - generic [ref=e1695]: + >
+                          - generic [ref=e1696]: "+ {active && ("
+                          - generic [ref=e1697]: + <motion.div
+                          - generic [ref=e1698]: + layoutId="activeCompactItem"
+                          - generic [ref=e1699]: + className="absolute inset-0 rounded-lg bg-purple-100 dark:bg-purple-500/10"
+                          - generic [ref=e1700]: "+ transition={{ type: \"spring\", bounce: 0.2, duration: 0.6 }}"
+                          - generic [ref=e1701]: + />
+                          - generic [ref=e1702]: "+ )}"
+                          - generic [ref=e1703]: + <Icon className="relative h-5 w-5" />
+                          - generic [ref=e1704]: + </Link>
+                          - generic [ref=e1705]: + );
+                          - generic [ref=e1706]: "+ })}"
+                          - generic [ref=e1707]: + </nav>
+                          - generic [ref=e1708]: + <div className="mt-auto flex justify-center">
+                          - generic [ref=e1709]: + <div className="relative">
+                          - generic [ref=e1710]: + <button
+                          - generic [ref=e1711]: "+ onClick={() => setShowDropdown(!showDropdown)}"
+                          - generic [ref=e1712]: + className="flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                          - generic [ref=e1713]: + title="Perfil"
+                          - generic [ref=e1714]: + >
+                          - generic [ref=e1715]: + <User className="h-5 w-5" />
+                          - generic [ref=e1716]: + </button>
+                          - generic [ref=e1717]: +
+                          - generic [ref=e1718]: "+ {showDropdown && ("
+                          - generic [ref=e1719]: + <>
+                          - generic [ref=e1720]: + <div
+                          - generic [ref=e1721]: + className="fixed inset-0 z-10"
+                          - generic [ref=e1722]: "+ onClick={() => setShowDropdown(false)}"
+                          - generic [ref=e1723]: + />
+                          - generic [ref=e1724]: + <div className="absolute bottom-0 left-12 z-20 mb-1 w-48 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                          - generic [ref=e1725]: + <Link
+                          - generic [ref=e1726]: + href="/settings"
+                          - generic [ref=e1727]: "+ onClick={() => setShowDropdown(false)}"
+                          - generic [ref=e1728]: + className="flex w-full items-center gap-2.5 rounded-t-xl px-4 py-3 text-sm text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                          - generic [ref=e1729]: + >
+                          - generic [ref=e1730]: + <Settings className="h-4 w-4" />
+                          - generic [ref=e1731]: + Configurações
+                          - generic [ref=e1732]: + </Link>
+                          - generic [ref=e1733]: + <div className="border-t border-neutral-100 dark:border-neutral-800" />
+                          - generic [ref=e1734]: + <button
+                          - generic [ref=e1735]: "+ onClick={handleLogout}"
+                          - generic [ref=e1736]: + className="flex w-full items-center gap-2.5 rounded-b-xl px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          - generic [ref=e1737]: + >
+                          - generic [ref=e1738]: + <LogOut className="h-4 w-4" />
+                          - generic [ref=e1739]: + Sair
+                          - generic [ref=e1740]: + </button>
+                          - generic [ref=e1741]: + </div>
+                          - generic [ref=e1742]: + </>
+                          - generic [ref=e1743]: "+ )}"
+                          - generic [ref=e1744]: + </div>
+                          - generic [ref=e1745]: + </div>
+                  - generic [ref=e1746]:
+                    - generic [ref=e1747]:
+                      - img [ref=e1748]
+                      - code [ref=e1752]: feedback/21
+                      - generic [ref=e1753]: b0e5f56
+                    - generic [ref=e1754]:
+                      - link "Ver branch no GitHub" [ref=e1755] [cursor=pointer]:
+                        - /url: https://github.com/ryanoliveiragit/pricetracker/tree/feedback/21
+                        - img [ref=e1756]
+                        - text: Ver branch no GitHub
+                      - generic [ref=e1760]:
+                        - img [ref=e1761]
+                        - text: Vercel building…
+                  - generic [ref=e1763]:
+                    - button "Marcar como mergeado" [ref=e1764] [cursor=pointer]:
+                      - img [ref=e1765]
+                      - text: Marcar como mergeado
+                    - button "Re-executar" [ref=e1768] [cursor=pointer]:
+                      - img [ref=e1769]
+                      - text: Re-executar
+              - generic [ref=e1772]:
+                - generic [ref=e1773]:
+                  - generic [ref=e1775] [cursor=pointer]:
+                    - generic [ref=e1776]:
+                      - generic [ref=e1777]: Interface
+                      - generic [ref=e1778]: Reorganizar opções de configurações e sair no perfil do usuário
+                    - generic [ref=e1779]:
+                      - generic [ref=e1780]: Ryan Oliveira
+                      - generic [ref=e1781]: ·
+                      - generic [ref=e1782]: 08 de mai.
+                  - button [ref=e1783] [cursor=pointer]:
+                    - img [ref=e1784]
+                - generic [ref=e1787]:
+                  - generic [ref=e1788]:
+                    - img [ref=e1790]
+                    - generic [ref=e1792]: Transcrever
+                  - generic [ref=e1794]:
+                    - img [ref=e1796]
+                    - generic [ref=e1798]: Validar
+                  - generic [ref=e1800]:
+                    - img [ref=e1802]
+                    - generic [ref=e1804]: Executar
+                  - generic [ref=e1806]:
+                    - generic [ref=e1807]: "4"
+                    - generic [ref=e1808]: Deploy
+                - generic [ref=e1810]:
+                  - paragraph [ref=e1811]: no sidebar lateral e no header menu, tem as opcoes configuracoes e sair, eu quero q elas fiquem acopladas dentro do perfil ao clicar abrir um dropdown para baixo e o suasuario poder acessar essa 2 opcoes por la
+                  - generic [ref=e1812]:
+                    - generic [ref=e1814]:
+                      - img [ref=e1815]
+                      - generic [ref=e1818]: Prompt transcrito pela IA
+                    - generic [ref=e1819]: Modificar o layout do sidebar lateral e do header menu para que as opções 'Configurações' e 'Sair' sejam movidas para dentro do perfil do usuário. Ao clicar no perfil, um dropdown deve aparecer com essas duas opções. Isso melhora a organização e a experiência do usuário.
+                  - generic [ref=e1820]:
+                    - paragraph [ref=e1821]: Modificou o layout do sidebar lateral e do header menu para que as opções 'Configurações' e 'Sair' sejam movidas para dentro do perfil do usuário.
+                    - generic [ref=e1822]:
+                      - generic [ref=e1823]:
+                        - generic [ref=e1824]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e1826]: "−navItems.map((item) => {"
+                        - generic [ref=e1827]:
+                          - generic [ref=e1828]: "+navItems.map((item) => {"
+                          - generic [ref=e1829]: + if (item.label === 'Config') return null;
+                      - generic [ref=e1830]:
+                        - generic [ref=e1831]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e1833]: "−<button onClick={handleLogout}"
+                        - generic [ref=e1834]:
+                          - generic [ref=e1835]: "+<button className='flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800' onClick={() => setShowDropdown(!showDropdown)} title='Perfil'>"
+                          - generic [ref=e1836]: + <User className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
+                          - generic [ref=e1837]: + </button>
+                          - generic [ref=e1838]: "+ {showDropdown && ("
+                          - generic [ref=e1839]: + <div className='absolute bottom-0 left-0 mb-12 ml-12 w-48 rounded-lg bg-white shadow-lg dark:bg-neutral-900'>
+                          - generic [ref=e1840]: + <Link href='/settings' className='flex w-full items-center gap-2 p-4 hover:bg-neutral-100 dark:hover:bg-neutral-800'>
+                          - generic [ref=e1841]: + <Settings className='h-4 w-4' /> Configurações
+                          - generic [ref=e1842]: + </Link>
+                          - generic [ref=e1843]: "+ <button onClick={handleLogout} className='flex w-full items-center gap-2 p-4 hover:bg-neutral-100 dark:hover:bg-neutral-800'>"
+                          - generic [ref=e1844]: + <LogOut className='h-4 w-4' /> Sair
+                          - generic [ref=e1845]: + </button>
+                          - generic [ref=e1846]: + </div>
+                          - generic [ref=e1847]: "+ )}"
+                  - generic [ref=e1848]:
+                    - generic [ref=e1849]:
+                      - img [ref=e1850]
+                      - code [ref=e1854]: feedback/20
+                      - generic [ref=e1855]: 7b50a2f
+                    - generic [ref=e1856]:
+                      - link "Ver branch no GitHub" [ref=e1857] [cursor=pointer]:
+                        - /url: https://github.com/ryanoliveiragit/pricetracker/tree/feedback/20
+                        - img [ref=e1858]
+                        - text: Ver branch no GitHub
+                      - generic [ref=e1862]:
+                        - img [ref=e1863]
+                        - text: Vercel building…
+                  - generic [ref=e1865]:
+                    - button "Marcar como mergeado" [ref=e1866] [cursor=pointer]:
+                      - img [ref=e1867]
+                      - text: Marcar como mergeado
+                    - button "Re-executar" [ref=e1870] [cursor=pointer]:
+                      - img [ref=e1871]
+                      - text: Re-executar
+              - generic [ref=e1874]:
+                - generic [ref=e1875]:
+                  - generic [ref=e1877] [cursor=pointer]:
+                    - generic [ref=e1878]:
+                      - generic [ref=e1879]: Interface
+                      - generic [ref=e1880]: Compactar configurações e sair dentro do perfil do usuário
+                    - generic [ref=e1881]:
+                      - generic [ref=e1882]: Ryan Oliveira
+                      - generic [ref=e1883]: ·
+                      - generic [ref=e1884]: 08 de mai.
+                  - button [ref=e1885] [cursor=pointer]:
+                    - img [ref=e1886]
+                - generic [ref=e1889]:
+                  - generic [ref=e1890]:
+                    - img [ref=e1892]
+                    - generic [ref=e1894]: Transcrever
+                  - generic [ref=e1896]:
+                    - img [ref=e1898]
+                    - generic [ref=e1900]: Validar
+                  - generic [ref=e1902]:
+                    - img [ref=e1904]
+                    - generic [ref=e1906]: Executar
+                  - generic [ref=e1908]:
+                    - generic [ref=e1909]: "4"
+                    - generic [ref=e1910]: Deploy
+              - generic [ref=e1911]:
+                - generic [ref=e1912]:
+                  - generic [ref=e1914] [cursor=pointer]:
+                    - generic [ref=e1915]:
+                      - generic [ref=e1916]: Interface
+                      - generic [ref=e1917]: Compactar configurações e sair dentro do perfil do usuário
+                    - generic [ref=e1918]:
+                      - generic [ref=e1919]: Ryan Oliveira
+                      - generic [ref=e1920]: ·
+                      - generic [ref=e1921]: 08 de mai.
+                  - button [ref=e1922] [cursor=pointer]:
+                    - img [ref=e1923]
+                - generic [ref=e1926]:
+                  - generic [ref=e1927]:
+                    - img [ref=e1929]
+                    - generic [ref=e1931]: Transcrever
+                  - generic [ref=e1933]:
+                    - img [ref=e1935]
+                    - generic [ref=e1937]: Validar
+                  - generic [ref=e1939]:
+                    - img [ref=e1941]
+                    - generic [ref=e1943]: Executar
+                  - generic [ref=e1945]:
+                    - generic [ref=e1946]: "4"
+                    - generic [ref=e1947]: Deploy
+              - generic [ref=e1949]:
+                - generic [ref=e1951] [cursor=pointer]:
+                  - generic [ref=e1952]:
+                    - generic [ref=e1953]: Interface
+                    - generic [ref=e1954]: Compactar configurações e sair dentro do perfil do usuário
+                  - generic [ref=e1955]:
+                    - generic [ref=e1956]: Ryan Oliveira
+                    - generic [ref=e1957]: ·
+                    - generic [ref=e1958]: 08 de mai.
+                - button [ref=e1959] [cursor=pointer]:
+                  - img [ref=e1960]
+              - generic [ref=e1962]:
+                - generic [ref=e1963]:
+                  - generic [ref=e1965] [cursor=pointer]:
+                    - generic [ref=e1966]:
+                      - generic [ref=e1967]: Interface
+                      - generic [ref=e1968]: "Interface: quero compactar o configuracoes e sair dentro do perfil do usaurio"
+                    - generic [ref=e1969]:
+                      - generic [ref=e1970]: Ryan Oliveira
+                      - generic [ref=e1971]: ·
+                      - generic [ref=e1972]: 08 de mai.
+                  - button [ref=e1973] [cursor=pointer]:
+                    - img [ref=e1974]
+                - generic [ref=e1977]:
+                  - generic [ref=e1978]:
+                    - img [ref=e1980]
+                    - generic [ref=e1982]: Transcrever
+                  - generic [ref=e1984]:
+                    - img [ref=e1986]
+                    - generic [ref=e1988]: Validar
+                  - generic [ref=e1990]:
+                    - img [ref=e1992]
+                    - generic [ref=e1994]: Executar
+                  - generic [ref=e1996]:
+                    - generic [ref=e1997]: "4"
+                    - generic [ref=e1998]: Deploy
+                - generic [ref=e2000]:
+                  - paragraph [ref=e2001]: quero compactar o configuracoes e sair dentro do perfil do usaurio
+                  - generic [ref=e2002]:
+                    - generic [ref=e2004]:
+                      - img [ref=e2005]
+                      - generic [ref=e2008]: Prompt transcrito pela IA
+                    - generic [ref=e2009]: "Implemente a seguinte melhoria de interface solicitada por um usuário: \"quero compactar o configuracoes e sair dentro do perfil do usaurio\" Identifique o(s) componente(s) afetado(s) no frontend (src/components/, src/layouts/, src/views/). Mantenha o padrão de design existente (Tailwind CSS, suporte a dark mode)."
+                  - generic [ref=e2010]:
+                    - paragraph [ref=e2011]: Melhorou a interface do usuário adicionando um item de menu para configurações e um item para sair.
+                    - generic [ref=e2012]:
+                      - generic [ref=e2013]:
+                        - generic [ref=e2014]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e2016]: −Config
+                        - generic [ref=e2018]: +Configurações
+                      - generic [ref=e2019]:
+                        - generic [ref=e2020]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e2022]: −navItems = [
+                        - generic [ref=e2024]: "+const navItems = [ { href: \"/settings\", icon: Settings, label: \"Configurações\" }, { href: \"#\", icon: LogOut, label: \"Sair\" }"
+                  - generic [ref=e2025]:
+                    - generic [ref=e2026]:
+                      - img [ref=e2027]
+                      - code [ref=e2031]: feedback/16
+                      - generic [ref=e2032]: ceee606
+                    - generic [ref=e2034]:
+                      - img [ref=e2035]
+                      - text: Vercel building…
+                  - generic [ref=e2037]:
+                    - button "Marcar como mergeado" [ref=e2038] [cursor=pointer]:
+                      - img [ref=e2039]
+                      - text: Marcar como mergeado
+                    - button "Re-executar" [ref=e2042] [cursor=pointer]:
+                      - img [ref=e2043]
+                      - text: Re-executar
+              - generic [ref=e2046]:
+                - generic [ref=e2047]:
+                  - generic [ref=e2049] [cursor=pointer]:
+                    - generic [ref=e2050]:
+                      - generic [ref=e2051]: Interface
+                      - generic [ref=e2052]: Reorganizar configurações em um dropdown no perfil do usuário
+                    - generic [ref=e2053]:
+                      - generic [ref=e2054]: Ryan Oliveira
+                      - generic [ref=e2055]: ·
+                      - generic [ref=e2056]: 08 de mai.
+                  - button [ref=e2057] [cursor=pointer]:
+                    - img [ref=e2058]
+                - generic [ref=e2061]:
+                  - generic [ref=e2062]:
+                    - img [ref=e2064]
+                    - generic [ref=e2066]: Transcrever
+                  - generic [ref=e2068]:
+                    - img [ref=e2070]
+                    - generic [ref=e2072]: Validar
+                  - generic [ref=e2074]:
+                    - img [ref=e2076]
+                    - generic [ref=e2078]: Executar
+                  - generic [ref=e2080]:
+                    - generic [ref=e2081]: "4"
+                    - generic [ref=e2082]: Deploy
+              - generic [ref=e2083]:
+                - generic [ref=e2084]:
+                  - generic [ref=e2086] [cursor=pointer]:
+                    - generic [ref=e2087]:
+                      - generic [ref=e2088]: Interface
+                      - generic [ref=e2089]: Reorganizar configurações em um dropdown no perfil do usuário
+                    - generic [ref=e2090]:
+                      - generic [ref=e2091]: Ryan Oliveira
+                      - generic [ref=e2092]: ·
+                      - generic [ref=e2093]: 07 de mai.
+                  - button [ref=e2094] [cursor=pointer]:
+                    - img [ref=e2095]
+                - generic [ref=e2098]:
+                  - generic [ref=e2099]:
+                    - img [ref=e2101]
+                    - generic [ref=e2103]: Transcrever
+                  - generic [ref=e2105]:
+                    - img [ref=e2107]
+                    - generic [ref=e2109]: Validar
+                  - generic [ref=e2111]:
+                    - img [ref=e2113]
+                    - generic [ref=e2115]: Executar
+                  - generic [ref=e2117]:
+                    - generic [ref=e2118]: "4"
+                    - generic [ref=e2119]: Deploy
+                - generic [ref=e2121]:
+                  - paragraph [ref=e2122]: Reorganizar configurações em um dropdown no perfil do usuário
+                  - generic [ref=e2123]:
+                    - generic [ref=e2125]:
+                      - img [ref=e2126]
+                      - generic [ref=e2129]: Prompt transcrito pela IA
+                    - generic [ref=e2130]: Reorganizar as configurações atualmente disponíveis no perfil do usuário em um menu dropdown. Isso melhorará a experiência do usuário ao reduzir a quantidade de opções exibidas de forma direta, tornando a interface mais limpa e fácil de navegar. O dropdown deve ser implementado de forma que seja facilmente acessível e compreensível, com opções claras e concisas. As configurações devem ser agrupadas de forma lógica dentro do dropdown para facilitar a busca e o acesso às mesmas.
+                  - generic [ref=e2131]:
+                    - paragraph [ref=e2132]: Reorganizou as configurações em um menu dropdown
+                    - generic [ref=e2133]:
+                      - generic [ref=e2134]:
+                        - generic [ref=e2135]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e2137]: "−icon: Settings, label: \"Config\""
+                        - generic [ref=e2139]: "+icon: ChevronDown, label: \"Config\""
+                      - generic [ref=e2140]:
+                        - generic [ref=e2141]: frontend/src/layouts/CompactLayout.tsx
+                        - generic [ref=e2143]: "−href: \"/settings\""
+                        - generic [ref=e2145]: +
+                  - generic [ref=e2146]:
+                    - generic [ref=e2147]:
+                      - img [ref=e2148]
+                      - code [ref=e2152]: feedback/14-reorganizou-as-configura-es-em-um-menu-d
+                      - generic [ref=e2153]: 7ff6888
+                    - generic [ref=e2155]:
+                      - img [ref=e2156]
+                      - text: Vercel building…
+                  - generic [ref=e2158]:
+                    - button "Marcar como mergeado" [ref=e2159] [cursor=pointer]:
+                      - img [ref=e2160]
+                      - text: Marcar como mergeado
+                    - button "Re-executar" [ref=e2163] [cursor=pointer]:
+                      - img [ref=e2164]
+                      - text: Re-executar
+              - generic [ref=e2167]:
+                - generic [ref=e2168]:
+                  - generic [ref=e2170] [cursor=pointer]:
+                    - generic [ref=e2171]:
+                      - generic [ref=e2172]: Interface
+                      - generic [ref=e2173]: Botão de sair pequeno e sem texto
+                    - generic [ref=e2174]:
+                      - generic [ref=e2175]: Ryan Oliveira
+                      - generic [ref=e2176]: ·
+                      - generic [ref=e2177]: 07 de mai.
+                  - button [ref=e2178] [cursor=pointer]:
+                    - img [ref=e2179]
+                - generic [ref=e2182]:
+                  - generic [ref=e2183]:
+                    - img [ref=e2185]
+                    - generic [ref=e2187]: Transcrever
+                  - generic [ref=e2189]:
+                    - img [ref=e2191]
+                    - generic [ref=e2193]: Validar
+                  - generic [ref=e2195]:
+                    - generic [ref=e2196]: "3"
+                    - generic [ref=e2197]: Executar
+                  - generic [ref=e2199]:
+                    - generic [ref=e2200]: "4"
+                    - generic [ref=e2201]: Deploy
+                - generic [ref=e2203]:
+                  - paragraph [ref=e2204]: O botao de sair esta muito pequeno e sem texto. Gostaria que ele tivesse o label Sair ao lado do icone igual ao menu mobile.
+                  - generic [ref=e2205]:
+                    - generic [ref=e2206]:
+                      - img [ref=e2207]
+                      - generic [ref=e2209]: Execução falhou — voltou para validado para nova tentativa
+                    - generic [ref=e2210]: "Resposta da IA não contém JSON válido: ```json { \"changes\": [ { \"file\": \"frontend/src/layouts/CompactLayout.tsx\", \"old\": \"LogOut\", \"new\": \"Sair\" }, { \"file\": \"frontend/src/layouts/CompactLayout.tsx\","
+              - generic [ref=e2212]:
+                - generic [ref=e2213]:
+                  - generic [ref=e2215] [cursor=pointer]:
+                    - generic [ref=e2216]:
+                      - generic [ref=e2217]: Interface
+                      - generic [ref=e2218]: Reorganizar configurações em um dropdown no perfil do usuário
+                    - generic [ref=e2219]:
+                      - generic [ref=e2220]: Ryan Oliveira
+                      - generic [ref=e2221]: ·
+                      - generic [ref=e2222]: 07 de mai.
+                  - button [ref=e2223] [cursor=pointer]:
+                    - img [ref=e2224]
+                - generic [ref=e2227]:
+                  - generic [ref=e2228]:
+                    - img [ref=e2230]
+                    - generic [ref=e2232]: Transcrever
+                  - generic [ref=e2234]:
+                    - img [ref=e2236]
+                    - generic [ref=e2238]: Validar
+                  - generic [ref=e2240]:
+                    - generic [ref=e2241]: "3"
+                    - generic [ref=e2242]: Executar
+                  - generic [ref=e2244]:
+                    - generic [ref=e2245]: "4"
+                    - generic [ref=e2246]: Deploy
+                - paragraph [ref=e2249]: Reorganizar configurações e sair em um dropdown no perfil do usuário
+              - generic [ref=e2251]:
+                - generic [ref=e2252]:
+                  - generic [ref=e2254] [cursor=pointer]:
+                    - generic [ref=e2255]:
+                      - generic [ref=e2256]: Interface
+                      - generic [ref=e2257]: Reorganizar configurações e sair em um dropdown no perfil do usuário
+                    - generic [ref=e2258]:
+                      - generic [ref=e2259]: Ryan Oliveira
+                      - generic [ref=e2260]: ·
+                      - generic [ref=e2261]: 07 de mai.
+                  - button [ref=e2262] [cursor=pointer]:
+                    - img [ref=e2263]
+                - generic [ref=e2266]:
+                  - generic [ref=e2267]:
+                    - img [ref=e2269]
+                    - generic [ref=e2271]: Transcrever
+                  - generic [ref=e2273]:
+                    - img [ref=e2275]
+                    - generic [ref=e2277]: Validar
+                  - generic [ref=e2279]:
+                    - generic [ref=e2280]: "3"
+                    - generic [ref=e2281]: Executar
+                  - generic [ref=e2283]:
+                    - generic [ref=e2284]: "4"
+                    - generic [ref=e2285]: Deploy
+                - paragraph [ref=e2288]: configurações e sair devera ficar em um dropdown ao clicar no perfil do usuario
+              - generic [ref=e2290]:
+                - generic [ref=e2291]:
+                  - generic [ref=e2293] [cursor=pointer]:
+                    - generic [ref=e2294]:
+                      - generic [ref=e2295]: Interface
+                      - generic [ref=e2296]: Mudar o nome 'Feedbacks' para 'Tickets' na interface do sistema
+                    - generic [ref=e2297]:
+                      - generic [ref=e2298]: Ryan Oliveira
+                      - generic [ref=e2299]: ·
+                      - generic [ref=e2300]: 07 de mai.
+                  - button [ref=e2301] [cursor=pointer]:
+                    - img [ref=e2302]
+                - generic [ref=e2305]:
+                  - generic [ref=e2306]:
+                    - img [ref=e2308]
+                    - generic [ref=e2310]: Transcrever
+                  - generic [ref=e2312]:
+                    - img [ref=e2314]
+                    - generic [ref=e2316]: Validar
+                  - generic [ref=e2318]:
+                    - generic [ref=e2319]: "3"
+                    - generic [ref=e2320]: Executar
+                  - generic [ref=e2322]:
+                    - generic [ref=e2323]: "4"
+                    - generic [ref=e2324]: Deploy
+                - paragraph [ref=e2327]: trocar o nome feedbacks por (tickets)
+              - generic [ref=e2329]:
+                - generic [ref=e2330]:
+                  - generic [ref=e2332] [cursor=pointer]:
+                    - generic [ref=e2333]:
+                      - generic [ref=e2334]: Interface
+                      - generic [ref=e2335]: Melhorar o ícone de sair
+                    - generic [ref=e2336]:
+                      - generic [ref=e2337]: Ryan Oliveira
+                      - generic [ref=e2338]: ·
+                      - generic [ref=e2339]: 07 de mai.
+                  - button [ref=e2340] [cursor=pointer]:
+                    - img [ref=e2341]
+                - generic [ref=e2344]:
+                  - generic [ref=e2345]:
+                    - img [ref=e2347]
+                    - generic [ref=e2349]: Transcrever
+                  - generic [ref=e2351]:
+                    - img [ref=e2353]
+                    - generic [ref=e2355]: Validar
+                  - generic [ref=e2357]:
+                    - generic [ref=e2358]: "3"
+                    - generic [ref=e2359]: Executar
+                  - generic [ref=e2361]:
+                    - generic [ref=e2362]: "4"
+                    - generic [ref=e2363]: Deploy
+                - paragraph [ref=e2366]: melhhorar o incone de sair
+              - generic [ref=e2368]:
+                - generic [ref=e2369]:
+                  - generic [ref=e2371] [cursor=pointer]:
+                    - generic [ref=e2372]:
+                      - generic [ref=e2373]: Interface
+                      - generic [ref=e2374]: Melhorar ícone de sair
+                    - generic [ref=e2375]:
+                      - generic [ref=e2376]: Ryan Oliveira
+                      - generic [ref=e2377]: ·
+                      - generic [ref=e2378]: 07 de mai.
+                  - button [ref=e2379] [cursor=pointer]:
+                    - img [ref=e2380]
+                - generic [ref=e2383]:
+                  - generic [ref=e2384]:
+                    - img [ref=e2386]
+                    - generic [ref=e2388]: Transcrever
+                  - generic [ref=e2390]:
+                    - img [ref=e2392]
+                    - generic [ref=e2394]: Validar
+                  - generic [ref=e2396]:
+                    - generic [ref=e2397]: "3"
+                    - generic [ref=e2398]: Executar
+                  - generic [ref=e2400]:
+                    - generic [ref=e2401]: "4"
+                    - generic [ref=e2402]: Deploy
+                - paragraph [ref=e2405]: trocar o icone de sair por um melhor
+              - generic [ref=e2407]:
+                - generic [ref=e2408]:
+                  - generic [ref=e2410] [cursor=pointer]:
+                    - generic [ref=e2411]:
+                      - generic [ref=e2412]: Interface
+                      - generic [ref=e2413]: Adicionar menu dropdown no perfil do usuário
+                    - generic [ref=e2414]:
+                      - generic [ref=e2415]: Ryan Oliveira
+                      - generic [ref=e2416]: ·
+                      - generic [ref=e2417]: 07 de mai.
+                  - button [ref=e2418] [cursor=pointer]:
+                    - img [ref=e2419]
+                - generic [ref=e2422]:
+                  - generic [ref=e2423]:
+                    - img [ref=e2425]
+                    - generic [ref=e2427]: Transcrever
+                  - generic [ref=e2429]:
+                    - img [ref=e2431]
+                    - generic [ref=e2433]: Validar
+                  - generic [ref=e2435]:
+                    - generic [ref=e2436]: "3"
+                    - generic [ref=e2437]: Executar
+                  - generic [ref=e2439]:
+                    - generic [ref=e2440]: "4"
+                    - generic [ref=e2441]: Deploy
+                - paragraph [ref=e2444]: adicionar o sair e configuralçoes em formato de dropwdown ao clicar no perfil do usuario
+              - generic [ref=e2446]:
+                - generic [ref=e2447]:
+                  - generic [ref=e2449] [cursor=pointer]:
+                    - generic [ref=e2450]:
+                      - generic [ref=e2451]: Interface
+                      - generic [ref=e2452]: "Interface: quero adicionar o configurações e sair dentro de um dropdown menu do perfil para"
+                    - generic [ref=e2453]:
+                      - generic [ref=e2454]: Ryan Oliveira
+                      - generic [ref=e2455]: ·
+                      - generic [ref=e2456]: 07 de mai.
+                  - button [ref=e2457] [cursor=pointer]:
+                    - img [ref=e2458]
+                - generic [ref=e2461]:
+                  - generic [ref=e2462]:
+                    - img [ref=e2464]
+                    - generic [ref=e2466]: Transcrever
+                  - generic [ref=e2468]:
+                    - img [ref=e2470]
+                    - generic [ref=e2472]: Validar
+                  - generic [ref=e2474]:
+                    - generic [ref=e2475]: "3"
+                    - generic [ref=e2476]: Executar
+                  - generic [ref=e2478]:
+                    - generic [ref=e2479]: "4"
+                    - generic [ref=e2480]: Deploy
+                - paragraph [ref=e2483]: quero adicionar o configurações e sair dentro de um dropdown menu do perfil para ocupar menos espaço na tela
+              - generic [ref=e2485]:
+                - generic [ref=e2486]:
+                  - generic [ref=e2488] [cursor=pointer]:
+                    - generic [ref=e2489]:
+                      - generic [ref=e2490]: Interface
+                      - generic [ref=e2491]: "Interface: eu gostaria de trocar o laranja por verde"
+                    - generic [ref=e2492]:
+                      - generic [ref=e2493]: Ryan Oliveira
+                      - generic [ref=e2494]: ·
+                      - generic [ref=e2495]: 07 de mai.
+                  - button [ref=e2496] [cursor=pointer]:
+                    - img [ref=e2497]
+                - generic [ref=e2500]:
+                  - generic [ref=e2501]:
+                    - img [ref=e2503]
+                    - generic [ref=e2505]: Transcrever
+                  - generic [ref=e2507]:
+                    - img [ref=e2509]
+                    - generic [ref=e2511]: Validar
+                  - generic [ref=e2513]:
+                    - generic [ref=e2514]: "3"
+                    - generic [ref=e2515]: Executar
+                  - generic [ref=e2517]:
+                    - generic [ref=e2518]: "4"
+                    - generic [ref=e2519]: Deploy
+                - paragraph [ref=e2522]: eu gostaria de trocar o laranja por verde
+              - generic [ref=e2524]:
+                - generic [ref=e2525]:
+                  - generic [ref=e2527] [cursor=pointer]:
+                    - generic [ref=e2528]:
+                      - generic [ref=e2529]: Abreviação
+                      - generic [ref=e2530]: "'cad' parece ser abreviação de 'cadeado' — par não cadastrado no sistema"
+                    - generic [ref=e2531]:
+                      - generic [ref=e2532]: Ryan Oliveira
+                      - generic [ref=e2533]: ·
+                      - generic [ref=e2534]: 07 de mai.
+                  - button [ref=e2535] [cursor=pointer]:
+                    - img [ref=e2536]
+                - generic [ref=e2539]:
+                  - generic [ref=e2540]:
+                    - img [ref=e2542]
+                    - generic [ref=e2544]: Transcrever
+                  - generic [ref=e2546]:
+                    - img [ref=e2548]
+                    - generic [ref=e2550]: Validar
+                  - generic [ref=e2552]:
+                    - generic [ref=e2553]: "3"
+                    - generic [ref=e2554]: Executar
+                  - generic [ref=e2556]:
+                    - generic [ref=e2557]: "4"
+                    - generic [ref=e2558]: Deploy
+                - generic [ref=e2560]:
+                  - paragraph [ref=e2561]: buquei cad mas no sistema consta apenas como cadeado
+                  - generic [ref=e2562]:
+                    - generic [ref=e2563]: 🔍 cad
+                    - generic [ref=e2564]: →
+                    - generic [ref=e2565]: cadeado
+                  - generic [ref=e2566]:
+                    - paragraph [ref=e2567]: Abreviação proposta
+                    - paragraph [ref=e2568]:
+                      - generic [ref=e2569]: "\"cadeado\""
+                      - text: →
+                      - code [ref=e2570]: cad
+              - generic [ref=e2572]:
+                - generic [ref=e2573]:
+                  - generic [ref=e2575] [cursor=pointer]:
+                    - generic [ref=e2576]:
+                      - generic [ref=e2577]: Manual
+                      - generic [ref=e2578]: Busca por 'caixa sifonada' não retornou 'cx.sif' — possível problema de mapeamento
+                    - generic [ref=e2579]:
+                      - generic [ref=e2580]: Ryan Oliveira
+                      - generic [ref=e2581]: ·
+                      - generic [ref=e2582]: 07 de mai.
+                  - button [ref=e2583] [cursor=pointer]:
+                    - img [ref=e2584]
+                - generic [ref=e2587]:
+                  - generic [ref=e2588]:
+                    - img [ref=e2590]
+                    - generic [ref=e2592]: Transcrever
+                  - generic [ref=e2594]:
+                    - img [ref=e2596]
+                    - generic [ref=e2598]: Validar
+                  - generic [ref=e2600]:
+                    - generic [ref=e2601]: "3"
+                    - generic [ref=e2602]: Executar
+                  - generic [ref=e2604]:
+                    - generic [ref=e2605]: "4"
+                    - generic [ref=e2606]: Deploy
+                - generic [ref=e2608]:
+                  - paragraph [ref=e2609]: quando busco caixa sifonada devera retornar tambem cx.sif
+                  - generic [ref=e2610]:
+                    - generic [ref=e2611]: 🔍 caixa sifonada
+                    - generic [ref=e2612]: →
+                    - generic [ref=e2613]: cx.sif
+              - generic [ref=e2615]:
+                - generic [ref=e2616]:
+                  - generic [ref=e2618] [cursor=pointer]:
+                    - generic [ref=e2619]:
+                      - generic [ref=e2620]: Manual
+                      - generic [ref=e2621]: Problema de busca relatado — análise manual necessária
+                    - generic [ref=e2622]:
+                      - generic [ref=e2623]: Ryan Oliveira
+                      - generic [ref=e2624]: ·
+                      - generic [ref=e2625]: 07 de mai.
+                  - button [ref=e2626] [cursor=pointer]:
+                    - img [ref=e2627]
+                - generic [ref=e2630]:
+                  - generic [ref=e2631]:
+                    - img [ref=e2633]
+                    - generic [ref=e2635]: Transcrever
+                  - generic [ref=e2637]:
+                    - img [ref=e2639]
+                    - generic [ref=e2641]: Validar
+                  - generic [ref=e2643]:
+                    - generic [ref=e2644]: "3"
+                    - generic [ref=e2645]: Executar
+                  - generic [ref=e2647]:
+                    - generic [ref=e2648]: "4"
+                    - generic [ref=e2649]: Deploy
+                - generic [ref=e2651]:
+                  - paragraph [ref=e2652]: busquei caixa sifonada porem no site ta como cx.sif
+                  - generic [ref=e2653]:
+                    - generic [ref=e2654]: 🔍 caixa sifonada
+                    - generic [ref=e2655]: →
+                    - generic [ref=e2656]: cx.sif
+              - generic [ref=e2658]:
+                - generic [ref=e2659]:
+                  - generic [ref=e2661] [cursor=pointer]:
+                    - generic [ref=e2662]:
+                      - generic [ref=e2663]: Manual
+                      - generic [ref=e2664]: Análise automática indisponível
+                    - generic [ref=e2665]:
+                      - generic [ref=e2666]: Ryan Oliveira
+                      - generic [ref=e2667]: ·
+                      - generic [ref=e2668]: 07 de mai.
+                  - button [ref=e2669] [cursor=pointer]:
+                    - img [ref=e2670]
+                - generic [ref=e2673]:
+                  - generic [ref=e2674]:
+                    - img [ref=e2676]
+                    - generic [ref=e2678]: Transcrever
+                  - generic [ref=e2680]:
+                    - img [ref=e2682]
+                    - generic [ref=e2684]: Validar
+                  - generic [ref=e2686]:
+                    - generic [ref=e2687]: "3"
+                    - generic [ref=e2688]: Executar
+                  - generic [ref=e2690]:
+                    - generic [ref=e2691]: "4"
+                    - generic [ref=e2692]: Deploy
+                - generic [ref=e2694]:
+                  - paragraph [ref=e2695]: Busquei cad pois em algumas lojas abreviam cadeado, porem nao retornou nada
+                  - generic [ref=e2696]:
+                    - generic [ref=e2697]: 🔍 cad
+                    - generic [ref=e2698]: →
+                    - generic [ref=e2699]: cadeado
+          - button "Reportar problema de busca" [ref=e1275] [cursor=pointer]:
+            - img [ref=e1276]
+            - generic [ref=e1278]: Reportar
+    - region "Notifications alt+T"
+  - alert [ref=e7]

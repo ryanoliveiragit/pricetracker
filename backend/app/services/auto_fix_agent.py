@@ -610,15 +610,15 @@ def _collect_chat_context(prompt: str, ticket_desc: str = "") -> str:
         (r, PROJECT_ROOT / Path(r)) for r in core_rels
     ]
     seen_paths = {str(p) for _, p in read_pairs}
-    for _, p in scored[:8]:
+    for _, p in scored[:4]:
         sp = str(p)
         if sp not in seen_paths:
             rel = p.relative_to(PROJECT_ROOT).as_posix()
             read_pairs.append((rel, p))
             seen_paths.add(sp)
 
-    MAX_PER = 15_000
-    MAX_TOTAL = 90_000
+    MAX_PER = 4_000
+    MAX_TOTAL = 20_000
     total = 0
 
     for rel, fp in read_pairs:
@@ -654,26 +654,32 @@ def _claude_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
 
 
 def _gemini_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
-    import urllib.request
-    contents = [
-        {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
-        for m in messages
-    ]
+    import urllib.request, urllib.error
+    contents = []
+    for i, m in enumerate(messages):
+        role = "user" if m["role"] == "user" else "model"
+        text = m["content"]
+        if i == 0 and role == "user":
+            text = f"{system}\n\n---\n\n{text}"
+        contents.append({"role": role, "parts": [{"text": text}]})
     payload = json.dumps({
-        "system_instruction": {"parts": [{"text": system}]},
         "contents": contents,
         "generationConfig": {"temperature": 0.3, "maxOutputTokens": 4096},
     }).encode()
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        data = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="ignore")
+        raise RuntimeError(f"Gemini API {e.code}: {detail[:200]}")
     raw = data["candidates"][0]["content"]["parts"][0]["text"]
     return _extract_chat_result(raw)
 
 
 def _groq_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
-    import urllib.request
+    import urllib.request, urllib.error
     payload = json.dumps({
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "system", "content": system}] + messages,
@@ -681,15 +687,23 @@ def _groq_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
     }).encode()
     req = urllib.request.Request(
         "https://api.groq.com/openai/v1/chat/completions", data=payload,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "groq-python/0.9.0",
+        },
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        data = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="ignore")
+        raise RuntimeError(f"Groq API {e.code}: {detail[:200]}")
     return _extract_chat_result(data["choices"][0]["message"]["content"])
 
 
 def _perplexity_chat_sync(api_key: str, system: str, messages: list[dict]) -> dict:
-    import urllib.request
+    import urllib.request, urllib.error
     payload = json.dumps({
         "model": "llama-3.1-sonar-large-128k-online",
         "messages": [{"role": "system", "content": system}] + messages,
@@ -699,8 +713,12 @@ def _perplexity_chat_sync(api_key: str, system: str, messages: list[dict]) -> di
         "https://api.perplexity.ai/chat/completions", data=payload,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        data = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="ignore")
+        raise RuntimeError(f"Perplexity API {e.code}: {detail[:200]}")
     return _extract_chat_result(data["choices"][0]["message"]["content"])
 
 
@@ -714,24 +732,21 @@ async def chat_agent_execute(message: str, history: list[dict], ticket_context: 
     messages = history[-10:] if len(history) > 10 else list(history)
 
     providers = []
-    if (settings.GEMINI_API_KEY or "").strip():
-        providers.append(("Gemini", _gemini_chat_sync, settings.GEMINI_API_KEY))
     if (settings.GROQ_API_KEY or "").strip():
         providers.append(("Groq", _groq_chat_sync, settings.GROQ_API_KEY))
-    if (settings.PERPLEXITY_API_KEY or "").strip():
-        providers.append(("Perplexity", _perplexity_chat_sync, settings.PERPLEXITY_API_KEY))
-    if (settings.ANTHROPIC_API_KEY or "").strip():
-        providers.append(("Claude", _claude_chat_sync, settings.ANTHROPIC_API_KEY))
+    if (settings.GEMINI_API_KEY or "").strip():
+        providers.append(("Gemini", _gemini_chat_sync, settings.GEMINI_API_KEY))
 
     if not providers:
-        raise RuntimeError("Nenhum provider configurado — adicione GEMINI_API_KEY, GROQ_API_KEY ou ANTHROPIC_API_KEY")
+        raise RuntimeError("Nenhum provider configurado — adicione GROQ_API_KEY ou GEMINI_API_KEY")
 
-    last_exc: Exception = RuntimeError("providers esgotados")
+    errors: list[str] = []
     for name, fn, key in providers:
         try:
             logger.info("chat_agent: chamando %s…", name)
             return await _asyncio.to_thread(fn, key.strip(), system, messages)
         except Exception as exc:
+            msg = f"{name}: {exc}"
             logger.warning("chat_agent: %s falhou — %s", name, exc)
-            last_exc = exc
-    raise last_exc
+            errors.append(msg)
+    raise RuntimeError("Todos os providers falharam — " + " | ".join(errors))
