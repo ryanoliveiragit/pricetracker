@@ -103,6 +103,7 @@ def _extract_json(raw: str) -> dict:
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent  # raiz do projeto
 
+# System prompt para providers sem tool_use (Gemini, Groq, Perplexity)
 _SYSTEM = """Você é um desenvolvedor sênior implementando uma mudança no projeto ConstruPrice.
 
 Stack:
@@ -118,21 +119,65 @@ Retorne APENAS JSON válido (sem markdown, sem explicação fora do JSON):
   "changes": [
     {
       "file": "caminho/relativo/ao/projeto",
-      "old": "string exata a substituir (copiada literalmente do arquivo)",
-      "new": "string de substituição"
+      "old": "trecho ÚNICO de UMA ÚNICA LINHA sem aspas duplas",
+      "new": "substituição também em UMA ÚNICA LINHA"
     }
   ],
   "summary": "descrição curta do que foi alterado"
 }
 
-Regras CRÍTICAS:
-- "old" deve ser copiado LITERALMENTE do código fornecido — não invente, não parafraseie
-- "old" deve ser único no arquivo (não repita trechos genéricos como chaves ou parênteses soltos)
-- Aspas duplas dentro de "old" e "new" devem ser escapadas como \" no JSON
-- Prefira trechos de 1-3 linhas que sejam únicos no contexto
-- Máximo 3 changes no total
+Regras CRÍTICAS para "old":
+- Deve ser EXATAMENTE como aparece no arquivo — copie palavra por palavra
+- APENAS UMA LINHA — nunca quebre em múltiplas linhas
+- SEM aspas duplas (") no valor — escolha um trecho que não tenha esse caractere
+  ERRADO: "old": "className=\"flex items-center\""  ← tem aspas
+  CERTO:  "old": "transition-colors hover:bg-neutral"  ← sem aspas, único no arquivo
+  CERTO:  "old": "text-neutral-600 dark:text-neutral"  ← trecho de classe único
+- "new" também em uma única linha, sem aspas duplas
+- Máximo 3 changes
 - Preserve estilo existente (TypeScript, Tailwind, dark mode com dark:)
 - Se não precisar alterar nada: {"changes": [], "summary": "Sem mudanças necessárias"}"""
+
+# Schema do tool_use para Anthropic (garante JSON estruturado sem parsing manual)
+_ANTHROPIC_TOOL = {
+    "name": "apply_code_changes",
+    "description": "Aplica mudanças pontuais nos arquivos do projeto",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "changes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "file": {"type": "string", "description": "Caminho relativo à raiz do projeto"},
+                        "old": {"type": "string", "description": "Substring EXATA a ser substituída (copiada literalmente do arquivo)"},
+                        "new": {"type": "string", "description": "String de substituição"},
+                    },
+                    "required": ["file", "old", "new"],
+                },
+            },
+            "summary": {"type": "string", "description": "Descrição curta do que foi alterado"},
+        },
+        "required": ["changes", "summary"],
+    },
+}
+
+_SYSTEM_CLAUDE = """Você é um desenvolvedor sênior implementando uma mudança no projeto ConstruPrice.
+
+Stack:
+- Backend: Python/FastAPI em backend/
+- Frontend: Next.js 14 / TypeScript / Tailwind CSS em frontend/src/
+
+Você receberá a solicitação de mudança e o conteúdo real dos arquivos relevantes.
+Use a ferramenta apply_code_changes para especificar as mudanças.
+
+Regras CRÍTICAS para "old":
+- Copie LITERALMENTE do código fornecido — nunca invente
+- Deve ser único no arquivo (não use trechos genéricos como só chaves ou parênteses)
+- Prefira 1-3 linhas que sejam únicas no contexto
+- Máximo 3 changes
+- Se não precisar alterar nada: changes = []"""
 
 
 # ---------------------------------------------------------------------------
@@ -199,30 +244,29 @@ def _collect_context(fix_type: str, prompt: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _claude_execute_sync(api_key: str, user_msg: str) -> dict:
-    import urllib.request
+    """Usa tool_use para garantir saída estruturada sem problemas de escaping JSON."""
+    import anthropic
 
-    payload = json.dumps({
-        "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 4096,
-        "system": _SYSTEM,
-        "messages": [{"role": "user", "content": user_msg}],
-    }).encode()
-
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=payload,
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        method="POST",
+    client = anthropic.Anthropic(api_key=api_key)
+    resp = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=4096,
+        system=_SYSTEM_CLAUDE,
+        messages=[{"role": "user", "content": user_msg}],
+        tools=[_ANTHROPIC_TOOL],
+        tool_choice={"type": "auto"},
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        body = json.loads(resp.read().decode())
 
-    raw = body["content"][0]["text"].strip()
-    return _extract_json(raw)
+    for block in resp.content:
+        if block.type == "tool_use" and block.name == "apply_code_changes":
+            return block.input  # já é dict — sem parsing de JSON
+
+    # fallback: tenta extrair JSON do texto se não usou tool
+    for block in resp.content:
+        if hasattr(block, "text"):
+            return _extract_json(block.text)
+
+    raise ValueError("Claude não retornou apply_code_changes via tool_use")
 
 
 # ---------------------------------------------------------------------------
