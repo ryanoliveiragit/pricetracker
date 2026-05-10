@@ -1,0 +1,41 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e7]: C
+        - heading "Criar sua plataforma" [level=1] [ref=e8]
+        - paragraph [ref=e9]: Configure em menos de 2 minutos
+      - generic [ref=e10]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: ✓
+          - text: Empresa
+        - generic [ref=e16]:
+          - generic [ref=e17]: "2"
+          - text: Administrador
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - button "←" [ref=e43] [cursor=pointer]
+          - generic [ref=e44]:
+            - heading "Conta do administrador" [level=2] [ref=e45]
+            - paragraph [ref=e46]:
+              - text: Você será o admin de
+              - strong [ref=e47]: empresa-teste-qa
+        - generic [ref=e48]:
+          - generic [ref=e49]: Nome completo*
+          - textbox "João Silva" [ref=e50]
+        - generic [ref=e51]:
+          - generic [ref=e52]: E-mail*
+          - textbox "joao@empresa.com" [ref=e53]
+        - generic [ref=e54]:
+          - generic [ref=e55]: Senha*
+          - textbox "Mínimo 6 caracteres" [ref=e56]
+        - generic [ref=e57]:
+          - generic [ref=e58]: Confirmar senha*
+          - textbox "Repita a senha" [ref=e59]
+        - button "Criar plataforma" [ref=e60] [cursor=pointer]
+      - paragraph [ref=e37]:
+        - text: Já tem uma conta?
+        - link "Fazer login" [ref=e38] [cursor=pointer]:
+          - /url: /login
+    - region "Notifications alt+T"
+  - alert [ref=e39]
