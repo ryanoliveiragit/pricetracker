@@ -1,8 +1,5 @@
 """
 Database module — async SQLAlchemy + PostgreSQL (asyncpg).
-
-Provides:
-    engine, async_session, Base, get_db()
 """
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -36,93 +33,99 @@ async def get_db():
 
 
 async def create_tables():
-    """Create all tables (called on startup)."""
-    # Import models here to ensure they are registered with Base metadata
+    """Create all tables and run incremental column migrations."""
     from app.models import db_models
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    logger.info("✅ Tabelas do banco de dados criadas/verificadas")
+    logger.info("✅ Tabelas criadas/verificadas")
 
-    # Add missing columns to existing tables if they don't exist
-    try:
-        async with engine.begin() as conn:
-            await conn.execute(
-                __import__("sqlalchemy").text(
-                    "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)"
-                )
-            )
-        logger.info("✅ Coluna created_by adicionada a suppliers")
-    except Exception as e:
-        logger.warning(f"⚠️  Não foi possível adicionar created_by: {e}")
-
-    try:
-        async with engine.begin() as conn:
-            await conn.execute(
-                __import__("sqlalchemy").text(
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT ''"
-                )
-            )
-        logger.info("✅ Coluna avatar adicionada a users")
-    except Exception as e:
-        logger.warning(f"⚠️  Não foi possível adicionar avatar: {e}")
-
-    _migrations = [
-        ("feedback_reports", "problem_type",       "VARCHAR(64) DEFAULT 'search'"),
-        ("feedback_reports", "execution_status",   "VARCHAR(32)"),
-        ("feedback_reports", "execution_diff",     "JSONB"),
-        ("feedback_reports", "execution_summary",  "TEXT"),
-        ("feedback_reports", "execution_error",    "TEXT"),
-        # Fluxo agente (transcrever → validar → executar em branch → preview)
-        ("feedback_reports", "validated_prompt",   "TEXT"),
-        ("feedback_reports", "branch_name",        "VARCHAR(128)"),
-        ("feedback_reports", "commit_sha",         "VARCHAR(40)"),
-        ("feedback_reports", "preview_url",        "TEXT"),
-        ("feedback_reports", "branch_url",         "TEXT"),
-        ("dynamic_synonyms", "id",                 None),  # tabela nova — criada pelo create_all
-    ]
     sa = __import__("sqlalchemy")
-    for table, col, definition in _migrations:
-        if definition is None:
-            continue
+
+    # ── Multi-tenancy column migrations ──────────────────────────────────────
+    _tenant_columns = [
+        # (table, column, definition)
+        ("users",        "tenant_id",  "VARCHAR(64) REFERENCES tenants(id)"),
+        ("suppliers",    "tenant_id",  "VARCHAR(64) REFERENCES tenants(id)"),
+        ("products",     "tenant_id",  "VARCHAR(64) REFERENCES tenants(id)"),
+        ("saved_offers", "tenant_id",  "VARCHAR(64) REFERENCES tenants(id)"),
+        ("search_cache", "tenant_id",  "VARCHAR(64) REFERENCES tenants(id)"),
+    ]
+    for table, col, definition in _tenant_columns:
         try:
             async with engine.begin() as conn:
                 await conn.execute(sa.text(
                     f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {definition}"
                 ))
-            logger.info(f"✅ Coluna {col} adicionada a {table}")
         except Exception as e:
-            logger.warning(f"⚠️  Migração {table}.{col}: {e}")
+            logger.warning("Migração %s.%s: %s", table, col, e)
 
-    # Adicionar novos valores ao enum FeedbackStatus no Postgres
-    # (ALTER TYPE ... ADD VALUE não suporta IF NOT EXISTS em todas as versões;
-    # capturamos exceção quando o valor já existe)
-    _new_status_values = ["pending", "analyzed", "approved", "rejected",
-                          "validated", "executing", "deployed", "merged"]
-    for value in _new_status_values:
+    # Drop old globally-unique email constraint on users and create composite one
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(sa.text(
+                "ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key"
+            ))
+            await conn.execute(sa.text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_tenant "
+                "ON users (email, tenant_id)"
+            ))
+        logger.info("✅ Constraint email→(email, tenant_id) migrada")
+    except Exception as e:
+        logger.warning("Migração unique email: %s", e)
+
+    # Add SUPER_ADMIN to userrole enum
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(sa.text(
+                "ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'super_admin'"
+            ))
+        logger.info("✅ Enum userrole: super_admin adicionado")
+    except Exception as e:
+        logger.debug("Enum userrole super_admin: %s", e)
+
+    # ── Legacy migrations (suppliers, users, feedback) ───────────────────────
+    _misc_migrations = [
+        ("suppliers",        "created_by",       "INTEGER REFERENCES users(id)"),
+        ("users",            "avatar",            "TEXT DEFAULT ''"),
+        ("feedback_reports", "problem_type",      "VARCHAR(64) DEFAULT 'search'"),
+        ("feedback_reports", "execution_status",  "VARCHAR(32)"),
+        ("feedback_reports", "execution_diff",    "JSONB"),
+        ("feedback_reports", "execution_summary", "TEXT"),
+        ("feedback_reports", "execution_error",   "TEXT"),
+        ("feedback_reports", "validated_prompt",  "TEXT"),
+        ("feedback_reports", "branch_name",       "VARCHAR(128)"),
+        ("feedback_reports", "commit_sha",        "VARCHAR(40)"),
+        ("feedback_reports", "preview_url",       "TEXT"),
+        ("feedback_reports", "branch_url",        "TEXT"),
+    ]
+    for table, col, definition in _misc_migrations:
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(sa.text(
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {definition}"
+                ))
+        except Exception as e:
+            logger.warning("Migração %s.%s: %s", table, col, e)
+
+    # Feedback status enum values
+    for value in ["pending", "analyzed", "approved", "rejected", "validated",
+                  "executing", "deployed", "merged"]:
         try:
             async with engine.begin() as conn:
                 await conn.execute(sa.text(
                     f"ALTER TYPE feedbackstatus ADD VALUE IF NOT EXISTS '{value}'"
                 ))
-            logger.info(f"✅ Status '{value}' adicionado ao enum feedbackstatus")
         except Exception as e:
-            logger.debug(f"enum feedbackstatus '{value}': {e}")
+            logger.debug("enum feedbackstatus '%s': %s", value, e)
 
-    # Normalizar labels uppercase legados → lowercase (PENDING→pending, etc.)
-    # PostgreSQL exige transação separada após ALTER TYPE ADD VALUE para usar o novo label.
-    _uppercase_migrations = [
-        ("PENDING",  "pending"),
-        ("ANALYZED", "analyzed"),
-        ("APPROVED", "approved"),
-        ("REJECTED", "rejected"),
-    ]
+    # Normalize uppercase legacy status labels
     try:
         async with engine.begin() as conn:
-            for upper, lower in _uppercase_migrations:
+            for upper, lower in [("PENDING", "pending"), ("ANALYZED", "analyzed"),
+                                  ("APPROVED", "approved"), ("REJECTED", "rejected")]:
                 await conn.execute(sa.text(
                     f"UPDATE feedback_reports SET status = '{lower}'::feedbackstatus "
                     f"WHERE status::text = '{upper}'"
                 ))
-        logger.info("✅ Status uppercase→lowercase normalizados em feedback_reports")
     except Exception as e:
-        logger.warning(f"⚠️  Normalização uppercase→lowercase: {e}")
+        logger.warning("Normalização status: %s", e)

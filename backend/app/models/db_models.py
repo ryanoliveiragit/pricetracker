@@ -1,36 +1,82 @@
 """
 SQLAlchemy ORM models for PostgreSQL persistence.
 """
+import enum
 from datetime import datetime, timezone
-from sqlalchemy import String, Text, Boolean, Float, DateTime, Integer, JSON, Enum, ForeignKey
+from sqlalchemy import String, Text, Boolean, Float, DateTime, Integer, JSON, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
-class ProductDB(Base):
-    """Produto do catálogo."""
-    __tablename__ = "products"
+# ─── Tenant ───────────────────────────────────────────────────────────────────
+
+class TenantDB(Base):
+    """Tenant — cada cliente tem seu próprio tenant isolado."""
+    __tablename__ = "tenants"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    category: Mapped[str] = mapped_column(String(128), nullable=False)
-    brand: Mapped[str] = mapped_column(String(128), nullable=False)
-    unit: Mapped[str] = mapped_column(String(64), nullable=False)
-    sku: Mapped[str] = mapped_column(String(128), default="")
-    logo: Mapped[str] = mapped_column(Text, default="")
-    notes: Mapped[str] = mapped_column(Text, default="")
-    variants: Mapped[list] = mapped_column(JSON, default=list, nullable=False, server_default="[]")
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    plan: Mapped[str] = mapped_column(String(32), default="free")  # free | pro | enterprise
+    settings: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False, server_default="{}")
+    # settings keys: app_name, logo_url, primary_color, accent_color
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
 
 
+# ─── Users ────────────────────────────────────────────────────────────────────
+
+class UserRole(str, enum.Enum):
+    SUPER_ADMIN = "super_admin"   # platform-level, tenant_id = NULL
+    ADMIN = "admin"
+    GESTOR = "gestor"
+    USUARIO = "usuario"
+    FUNCIONARIO = "funcionario"
+
+
+class UserDB(Base):
+    """Usuários e suas Roles no sistema RBAC."""
+    __tablename__ = "users"
+    __table_args__ = (
+        # Email is unique per tenant (NULL tenant = super_admin, globally unique by convention)
+        UniqueConstraint("email", "tenant_id", name="uq_users_email_tenant"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id"), nullable=True, index=True)
+    nome: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    email: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    telefone: Mapped[str] = mapped_column(String(64), nullable=True, default="")
+    empresa: Mapped[str] = mapped_column(String(255), nullable=True, default="")
+    cargo: Mapped[str] = mapped_column(String(128), nullable=True, default="")
+    avatar: Mapped[str] = mapped_column(Text, nullable=True, default="")
+
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
+        default=UserRole.USUARIO,
+    )
+
+    parent_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+# ─── Suppliers ────────────────────────────────────────────────────────────────
+
 class SupplierDB(Base):
-    """Fornecedor."""
+    """Fornecedor — escopo por tenant."""
     __tablename__ = "suppliers"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[str] = mapped_column(String(512), default="")
     logo: Mapped[str] = mapped_column(Text, default="")
@@ -47,14 +93,36 @@ class SupplierDB(Base):
     )
 
 
+# ─── Products ─────────────────────────────────────────────────────────────────
+
+class ProductDB(Base):
+    """Produto do catálogo — escopo por tenant."""
+    __tablename__ = "products"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(128), nullable=False)
+    brand: Mapped[str] = mapped_column(String(128), nullable=False)
+    unit: Mapped[str] = mapped_column(String(64), nullable=False)
+    sku: Mapped[str] = mapped_column(String(128), default="")
+    logo: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    variants: Mapped[list] = mapped_column(JSON, default=list, nullable=False, server_default="[]")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+# ─── Search Cache ─────────────────────────────────────────────────────────────
+
 class SearchCacheDB(Base):
-    """
-    Cache de resultados de busca.
-    Chave composta: scraper_key + query.
-    """
+    """Cache de resultados de busca — escopo por tenant."""
     __tablename__ = "search_cache"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id"), nullable=True, index=True)
     scraper_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     query: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
     results: Mapped[dict] = mapped_column(JSON, nullable=False)
@@ -70,6 +138,34 @@ class SearchCacheDB(Base):
     )
 
 
+# ─── Saved Offers ─────────────────────────────────────────────────────────────
+
+class SavedOfferDB(Base):
+    """Ofertas salvas (favoritas) pelos usuários — escopo por tenant."""
+    __tablename__ = "saved_offers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id"), nullable=True, index=True)
+    user_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    store: Mapped[str] = mapped_column(String(255), nullable=False)
+    product_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    price: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String(16), default="BRL")
+    product_url: Mapped[str] = mapped_column(Text, nullable=False)
+    image_url: Mapped[str] = mapped_column(Text, nullable=True)
+    availability: Mapped[str] = mapped_column(String(64), default="em_estoque")
+    sku: Mapped[str] = mapped_column(String(128), nullable=True)
+    brand: Mapped[str] = mapped_column(String(128), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+# ─── Scrape Timings ───────────────────────────────────────────────────────────
+
 class ScrapeTimingDB(Base):
     """Histórico de tempos de scraping por fornecedor."""
     __tablename__ = "scrape_timings"
@@ -83,38 +179,8 @@ class ScrapeTimingDB(Base):
         default=lambda: datetime.now(timezone.utc),
     )
 
-import enum
 
-class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    GESTOR = "gestor"
-    USUARIO = "usuario"
-    FUNCIONARIO = "funcionario"
-
-class UserDB(Base):
-    """Usuários e suas Roles no sistema RBAC."""
-    __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    nome: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    telefone: Mapped[str] = mapped_column(String(64), nullable=True, default="")
-    empresa: Mapped[str] = mapped_column(String(255), nullable=True, default="")
-    cargo: Mapped[str] = mapped_column(String(128), nullable=True, default="")
-    avatar: Mapped[str] = mapped_column(Text, nullable=True, default="")
-    
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.USUARIO)
-    
-    # Relacionamento de subordinação
-    parent_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
-    
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-    )
-
+# ─── Scraped Products (catalog cache) ────────────────────────────────────────
 
 class ScrapedProductDB(Base):
     """Produtos pré-scraped do catálogo local — busca instantânea."""
@@ -165,10 +231,7 @@ class CatalogScrapeStatusDB(Base):
 
 
 class ScraperSessionDB(Base):
-    """
-    Cookies de sessão persistidos por scraper.
-    Permite reutilizar login entre restarts do app.
-    """
+    """Cookies de sessão persistidos por scraper."""
     __tablename__ = "scraper_sessions"
 
     scraper_key: Mapped[str] = mapped_column(String(100), primary_key=True)
@@ -185,14 +248,16 @@ class ScraperSessionDB(Base):
     is_valid: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+# ─── Feedback ─────────────────────────────────────────────────────────────────
+
 class FeedbackStatus(str, enum.Enum):
-    pending = "pending"          # aguardando IA transcrever
-    analyzed = "analyzed"        # IA transcreveu — aguarda revisão do admin
-    approved = "approved"        # legado (mantido para compatibilidade)
-    validated = "validated"      # admin validou o prompt — pronto para execução em branch
-    executing = "executing"      # branch sendo criada / IA gerando diff
-    deployed = "deployed"        # branch criada + push + preview URL gerada
-    merged = "merged"            # admin mergeou na main (terminal sucesso)
+    pending = "pending"
+    analyzed = "analyzed"
+    approved = "approved"
+    validated = "validated"
+    executing = "executing"
+    deployed = "deployed"
+    merged = "merged"
     rejected = "rejected"
 
 
@@ -225,18 +290,14 @@ class FeedbackReportDB(Base):
     admin_email: Mapped[str] = mapped_column(String(255), nullable=True)
     admin_notes: Mapped[str] = mapped_column(Text, nullable=True)
 
-    # Execução automática via IA
-    execution_status: Mapped[str] = mapped_column(String(32), nullable=True)  # idle|running|done|error|deployed
-    execution_diff: Mapped[dict] = mapped_column(JSON, nullable=True)   # [{file, old, new}]
+    execution_status: Mapped[str] = mapped_column(String(32), nullable=True)
+    execution_diff: Mapped[dict] = mapped_column(JSON, nullable=True)
     execution_summary: Mapped[str] = mapped_column(Text, nullable=True)
     execution_error: Mapped[str] = mapped_column(Text, nullable=True)
 
-    # Fluxo agente: prompt validado pelo admin (editável antes de executar)
     validated_prompt: Mapped[str] = mapped_column(Text, nullable=True)
-    # Branch git criada para a execução isolada
     branch_name: Mapped[str] = mapped_column(String(128), nullable=True)
     commit_sha: Mapped[str] = mapped_column(String(40), nullable=True)
-    # URL do deploy preview (Vercel ou similar)
     preview_url: Mapped[str] = mapped_column(Text, nullable=True)
     branch_url: Mapped[str] = mapped_column(Text, nullable=True)
     chat_history: Mapped[list] = mapped_column(JSON, nullable=True)
@@ -273,27 +334,3 @@ class DynamicSynonymDB(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
-
-
-class SavedOfferDB(Base):
-    """Ofertas salvas (favoritas) pelos usuários."""
-    __tablename__ = "saved_offers"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    
-    store: Mapped[str] = mapped_column(String(255), nullable=False)
-    product_name: Mapped[str] = mapped_column(String(512), nullable=False)
-    price: Mapped[float] = mapped_column(Float, nullable=False)
-    currency: Mapped[str] = mapped_column(String(16), default="BRL")
-    product_url: Mapped[str] = mapped_column(Text, nullable=False)
-    image_url: Mapped[str] = mapped_column(Text, nullable=True)
-    availability: Mapped[str] = mapped_column(String(64), default="em_estoque")
-    sku: Mapped[str] = mapped_column(String(128), nullable=True)
-    brand: Mapped[str] = mapped_column(String(128), nullable=True)
-    
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-    )
-

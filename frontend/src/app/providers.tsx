@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "../context/AuthContext";
 import { ProductCatalogProvider } from "../context/ProductCatalogContext";
 import { SupplierProvider } from "../context/SupplierContext";
+import { TenantProvider } from "../context/TenantContext";
 import { ThemeProvider } from "../context/ThemeContext";
 
 function ThemedToaster() {
@@ -33,6 +34,7 @@ function ApiWarmup() {
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <NextUIProvider>
+      <TenantProvider>
       <ThemeProvider>
         <AuthProvider>
           <ProductCatalogProvider>
@@ -44,6 +46,7 @@ export default function Providers({ children }: { children: ReactNode }) {
           </ProductCatalogProvider>
         </AuthProvider>
       </ThemeProvider>
+      </TenantProvider>
     </NextUIProvider>
   );
 }

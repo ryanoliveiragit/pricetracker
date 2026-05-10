@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     GIT_BASE_BRANCH: str = "main"
     VERCEL_PREVIEW_PATTERN: Optional[str] = None  # ex: "https://pricetracker-git-{branch}.vercel.app"
 
+    # JWT / Auth
+    JWT_SECRET: str = "change-me-in-production-use-a-long-random-string"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_HOURS: int = 24
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

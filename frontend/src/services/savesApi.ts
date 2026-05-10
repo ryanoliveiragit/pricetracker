@@ -2,6 +2,8 @@
  * savesApi — Gerenciamento de ofertas salvas (favoritos).
  */
 
+import { baseHeaders } from "./headers";
+
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/api\/?$/, "");
 
 export interface SavedOffer {
@@ -30,21 +32,7 @@ export interface SaveOfferPayload {
   brand?: string;
 }
 
-const getHeaders = () => {
-  const auth = typeof window !== "undefined" ? localStorage.getItem("construprice-auth") : null;
-  let email = "admin@construprice.com";
-  if (auth) {
-    try {
-      const parsed = JSON.parse(auth);
-      if (parsed.email) email = parsed.email;
-    } catch (e) {}
-  }
-  
-  return {
-    "Content-Type": "application/json",
-    "token": `mock-token-${email}`,
-  };
-};
+const getHeaders = () => baseHeaders();
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {

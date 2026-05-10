@@ -1,25 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import List
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import get_db
-from app.models.db_models import UserDB, UserRole
+from app.models.db_models import TenantDB, UserDB, UserRole
 from app.models.user import UserCreate, UserUpdate, UserResponse
-from app.utils.auth import get_password_hash, get_current_user_email
+from app.utils.auth import get_current_user_email, get_password_hash
+from app.utils.tenant import get_current_tenant
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-async def _get_user_from_db(db: AsyncSession, email: str) -> UserDB:
-    """Helper to fetch user from database by email."""
-    result = await db.execute(select(UserDB).filter(UserDB.email == email))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado no banco.")
-    return user
 
 
 def _to_dict(u: UserDB) -> dict:
@@ -34,19 +26,30 @@ def _to_dict(u: UserDB) -> dict:
         "role": u.role.value if hasattr(u.role, "value") else str(u.role),
         "is_active": u.is_active,
         "parent_id": u.parent_id,
+        "tenant_id": u.tenant_id,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     }
 
 
-# ── ME (logged-in user) ─────────────────────────────────────────────────────
+async def _get_tenant_user(db: AsyncSession, email: str, tenant_id: str) -> UserDB:
+    result = await db.execute(
+        select(UserDB).filter(UserDB.email == email, UserDB.tenant_id == tenant_id)
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    return user
+
+
+# ── ME ─────────────────────────────────────────────────────────────────────────
 
 @router.get("/users/me")
 async def get_me(
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    """Retorna os dados do usuário logado."""
-    user = await _get_user_from_db(db, email)
+    user = await _get_tenant_user(db, email, tenant.id)
     return _to_dict(user)
 
 
@@ -55,9 +58,9 @@ async def update_me(
     data: UserUpdate,
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    """Edita dados do usuário logado."""
-    user = await _get_user_from_db(db, email)
+    user = await _get_tenant_user(db, email, tenant.id)
 
     if data.nome is not None:
         user.nome = data.nome
@@ -74,19 +77,22 @@ async def update_me(
 
     await db.commit()
     await db.refresh(user)
-    logger.info(f"Perfil atualizado: {user.email}")
     return _to_dict(user)
 
 
-# ── LIST ─────────────────────────────────────────────────────────────────────
+# ── LIST ──────────────────────────────────────────────────────────────────────
 
 @router.get("/users", response_model=list)
 async def list_users(
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    """Lista todos os usuários cadastrados no banco."""
-    result = await db.execute(select(UserDB).order_by(UserDB.created_at.desc()))
+    result = await db.execute(
+        select(UserDB)
+        .where(UserDB.tenant_id == tenant.id)
+        .order_by(UserDB.created_at.desc())
+    )
     return [_to_dict(u) for u in result.scalars().all()]
 
 
@@ -97,20 +103,21 @@ async def create_user(
     data: UserCreate,
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    """Cria novo usuário/funcionário."""
-    # Verificar duplicata
-    existing = await db.execute(select(UserDB).filter(UserDB.email == data.email))
+    existing = await db.execute(
+        select(UserDB).filter(UserDB.email == data.email, UserDB.tenant_id == tenant.id)
+    )
     if existing.scalars().first():
         raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
 
-    # Mapear role string → enum
     try:
         role_enum = UserRole(data.role or "funcionario")
     except ValueError:
         role_enum = UserRole.FUNCIONARIO
 
     user = UserDB(
+        tenant_id=tenant.id,
         nome=data.nome,
         email=data.email,
         telefone=data.telefone or "",
@@ -125,7 +132,7 @@ async def create_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    logger.info(f"Usuário criado: {user.email} [{user.role}]")
+    logger.info("Usuário criado: %s [%s] tenant=%s", user.email, user.role, tenant.slug)
     return _to_dict(user)
 
 
@@ -136,8 +143,12 @@ async def get_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    u = await db.get(UserDB, user_id)
+    result = await db.execute(
+        select(UserDB).where(UserDB.id == user_id, UserDB.tenant_id == tenant.id)
+    )
+    u = result.scalars().first()
     if not u:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     return _to_dict(u)
@@ -151,9 +162,12 @@ async def update_user(
     data: UserUpdate,
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    """Edita dados de um usuário."""
-    u = await db.get(UserDB, user_id)
+    result = await db.execute(
+        select(UserDB).where(UserDB.id == user_id, UserDB.tenant_id == tenant.id)
+    )
+    u = result.scalars().first()
     if not u:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
 
@@ -179,7 +193,6 @@ async def update_user(
 
     await db.commit()
     await db.refresh(u)
-    logger.info(f"Usuário atualizado: {u.email}")
     return _to_dict(u)
 
 
@@ -190,14 +203,16 @@ async def delete_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    """Remove permanentemente um usuário."""
-    u = await db.get(UserDB, user_id)
+    result = await db.execute(
+        select(UserDB).where(UserDB.id == user_id, UserDB.tenant_id == tenant.id)
+    )
+    u = result.scalars().first()
     if not u:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     await db.delete(u)
     await db.commit()
-    logger.info(f"Usuário removido: {u.email}")
 
 
 # ── TOGGLE STATUS ─────────────────────────────────────────────────────────────
@@ -207,9 +222,12 @@ async def toggle_user_status(
     user_id: int,
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
+    tenant: TenantDB = Depends(get_current_tenant),
 ):
-    """Ativa ou suspende o acesso de um usuário."""
-    u = await db.get(UserDB, user_id)
+    result = await db.execute(
+        select(UserDB).where(UserDB.id == user_id, UserDB.tenant_id == tenant.id)
+    )
+    u = result.scalars().first()
     if not u:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     u.is_active = not u.is_active

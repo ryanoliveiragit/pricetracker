@@ -17,3 +17,4 @@ asyncpg>=0.29.0
 python-multipart>=0.0.6
 psycopg2-binary>=2.9.0
 apscheduler>=3.10.0
+PyJWT>=2.8.0

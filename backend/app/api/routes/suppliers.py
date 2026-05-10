@@ -5,20 +5,21 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, Depends, Header
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.supplier import SupplierCreate, SupplierUpdate
-from app.models.db_models import SupplierDB, UserDB
 from app.database import get_db
+from app.models.db_models import SupplierDB, TenantDB, UserDB
+from app.models.supplier import SupplierCreate, SupplierUpdate
 from app.utils.auth import get_current_user_email
+from app.utils.tenant import get_current_tenant
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Mapa nome-do-fornecedor → (classe, scraper_key)
 _SCRAPER_MAP = None
+
 
 def _get_scraper_map() -> dict:
     global _SCRAPER_MAP
@@ -28,17 +29,16 @@ def _get_scraper_map() -> dict:
         from app.scrapers.megaleste_scraper import MegalesteScraper
         from app.scrapers.superabc_scraper import SuperABCScraper
         _SCRAPER_MAP = {
-            "megaleste":   (MegalesteScraper,          "megaleste"),
-            "cofema":      (CofemaScraper,              "cofema"),
-            "atacadista":  (EstoqueAtacadistaScraper,   "estoqueAtacadista"),
-            "super abc":   (SuperABCScraper,            "superabc"),
-            "superabc":    (SuperABCScraper,            "superabc"),
+            "megaleste":   (MegalesteScraper,         "megaleste"),
+            "cofema":      (CofemaScraper,             "cofema"),
+            "atacadista":  (EstoqueAtacadistaScraper,  "estoqueAtacadista"),
+            "super abc":   (SuperABCScraper,           "superabc"),
+            "superabc":    (SuperABCScraper,           "superabc"),
         }
     return _SCRAPER_MAP
 
 
 def _resolve_scraper(name: str) -> Tuple[Optional[type], Optional[str]]:
-    """Retorna (scraper_class, scraper_key) para o nome do fornecedor, ou (None, None)."""
     name_lower = name.lower().strip()
     for keyword, (cls, key) in _get_scraper_map().items():
         if keyword in name_lower:
@@ -47,7 +47,6 @@ def _resolve_scraper(name: str) -> Tuple[Optional[type], Optional[str]]:
 
 
 def _do_login(scraper_class, username: str, password: str, region: str) -> Tuple[bool, Optional[str], object]:
-    """Executa o login do scraper em thread. Retorna (success, error_msg, session)."""
     scraper = scraper_class()
     try:
         sig = inspect.signature(scraper.login)
@@ -68,24 +67,13 @@ def _do_login(scraper_class, username: str, password: str, region: str) -> Tuple
 
 
 async def _test_and_save_login(
-    supplier_name: str,
-    username: str,
-    password: str,
-    region: str,
+    supplier_name: str, username: str, password: str, region: str,
 ) -> Tuple[bool, Optional[str]]:
-    """
-    Testa login de um fornecedor em thread separada.
-    Se bem-sucedido, persiste a sessão (cookies) no banco.
-    Retorna (ok, error_message).
-    """
     scraper_class, scraper_key = _resolve_scraper(supplier_name)
-
     if not scraper_class:
-        logger.info("Fornecedor '%s' sem scraper registrado — login não testado", supplier_name)
         return True, None
 
     logger.info("🔐 Testando login para '%s' (chave: %s)", supplier_name, scraper_key)
-
     try:
         loop = asyncio.get_event_loop()
         success, error_msg, session = await asyncio.wait_for(
@@ -100,16 +88,10 @@ async def _test_and_save_login(
     if success and session is not None:
         from app.services.session_cache import store_session
         store_session(scraper_key, username, session)
-        logger.info("✅ Login bem-sucedido para '%s' — sessão salva", supplier_name)
         return True, None
 
-    logger.warning("❌ Login falhou para '%s': %s", supplier_name, error_msg)
     return False, error_msg
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers for search.py compatibility
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _to_camel_dict(s: SupplierDB, creator_name: str = None) -> dict:
     return {
@@ -145,23 +127,31 @@ def _to_pydantic(s: SupplierDB):
     )
 
 
-async def get_all_suppliers_from_db() -> list:
+async def get_all_suppliers_from_db(tenant_id: Optional[str] = None) -> list:
+    """Used by search route. Pass tenant_id to scope results."""
     from app.database import async_session
     async with async_session() as session:
-        result = await session.execute(select(SupplierDB))
+        query = select(SupplierDB)
+        if tenant_id:
+            query = query.where(SupplierDB.tenant_id == tenant_id)
+        result = await session.execute(query)
         return [_to_pydantic(s) for s in result.scalars().all()]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Endpoints
-# ─────────────────────────────────────────────────────────────────────────────
+# ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/suppliers")
-async def list_suppliers(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(SupplierDB).order_by(SupplierDB.created_at.desc()))
+async def list_suppliers(
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(SupplierDB)
+        .where(SupplierDB.tenant_id == tenant.id)
+        .order_by(SupplierDB.created_at.desc())
+    )
     suppliers = result.scalars().all()
 
-    # Fetch creator names for all suppliers
     creator_ids = {s.created_by for s in suppliers if s.created_by}
     creator_names = {}
     if creator_ids:
@@ -173,8 +163,15 @@ async def list_suppliers(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/suppliers/{supplier_id}")
-async def get_supplier(supplier_id: str, db: AsyncSession = Depends(get_db)):
-    s = await db.get(SupplierDB, supplier_id)
+async def get_supplier(
+    supplier_id: str,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(SupplierDB).where(SupplierDB.id == supplier_id, SupplierDB.tenant_id == tenant.id)
+    )
+    s = result.scalars().first()
     if not s:
         raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
     return _to_camel_dict(s)
@@ -183,20 +180,16 @@ async def get_supplier(supplier_id: str, db: AsyncSession = Depends(get_db)):
 @router.post("/suppliers", status_code=201)
 async def create_supplier(
     data: SupplierCreate,
+    tenant: TenantDB = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
     email: str = Depends(get_current_user_email),
 ):
-    """
-    Cria fornecedor.
-    Se requiresLogin=True e credenciais fornecidas, testa login antes de confirmar.
-    Retorna HTTP 422 com detail descritivo se o login falhar.
-    """
-    # Get current user ID to set as creator
-    user_result = await db.execute(select(UserDB).filter(UserDB.email == email))
+    user_result = await db.execute(
+        select(UserDB).filter(UserDB.email == email, UserDB.tenant_id == tenant.id)
+    )
     current_user = user_result.scalars().first()
     creator_id = current_user.id if current_user else None
 
-    # 1. Testar login ANTES de salvar no banco
     if data.requires_login and data.username and data.password:
         ok, error_msg = await _test_and_save_login(
             data.name, data.username, data.password, data.region or "sp"
@@ -204,15 +197,12 @@ async def create_supplier(
         if not ok:
             raise HTTPException(
                 status_code=422,
-                detail={
-                    "login_error": True,
-                    "message": error_msg or "Login falhou — verifique as credenciais",
-                },
+                detail={"login_error": True, "message": error_msg or "Login falhou — verifique as credenciais"},
             )
 
-    # 2. Salvar no banco somente após login OK (ou sem login)
     supplier = SupplierDB(
         id=str(uuid.uuid4()),
+        tenant_id=tenant.id,
         name=data.name,
         url=data.url,
         logo=data.logo or "",
@@ -228,44 +218,38 @@ async def create_supplier(
     db.add(supplier)
     await db.commit()
     await db.refresh(supplier)
-    logger.info("Fornecedor criado: %s por %s", supplier.name, email)
+    logger.info("Fornecedor criado: %s [tenant=%s]", supplier.name, tenant.slug)
     return _to_camel_dict(supplier, current_user.nome if current_user else "")
 
 
 @router.patch("/suppliers/{supplier_id}")
-async def update_supplier(supplier_id: str, data: SupplierUpdate, db: AsyncSession = Depends(get_db)):
-    """
-    Atualiza fornecedor.
-    Se credenciais foram alteradas, testa login antes de confirmar a atualização.
-    """
-    s = await db.get(SupplierDB, supplier_id)
+async def update_supplier(
+    supplier_id: str,
+    data: SupplierUpdate,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(SupplierDB).where(SupplierDB.id == supplier_id, SupplierDB.tenant_id == tenant.id)
+    )
+    s = result.scalars().first()
     if not s:
         raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
 
     update_data = data.model_dump(exclude_unset=True)
-
-    # Detectar se credenciais foram alteradas nesta chamada
     new_username = update_data.get("username", s.username)
     new_password = update_data.get("password", s.password)
     new_region = update_data.get("region", s.region) or "sp"
     new_name = update_data.get("name", s.name)
     new_requires_login = update_data.get("requires_login", s.requires_login)
-    credentials_changed = (
-        "username" in update_data or "password" in update_data
-    )
+    credentials_changed = "username" in update_data or "password" in update_data
 
-    # Testar login se credenciais mudaram (ou se está ativando login pela primeira vez)
     if new_requires_login and new_username and new_password and credentials_changed:
-        ok, error_msg = await _test_and_save_login(
-            new_name, new_username, new_password, new_region
-        )
+        ok, error_msg = await _test_and_save_login(new_name, new_username, new_password, new_region)
         if not ok:
             raise HTTPException(
                 status_code=422,
-                detail={
-                    "login_error": True,
-                    "message": error_msg or "Login falhou — verifique as credenciais",
-                },
+                detail={"login_error": True, "message": error_msg or "Login falhou — verifique as credenciais"},
             )
 
     for key, value in update_data.items():
@@ -273,15 +257,20 @@ async def update_supplier(supplier_id: str, data: SupplierUpdate, db: AsyncSessi
 
     await db.commit()
     await db.refresh(s)
-    logger.info("Fornecedor atualizado: %s", s.name)
     return _to_camel_dict(s)
 
 
 @router.delete("/suppliers/{supplier_id}", status_code=204)
-async def delete_supplier(supplier_id: str, db: AsyncSession = Depends(get_db)):
-    s = await db.get(SupplierDB, supplier_id)
+async def delete_supplier(
+    supplier_id: str,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(SupplierDB).where(SupplierDB.id == supplier_id, SupplierDB.tenant_id == tenant.id)
+    )
+    s = result.scalars().first()
     if not s:
         raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
     await db.delete(s)
     await db.commit()
-    logger.info("Fornecedor removido: %s", s.name)

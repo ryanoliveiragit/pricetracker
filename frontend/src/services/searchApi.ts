@@ -5,6 +5,8 @@ import type {
   SupplierSearchSelection,
 } from "../types/search";
 
+import { baseHeaders } from "./headers";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -91,7 +93,7 @@ export async function searchMaterialsStream(
   const selectedStores = normalizeStores(payload.stores);
   const response = await fetch(`${API_BASE_URL}/api/search/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: baseHeaders(),
     body: JSON.stringify({
       items: payload.items,
       stores: selectedStores,
@@ -206,7 +208,7 @@ export async function searchInstant(
   const stores = normalizeStores(payload.stores);
   const response = await fetch(`${API_BASE_URL}/api/search/instant`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: baseHeaders(),
     body: JSON.stringify({ items: payload.items, stores }),
   });
 
@@ -249,7 +251,7 @@ export async function searchRefresh(
   const stores = normalizeStores(payload.stores);
   const response = await fetch(`${API_BASE_URL}/api/search/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: baseHeaders(),
     body: JSON.stringify({ items: payload.items, stores }),
   });
 

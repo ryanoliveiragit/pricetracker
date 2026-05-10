@@ -5,12 +5,14 @@ import { ArrowRight, Package, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../context/AuthContext";
+import { getTenantSlug } from "../services/headers";
 
 export default function ModernLogin() {
   const { login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("gestor@construprice.com");
-  const [password, setPassword] = useState("123456");
+  const isTenant = Boolean(getTenantSlug());
+  const [email, setEmail] = useState(isTenant ? "gestor@construprice.com" : "superadmin@construprice.com");
+  const [password, setPassword] = useState(isTenant ? "gestor123" : "superadmin123");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -123,13 +125,27 @@ export default function ModernLogin() {
               </button>
             </form>
 
+            {/* Signup link */}
+            <p className="mt-4 text-center text-sm text-slate-500 dark:text-neutral-400">
+              Não tem uma conta?{" "}
+              <a href="/cadastro" className="font-medium text-[rgb(var(--primary-500))] hover:underline">
+                Criar plataforma grátis
+              </a>
+            </p>
+
             {/* Demo notice */}
             <div className="mt-5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-100 dark:border-neutral-700 p-3.5">
               <div className="flex items-start gap-2.5">
                 <Info className="h-4 w-4 text-[rgb(var(--primary-500))] flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-slate-500 dark:text-neutral-400">
-                  <p className="font-medium text-slate-600 dark:text-neutral-300 mb-0.5">Modo demonstracao</p>
-                  <p>Use as credenciais pre-preenchidas para acessar.</p>
+                  <p className="font-medium text-slate-600 dark:text-neutral-300 mb-0.5">
+                    {isTenant ? "Modo demonstração (tenant)" : "Acesso super admin"}
+                  </p>
+                  <p>
+                    {isTenant
+                      ? "Use as credenciais pré-preenchidas para acessar."
+                      : "Sem subdomínio detectado — login como super admin. Defina NEXT_PUBLIC_DEFAULT_TENANT para acessar um tenant específico."}
+                  </p>
                 </div>
               </div>
             </div>

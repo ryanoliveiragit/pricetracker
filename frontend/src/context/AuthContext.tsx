@@ -10,6 +10,8 @@ interface UserSession {
   role: string;
   token: string;
   avatar?: string;
+  tenantSlug?: string;
+  tenantId?: string;
 }
 
 interface AuthContextValue {

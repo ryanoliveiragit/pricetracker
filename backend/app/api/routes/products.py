@@ -1,22 +1,23 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from datetime import datetime, timezone
-import uuid
 import csv
 import io
 import logging
+import uuid
+from datetime import datetime, timezone
 
-from app.models.catalog import CatalogProductCreate, CatalogProductUpdate
-from app.models.db_models import ProductDB
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import get_db
+from app.models.catalog import CatalogProductCreate, CatalogProductUpdate
+from app.models.db_models import ProductDB, TenantDB
+from app.utils.tenant import get_current_tenant
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 def _to_camel_dict(p: ProductDB) -> dict:
-    """Converte modelo DB para camelCase para compatibilidade com frontend."""
     return {
         "id": p.id,
         "name": p.name,
@@ -32,26 +33,42 @@ def _to_camel_dict(p: ProductDB) -> dict:
 
 
 @router.get("/products")
-async def list_products(db: AsyncSession = Depends(get_db)):
-    """Listar todos os produtos do catálogo."""
-    result = await db.execute(select(ProductDB).order_by(ProductDB.created_at.desc()))
+async def list_products(
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ProductDB)
+        .where(ProductDB.tenant_id == tenant.id)
+        .order_by(ProductDB.created_at.desc())
+    )
     return [_to_camel_dict(p) for p in result.scalars().all()]
 
 
 @router.get("/products/{product_id}")
-async def get_product(product_id: str, db: AsyncSession = Depends(get_db)):
-    """Buscar produto por ID."""
-    p = await db.get(ProductDB, product_id)
+async def get_product(
+    product_id: str,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ProductDB).where(ProductDB.id == product_id, ProductDB.tenant_id == tenant.id)
+    )
+    p = result.scalars().first()
     if not p:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
     return _to_camel_dict(p)
 
 
 @router.post("/products", status_code=201)
-async def create_product(data: CatalogProductCreate, db: AsyncSession = Depends(get_db)):
-    """Criar novo produto."""
+async def create_product(
+    data: CatalogProductCreate,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
     product = ProductDB(
         id=str(uuid.uuid4()),
+        tenant_id=tenant.id,
         name=data.name,
         category=data.category,
         brand=data.brand,
@@ -64,31 +81,43 @@ async def create_product(data: CatalogProductCreate, db: AsyncSession = Depends(
     db.add(product)
     await db.commit()
     await db.refresh(product)
-    logger.info(f"Produto criado: {product.name}")
+    logger.info("Produto criado: %s [tenant=%s]", product.name, tenant.slug)
     return _to_camel_dict(product)
 
 
 @router.patch("/products/{product_id}")
-async def update_product(product_id: str, data: CatalogProductUpdate, db: AsyncSession = Depends(get_db)):
-    """Atualizar produto parcialmente."""
-    p = await db.get(ProductDB, product_id)
+async def update_product(
+    product_id: str,
+    data: CatalogProductUpdate,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ProductDB).where(ProductDB.id == product_id, ProductDB.tenant_id == tenant.id)
+    )
+    p = result.scalars().first()
     if not p:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
 
-    update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
+    for key, value in data.model_dump(exclude_unset=True).items():
         setattr(p, key, value)
 
     await db.commit()
     await db.refresh(p)
-    logger.info(f"Produto atualizado: {p.name}")
     return _to_camel_dict(p)
 
 
 @router.patch("/products/{product_id}/variants")
-async def update_variants(product_id: str, data: dict, db: AsyncSession = Depends(get_db)):
-    """Atualizar lista de variantes do produto."""
-    p = await db.get(ProductDB, product_id)
+async def update_variants(
+    product_id: str,
+    data: dict,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ProductDB).where(ProductDB.id == product_id, ProductDB.tenant_id == tenant.id)
+    )
+    p = result.scalars().first()
     if not p:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
     variants = data.get("variants", [])
@@ -100,9 +129,90 @@ async def update_variants(product_id: str, data: dict, db: AsyncSession = Depend
     return _to_camel_dict(p)
 
 
+@router.delete("/products/{product_id}", status_code=204)
+async def delete_product(
+    product_id: str,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ProductDB).where(ProductDB.id == product_id, ProductDB.tenant_id == tenant.id)
+    )
+    p = result.scalars().first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    await db.delete(p)
+    await db.commit()
+
+
+@router.post("/products/import-csv")
+async def import_products_csv(
+    file: UploadFile = File(...),
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Envie um arquivo .csv")
+
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    lines = text.split("\n")
+    if lines and lines[0].strip().lower().startswith("sep="):
+        text = "\n".join(lines[1:])
+
+    first_line = text.split("\n")[0]
+    delimiter = ";" if ";" in first_line else ","
+    reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+
+    if reader.fieldnames:
+        reader.fieldnames = [f.strip().lower() for f in reader.fieldnames]
+
+    required = {"name", "category", "brand", "unit"}
+    if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+        missing = required - set(reader.fieldnames or [])
+        raise HTTPException(
+            status_code=400,
+            detail=f"Colunas obrigatórias faltando: {', '.join(missing)}. "
+                   f"Colunas encontradas: {', '.join(reader.fieldnames or [])}",
+        )
+
+    created = []
+    skipped = 0
+    for row in reader:
+        name = (row.get("name") or "").strip()
+        if not name:
+            skipped += 1
+            continue
+
+        product = ProductDB(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant.id,
+            name=name,
+            category=(row.get("category") or "").strip(),
+            brand=(row.get("brand") or "").strip(),
+            unit=(row.get("unit") or "").strip(),
+            sku=(row.get("sku") or "").strip(),
+            logo=(row.get("logo") or "").strip(),
+            notes=(row.get("notes") or "").strip(),
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(product)
+        created.append(_to_camel_dict(product))
+
+    await db.commit()
+    logger.info("CSV importado: %d produtos [tenant=%s]", len(created), tenant.slug)
+    return {"imported": len(created), "skipped": skipped, "products": created}
+
+
 async def _ai_suggest(name: str) -> list[str]:
-    """Chama Perplexity API para sugerir variantes de um produto."""
-    import os, re, json
+    import json
+    import os
+    import re
+
     import httpx
 
     api_key = os.getenv("GROQ_API_KEY", "")
@@ -113,14 +223,6 @@ async def _ai_suggest(name: str) -> list[str]:
         f"Você é um especialista em materiais de construção e ferragens brasileiro.\n"
         f"Produto: \"{name}\"\n\n"
         f"Liste outros NOMES pelos quais este produto é conhecido — sinônimos reais, não variações do mesmo nome.\n"
-        f"Exemplos do que quero:\n"
-        f"  'cola' → ['adesivo', 'fixador', 'selante']\n"
-        f"  'parafuso' → ['fixador', 'prego', 'bucha']\n"
-        f"  'cadeado' → ['fechadura', 'trava', 'cadeado']\n\n"
-        f"NÃO inclua:\n"
-        f"  - O mesmo nome com adjetivo (ex: 'cola forte', 'cola especial', 'cola extra')\n"
-        f"  - Marcas específicas\n"
-        f"  - Especificações técnicas (ex: '50kg', '20mm')\n\n"
         f"Retorne APENAS um array JSON com strings em minúsculas, sem explicações, máximo 8 itens.\n"
         f'Exemplo: ["sinonimo1", "sinonimo2"]'
     )
@@ -146,9 +248,15 @@ async def _ai_suggest(name: str) -> list[str]:
 
 
 @router.post("/products/{product_id}/generate-variants")
-async def generate_variants(product_id: str, db: AsyncSession = Depends(get_db)):
-    """Gera variantes/sinônimos para o produto usando IA."""
-    p = await db.get(ProductDB, product_id)
+async def generate_variants(
+    product_id: str,
+    tenant: TenantDB = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ProductDB).where(ProductDB.id == product_id, ProductDB.tenant_id == tenant.id)
+    )
+    p = result.scalars().first()
     if not p:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
     try:
@@ -156,13 +264,12 @@ async def generate_variants(product_id: str, db: AsyncSession = Depends(get_db))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"AI suggest error: {e}")
+        logger.error("AI suggest error: %s", e)
         raise HTTPException(status_code=500, detail=f"Erro ao gerar variantes: {str(e)}")
 
 
 @router.post("/products/suggest-variants")
 async def suggest_variants_by_name(data: dict):
-    """Sugere variantes para um produto pelo nome (sem necessidade de ID)."""
     name = (data.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name é obrigatório")
@@ -171,87 +278,5 @@ async def suggest_variants_by_name(data: dict):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"AI suggest error: {e}")
+        logger.error("AI suggest error: %s", e)
         raise HTTPException(status_code=500, detail=f"Erro ao gerar variantes: {str(e)}")
-
-
-@router.delete("/products/{product_id}", status_code=204)
-async def delete_product(product_id: str, db: AsyncSession = Depends(get_db)):
-    """Remover produto."""
-    p = await db.get(ProductDB, product_id)
-    if not p:
-        raise HTTPException(status_code=404, detail="Produto não encontrado")
-    await db.delete(p)
-    await db.commit()
-    logger.info(f"Produto removido: {p.name}")
-
-
-@router.post("/products/import-csv")
-async def import_products_csv(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
-    """
-    Importar produtos via CSV.
-    Colunas esperadas: name, category, brand, unit (obrigatórias), sku, notes (opcionais).
-    Aceita separadores , ou ;
-    """
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Envie um arquivo .csv")
-
-    content = await file.read()
-    try:
-        text = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = content.decode("latin-1")
-
-    # Remover diretiva "sep=;" do Excel se presente
-    lines = text.split("\n")
-    if lines and lines[0].strip().lower().startswith("sep="):
-        text = "\n".join(lines[1:])
-
-    # Detectar separador
-    first_line = text.split("\n")[0]
-    delimiter = ";" if ";" in first_line else ","
-
-    reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
-
-    # Normalizar nomes das colunas
-    if reader.fieldnames:
-        reader.fieldnames = [f.strip().lower() for f in reader.fieldnames]
-
-    required = {"name", "category", "brand", "unit"}
-    if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
-        missing = required - set(reader.fieldnames or [])
-        raise HTTPException(
-            status_code=400,
-            detail=f"Colunas obrigatórias faltando: {', '.join(missing)}. "
-                   f"Colunas encontradas: {', '.join(reader.fieldnames or [])}"
-        )
-
-    created = []
-    skipped = 0
-    for row in reader:
-        name = (row.get("name") or "").strip()
-        if not name:
-            skipped += 1
-            continue
-
-        product = ProductDB(
-            id=str(uuid.uuid4()),
-            name=name,
-            category=(row.get("category") or "").strip(),
-            brand=(row.get("brand") or "").strip(),
-            unit=(row.get("unit") or "").strip(),
-            sku=(row.get("sku") or "").strip(),
-            logo=(row.get("logo") or "").strip(),
-            notes=(row.get("notes") or "").strip(),
-            created_at=datetime.now(timezone.utc),
-        )
-        db.add(product)
-        created.append(_to_camel_dict(product))
-
-    await db.commit()
-    logger.info(f"CSV importado: {len(created)} produtos criados, {skipped} linhas ignoradas")
-    return {
-        "imported": len(created),
-        "skipped": skipped,
-        "products": created,
-    }

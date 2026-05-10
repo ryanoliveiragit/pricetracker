@@ -1,3 +1,5 @@
+import { baseHeaders } from "./headers";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -62,7 +64,7 @@ export async function sendAgentMessage(
 ): Promise<AgentResponse> {
   const response = await fetch(`${API_BASE_URL}/api/agent/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: baseHeaders(),
     body: JSON.stringify({ message, history }),
   });
 

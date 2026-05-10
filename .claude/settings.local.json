@@ -97,7 +97,10 @@
       "mcp__vercel__get_deployment",
       "mcp__vercel__web_fetch_vercel_url",
       "Bash(git *)",
-      "Bash(where git *)"
+      "Bash(where git *)",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_wait_for"
     ],
     "deny": [],
     "ask": []

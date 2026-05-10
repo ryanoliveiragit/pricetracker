@@ -4,42 +4,18 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 
 import logging
 import os
-import re as _re
 from contextlib import asynccontextmanager
 
-from app.api.routes import agent, auth, feedback, products, saves, search, suppliers, users
+from app.api.routes import agent, auth, feedback, products, saves, search, suppliers, tenants, users
 from app.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-_CORS_RE = _re.compile(r"https://pricetracker[^.]*\.vercel\.app")
-_CORS_EXACT = {"http://localhost:3000", "http://localhost:3001"}
-
-
-class _OptionsCORSMiddleware:
-    """Intercepts OPTIONS preflight at ASGI level before CORSMiddleware."""
-
-    def __init__(self, app):
-        self._app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["method"] == "OPTIONS":
-            raw = dict(scope.get("headers", []))
-            origin = raw.get(b"origin", b"").decode()
-            if origin and (origin in _CORS_EXACT or _CORS_RE.fullmatch(origin)):
-                from starlette.responses import Response
-                await Response(
-                    status_code=204,
-                    headers={
-                        "Access-Control-Allow-Origin": origin,
-                        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,PATCH,OPTIONS",
-                        "Access-Control-Allow-Headers": "Content-Type,Authorization",
-                        "Access-Control-Allow-Credentials": "true",
-                        "Access-Control-Max-Age": "86400",
-                    },
-                )(scope, receive, send)
-                return
-        await self._app(scope, receive, send)
+_CORS_ORIGINS_RE = (
+    r"https://pricetracker[^.]*\.vercel\.app"
+    r"|https?://[a-z0-9-]+\.pricetracker\.(com|com\.br|app)(:\d+)?"
+    r"|http://[a-z0-9-]+\.localhost(:\d+)?"
+)
 
 
 # Configurar logging
@@ -137,21 +113,20 @@ app = FastAPI(
 )
 
 # Configurar CORS
-# JWT via Authorization header — precisa de allow_credentials=True e origem explícita
 _extra_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:3002",
         *_extra_origins,
     ],
-    allow_origin_regex=r"https://pricetracker[^.]*\.vercel\.app",
+    allow_origin_regex=_CORS_ORIGINS_RE,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(_OptionsCORSMiddleware)
 
 # Registrar rotas
 app.include_router(search.router, prefix="/api", tags=["search"])
@@ -162,6 +137,7 @@ app.include_router(users.router, prefix="/api", tags=["users"])
 app.include_router(saves.router, prefix="/api/saves", tags=["saves"])
 app.include_router(agent.router, prefix="/api", tags=["agent"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["feedback"])
+app.include_router(tenants.router, prefix="/api", tags=["tenants"])
 
 # Serve uploaded screenshots statically
 try:
