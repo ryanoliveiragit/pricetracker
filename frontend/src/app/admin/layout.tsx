@@ -706,7 +706,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         )}
         <aside
           className={`sb ${mobileOpen ? "mobile-open" : ""}`}
-          style={{ position: "fixed", left: 0, top: 0, zIndex: 40 }}
+          style={{ position: "fixed", left: 0, top: 0, width: collapsed ? 64 : 240, zIndex: 40 }}
         >
           <div className="sb-brand">
             <div className="sb-brand-mark">⌘</div>
@@ -777,10 +777,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Main area */}
         <div
-          className="main bg-red-700"
+          className="main"
           style={{
             marginLeft: collapsed ? 64 : 240,
-            transition: "margin-left .2s",
+            width: `calc(100% - ${collapsed ? 64 : 240}px)`,
           }}
         >
           {/* Topbar */}
