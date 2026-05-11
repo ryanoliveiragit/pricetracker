@@ -20,7 +20,6 @@ import {
   Home,
   Database,
   Gem,
-  MessageSquarePlus,
   LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -93,16 +92,6 @@ const bottomItems: NavItem[] = [
     description: "Preferências",
     icon: Settings,
     id: "tour-nav-settings",
-  },
-];
-
-const adminItems: NavItem[] = [
-  {
-    href: "/feedback",
-    label: "Tickets",
-    description: "Análise de Tickets",
-    icon: MessageSquarePlus,
-    id: "tour-nav-feedback",
   },
 ];
 
@@ -337,51 +326,6 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
 
       {/* Bottom section */}
       <div className="shrink-0 border-t border-slate-100/80 dark:border-neutral-800/50 px-2 py-2 space-y-px">
-        {/* Admin-only items */}
-        {userRole === "admin" && (
-          <>
-            {!collapsed && (
-              <div className="px-2 pb-1 pt-1">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">
-                  Admin
-                </span>
-              </div>
-            )}
-            {adminItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  id={item.id}
-                  className={cn(
-                    "group relative flex items-center gap-3 rounded-xl transition-all duration-150",
-                    collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
-                    active ? "" : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
-                  )}
-                  style={active ? { background: "color-mix(in srgb, #7c3aed 9%, transparent)" } : {}}
-                >
-                  <Icon
-                    className={cn(
-                      "shrink-0 h-[15px] w-[15px] transition-colors duration-150",
-                      active ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300",
-                    )}
-                  />
-                  {!collapsed && (
-                    <span className={cn("text-[13px] font-medium", active ? "text-violet-600 dark:text-violet-400" : "text-slate-600 dark:text-neutral-400 group-hover:text-slate-800 dark:group-hover:text-neutral-200")}>
-                      {item.label}
-                    </span>
-                  )}
-                  {collapsed && <NavTooltip label={item.label} />}
-                </Link>
-              );
-            })}
-            <div className="h-px bg-slate-100 dark:bg-neutral-800/60 my-1" />
-          </>
-        )}
-
         {!collapsed && (
           <div className="px-2 pb-1">
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">

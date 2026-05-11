@@ -22,6 +22,7 @@ export interface ApiUser {
   role: string;
   is_active: boolean;
   parent_id?: number | null;
+  tenant_id?: string | null;
   created_at?: string | null;
 }
 

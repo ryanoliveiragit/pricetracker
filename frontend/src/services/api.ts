@@ -25,6 +25,7 @@ export interface ApiProduct {
   category: string;
   brand?: string;
   unit?: string;
+  sku?: string;
   logo?: string;
   notes?: string;
   variants?: string[];
@@ -188,11 +189,12 @@ export const searchApi = {
 export const authApi = {
   async login(
     email: string,
-    password: string
+    password: string,
+    forceSuperAdmin = false
   ): Promise<{ success: boolean; message?: string; user?: { email: string; name?: string; role?: string }; token?: string }> {
     const slug = getTenantSlug();
 
-    if (!slug) {
+    if (!slug || forceSuperAdmin) {
       // No tenant context (root domain / localhost) → try super-admin login
       const response = await fetch(`${API_BASE_URL}/api/auth/super-admin/login`, {
         method: "POST",
