@@ -32,6 +32,7 @@ import { ProductCard } from "../components/catalog/ProductCard";
 import { CartIcon } from "../components/catalog/CartIcon";
 import { CartModal } from "../components/catalog/CartModal";
 import { ImageModal, useImageModal } from "../components/catalog/ImageModal";
+import { ScraperLoadingScreen } from "../components/ScraperLoadingScreen";
 import { cn } from "@/lib/utils";
 
 const API_BASE =
@@ -956,121 +957,16 @@ export default function ModernResults() {
               </div>
             )}
 
-            {/* ── Loading: initial spinner ── */}
-            {loading && allOffers.length === 0 && storeStates.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-24 gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgb(var(--primary-500))]/10">
-                  <Loader2 className="h-7 w-7 animate-spin text-[rgb(var(--primary-500))]" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">
-                    Conectando as lojas
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Isso pode levar alguns segundos...
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* ── Loading: per-store panel (no results yet) ── */}
-            {loading && storeStates.length > 0 && allOffers.length === 0 && (
-              <div className="bg-card border border-border rounded-2xl p-6 mb-6 max-w-lg mx-auto">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgb(var(--primary-500))]/10">
-                    <Loader2 className="h-5 w-5 animate-spin text-[rgb(var(--primary-500))]" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      Buscando resultados
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Consultando {storeStates.length} fornecedores... (
-                      {elapsed}s)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5 mb-5">
-                  {storeStates.map((s) => {
-                    const isDone = s.status === "done";
-                    const isError =
-                      s.status === "error" || s.status === "login_error";
-                    const isLoginError = s.status === "login_error";
-                    const isSearching = s.status === "searching";
-                    const isPending = s.status === "pending";
-                    return (
-                      <div
-                        key={s.name}
-                        className="flex items-center justify-between py-1"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-5 flex justify-center">
-                            {isSearching && (
-                              <Loader2 className="h-4 w-4 animate-spin text-[rgb(var(--primary-500))]" />
-                            )}
-                            {isDone && (
-                              <CheckCircle2 className="h-4 w-4 text-[rgb(var(--primary-500))]" />
-                            )}
-                            {isError && (
-                              <AlertCircle className="h-4 w-4 text-red-500" />
-                            )}
-                            {isPending && (
-                              <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />
-                            )}
-                          </div>
-                          <span
-                            className={cn(
-                              "text-sm",
-                              (isSearching || isDone) &&
-                                "text-foreground font-medium",
-                              isError && "text-red-600 dark:text-red-400",
-                              isPending &&
-                                "text-muted-foreground",
-                            )}
-                          >
-                            {s.name}
-                          </span>
-                        </div>
-                        <span
-                          className={cn(
-                            "text-xs",
-                            isSearching &&
-                              "text-[rgb(var(--primary-500))] animate-pulse font-medium",
-                            isDone && "text-muted-foreground",
-                            isError && "text-red-500",
-                            isPending && "text-muted-foreground/50",
-                          )}
-                        >
-                          {isSearching && "Buscando..."}
-                          {isDone &&
-                            `${s.offerCount} resultado${s.offerCount !== 1 ? "s" : ""}`}
-                          {isLoginError && "Login falhou"}
-                          {!isLoginError && isError && "Erro"}
-                          {isPending && "Aguardando"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-[rgb(var(--primary-500))]"
-                    initial={{ width: "0%" }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.4 }}
-                  />
-                </div>
-                <p className="text-[10px] text-muted-foreground text-right mt-1.5">
-                  {
-                    storeStates.filter(
-                      (s) => s.status === "done" || s.status === "error",
-                    ).length
-                  }{" "}
-                  / {storeStates.length} lojas
-                </p>
-              </div>
+            {/* ── Loading: full scraper screen (no results yet) ── */}
+            {loading && allOffers.length === 0 && (
+              <AnimatePresence>
+                <ScraperLoadingScreen
+                  storeStates={storeStates}
+                  elapsed={elapsed}
+                  progress={progress}
+                  items={items}
+                />
+              </AnimatePresence>
             )}
 
             {/* ── Error ── */}

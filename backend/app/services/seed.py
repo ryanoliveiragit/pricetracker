@@ -137,14 +137,21 @@ async def seed_defaults():
             return
         tenant_id = default_tenant.id
 
-        # ── Super Admin (no tenant) ───────────────────────────────────────────
+        # ── Super Admin (no tenant) — always upsert to keep credentials fixed ──
         sa_result = await session.execute(
             select(UserDB).where(
                 UserDB.email == DEFAULT_SUPER_ADMIN["email"],
                 UserDB.tenant_id == None,
             )
         )
-        if not sa_result.scalars().first():
+        existing_sa = sa_result.scalars().first()
+        if existing_sa:
+            existing_sa.password_hash = get_password_hash(DEFAULT_SUPER_ADMIN["password"])
+            existing_sa.role = DEFAULT_SUPER_ADMIN["role"]
+            existing_sa.is_active = True
+            await session.commit()
+            logger.info("🔧 Super admin atualizado: %s", DEFAULT_SUPER_ADMIN["email"])
+        else:
             session.add(UserDB(
                 nome=DEFAULT_SUPER_ADMIN["nome"],
                 email=DEFAULT_SUPER_ADMIN["email"],

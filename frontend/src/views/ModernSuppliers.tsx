@@ -17,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { forwardRef, useMemo, useState } from "react";
+import { forwardRef, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -181,8 +181,10 @@ function ToggleRow({
 }
 
 export default function ModernSuppliers() {
-  const { suppliers, createSupplier, updateSupplier, removeSupplier, toggleSupplierStatus } =
+  const { suppliers, loading: suppliersLoading, error: suppliersError, refetch, createSupplier, updateSupplier, removeSupplier, toggleSupplierStatus } =
     useSuppliers();
+
+  useEffect(() => { void refetch(); }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -303,6 +305,28 @@ export default function ModernSuppliers() {
           <Plus size={14} /> Novo Fornecedor
         </button>
       </div>
+
+      {/* ── Error / Loading state ── */}
+      {suppliersLoading && (
+        <div className="flex items-center gap-2 py-3 mb-4 text-sm text-muted-foreground">
+          <Loader2 size={14} className="animate-spin" /> Carregando fornecedores...
+        </div>
+      )}
+      {suppliersError && !suppliersLoading && (
+        <div
+          className="flex items-center gap-3 px-4 py-3 rounded-xl mb-4 text-sm"
+          style={{ background: "hsl(var(--destructive)/0.07)", border: "1px solid hsl(var(--destructive)/0.2)", color: "hsl(var(--destructive))" }}
+        >
+          <AlertCircle size={15} className="flex-shrink-0" />
+          <span>Erro ao carregar fornecedores: {suppliersError}</span>
+          <button
+            onClick={() => void refetch()}
+            className="ml-auto text-xs underline underline-offset-2"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* ── Stats row ── */}
       <div className="grid grid-cols-3 gap-3 mb-5">

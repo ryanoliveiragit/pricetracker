@@ -4,7 +4,7 @@ const AUTH_STORAGE_KEY = "construprice-auth";
 
 export function getTenantSlug(): string | null {
   if (typeof window === "undefined") return process.env.NEXT_PUBLIC_DEFAULT_TENANT ?? null;
-  const hostname = window.location.hostname; // e.g. "cocacola.localhost" or "cocacola.pricetracker.com.br"
+  const hostname = window.location.hostname;
   const parts = hostname.split(".");
   const reserved = new Set(["www", "admin", "api"]);
 
@@ -16,6 +16,16 @@ export function getTenantSlug(): string | null {
   if (parts.length >= 3 && !reserved.has(parts[0])) {
     return parts[0];
   }
+
+  // Fallback: slug salvo na sessão autenticada (vem do JWT)
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { tenantSlug?: string };
+      if (parsed?.tenantSlug) return parsed.tenantSlug;
+    }
+  } catch {}
+
   return process.env.NEXT_PUBLIC_DEFAULT_TENANT ?? null;
 }
 

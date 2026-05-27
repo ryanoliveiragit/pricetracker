@@ -6,14 +6,15 @@ from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.db_models import SupplierDB, TenantDB, UserDB
 from app.models.supplier import SupplierCreate, SupplierUpdate
-from app.utils.auth import get_current_user_email
-from app.utils.tenant import get_current_tenant
+from app.utils.auth import get_current_user_email, get_token_payload
+from app.utils.tenant import get_current_tenant, get_optional_tenant
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -71,7 +72,7 @@ async def _test_and_save_login(
 ) -> Tuple[bool, Optional[str]]:
     scraper_class, scraper_key = _resolve_scraper(supplier_name)
     if not scraper_class:
-        return True, None
+        return False, f"Nenhum scraper configurado para '{supplier_name}'"
 
     logger.info("🔐 Testando login para '%s' (chave: %s)", supplier_name, scraper_key)
     try:
@@ -139,6 +140,70 @@ async def get_all_suppliers_from_db(tenant_id: Optional[str] = None) -> list:
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
+
+@router.get("/suppliers/scrapers")
+async def list_tenant_scrapers(
+    payload: dict = Depends(get_token_payload),
+    db: AsyncSession = Depends(get_db),
+):
+    """Returns only suppliers that have a mapped scraper for the authenticated tenant."""
+    tenant_id = payload.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant não identificado no token")
+
+    result = await db.execute(
+        select(SupplierDB)
+        .where(SupplierDB.tenant_id == tenant_id)
+        .order_by(SupplierDB.name)
+    )
+    suppliers = result.scalars().all()
+
+    logger.info("Scrapers lookup: tenant_id=%s total_suppliers=%d", tenant_id, len(suppliers))
+
+    scrapers = []
+    for s in suppliers:
+        _, scraper_key = _resolve_scraper(s.name)
+        logger.info("  supplier='%s' is_active=%s scraper_key=%s", s.name, s.is_active, scraper_key)
+        if scraper_key:
+            scrapers.append({
+                "id": s.id,
+                "name": s.name,
+                "scraperKey": scraper_key,
+                "isActive": s.is_active,
+                "requiresLogin": s.requires_login,
+                "region": s.region or "",
+                "logo": s.logo or "",
+            })
+
+    return scrapers
+
+
+@router.get("/suppliers/me")
+async def list_my_suppliers(
+    payload: dict = Depends(get_token_payload),
+    db: AsyncSession = Depends(get_db),
+):
+    """Returns suppliers linked to the authenticated user's tenant (uses JWT tenant_id)."""
+    tenant_id = payload.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant não identificado no token")
+
+    result = await db.execute(
+        select(SupplierDB)
+        .where(SupplierDB.tenant_id == tenant_id)
+        .order_by(SupplierDB.created_at.desc())
+    )
+    suppliers = result.scalars().all()
+
+    creator_ids = {s.created_by for s in suppliers if s.created_by}
+    creator_names: dict = {}
+    if creator_ids:
+        users_result = await db.execute(select(UserDB).filter(UserDB.id.in_(creator_ids)))
+        for u in users_result.scalars().all():
+            creator_names[u.id] = u.nome or u.email
+
+    return [_to_camel_dict(s, creator_names.get(s.created_by)) for s in suppliers]
+
 
 @router.get("/suppliers")
 async def list_suppliers(
@@ -226,12 +291,13 @@ async def create_supplier(
 async def update_supplier(
     supplier_id: str,
     data: SupplierUpdate,
-    tenant: TenantDB = Depends(get_current_tenant),
+    tenant: Optional[TenantDB] = Depends(get_optional_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(SupplierDB).where(SupplierDB.id == supplier_id, SupplierDB.tenant_id == tenant.id)
-    )
+    query = select(SupplierDB).where(SupplierDB.id == supplier_id)
+    if tenant:
+        query = query.where(SupplierDB.tenant_id == tenant.id)
+    result = await db.execute(query)
     s = result.scalars().first()
     if not s:
         raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
@@ -258,6 +324,35 @@ async def update_supplier(
     await db.commit()
     await db.refresh(s)
     return _to_camel_dict(s)
+
+
+class TestLoginBody(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/suppliers/{supplier_id}/test-login")
+async def test_supplier_login(
+    supplier_id: str,
+    body: TestLoginBody,
+    tenant: Optional[TenantDB] = Depends(get_optional_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Testa login do scraper com as credenciais fornecidas no body."""
+    # Busca globalmente por ID — não filtra por tenant, pois o admin gerencia fornecedores de todos os tenants
+    result = await db.execute(select(SupplierDB).where(SupplierDB.id == supplier_id))
+    s = result.scalars().first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+
+    scraper_class, _ = _resolve_scraper(s.name)
+    if not scraper_class:
+        return {"ok": False, "message": f"Nenhum scraper mapeado para '{s.name}'"}
+
+    ok, error_msg = await _test_and_save_login(s.name, body.username, body.password, s.region or "sp")
+    if ok:
+        return {"ok": True, "message": "Login realizado com sucesso"}
+    return {"ok": False, "message": error_msg or "Login falhou"}
 
 
 @router.delete("/suppliers/{supplier_id}", status_code=204)

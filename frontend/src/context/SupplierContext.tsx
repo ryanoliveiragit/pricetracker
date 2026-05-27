@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { suppliersApi } from "../services/api";
+import { getStoredToken } from "../services/headers";
 import type { Supplier, SupplierInput } from "../types/supplier";
 
 export class LoginError extends Error {
@@ -15,6 +16,8 @@ export class LoginError extends Error {
 interface SupplierContextValue {
   suppliers: Supplier[];
   loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
   createSupplier: (input: SupplierInput) => Promise<void>;
   updateSupplier: (id: string, input: Partial<SupplierInput>) => Promise<void>;
   removeSupplier: (id: string) => Promise<void>;
@@ -28,33 +31,28 @@ const SupplierContext = createContext<SupplierContextValue | undefined>(undefine
 export function SupplierProvider({ children }: { children: ReactNode }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadSuppliers(): Promise<void> {
+    setLoading(true);
+    setError(null);
+    try {
+      const fromApi = await suppliersApi.getAll();
+      setSuppliers(fromApi);
+    } catch (err) {
+      console.error("Erro ao carregar fornecedores:", err);
+      setError(err instanceof Error ? err.message : "Erro ao carregar fornecedores");
+      setSuppliers([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const token = getStoredToken();
 
   useEffect(() => {
-    let active = true;
-
-    async function loadSuppliers(): Promise<void> {
-      setLoading(true);
-      try {
-        const fromApi = await suppliersApi.getAll();
-        if (!active) return;
-        setSuppliers(fromApi);
-      } catch (error) {
-        if (!active) return;
-        console.error("Erro ao carregar fornecedores:", error);
-        setSuppliers([]);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
     void loadSuppliers();
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  }, [token]);
 
   async function createSupplier(input: SupplierInput): Promise<void> {
     const payload = {
@@ -136,10 +134,12 @@ export function SupplierProvider({ children }: { children: ReactNode }) {
       value={{
         suppliers,
         loading,
+        error,
+        refetch: loadSuppliers,
         createSupplier,
         updateSupplier,
         removeSupplier,
-        toggleSupplierStatus
+        toggleSupplierStatus,
       }}
     >
       {children}

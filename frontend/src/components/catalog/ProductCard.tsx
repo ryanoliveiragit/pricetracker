@@ -103,9 +103,10 @@ export function ProductCard({ offer, index = 0, onImageClick, searchQuery, onRem
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03, duration: 0.25 }}
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.3, ease: "easeOut" }}
       className={cn(
         "group flex flex-col rounded-xl border bg-white dark:bg-neutral-900",
         "transition-all duration-200",

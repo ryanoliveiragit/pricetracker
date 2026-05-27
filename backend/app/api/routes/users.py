@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from app.models.db_models import TenantDB, UserDB, UserRole
 from app.models.user import UserCreate, UserUpdate, UserResponse
 from app.utils.auth import get_current_user_email, get_password_hash
 from app.utils.tenant import get_current_tenant
+from app.services.email_service import send_credentials_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -133,6 +135,18 @@ async def create_user(
     await db.commit()
     await db.refresh(user)
     logger.info("Usuário criado: %s [%s] tenant=%s", user.email, user.role, tenant.slug)
+
+    app_name = (tenant.settings or {}).get("app_name") or tenant.name or "PriceTracker"
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:3000")
+    login_url = f"{base_url}/{tenant.slug}/login"
+    await send_credentials_email(
+        to_email=user.email,
+        nome=user.nome or user.email,
+        password=data.password,
+        login_url=login_url,
+        app_name=app_name,
+    )
+
     return _to_dict(user)
 
 

@@ -26,7 +26,22 @@ export interface SearchStats {
   total_estimated_seconds: number;
 }
 
+export interface AdminSupplier {
+  id: string;
+  name: string;
+  slug: string;
+  login_type: string;
+  requiresLogin: boolean;
+  active: boolean;
+  region: string;
+  created_at: string;
+}
+
 export const adminApi = {
+  async getAllSuppliers(): Promise<AdminSupplier[]> {
+    const res = await fetch(`${API_BASE_URL}/api/admin/suppliers`, { headers: baseHeaders() });
+    return parseResponse<AdminSupplier[]>(res);
+  },
   async getScraperSessions(): Promise<ScraperSessionsResponse> {
     const res = await fetch(`${API_BASE_URL}/api/admin/scraper-sessions`, { headers: baseHeaders() });
     return parseResponse<ScraperSessionsResponse>(res);

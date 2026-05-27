@@ -1,9 +1,12 @@
 import logging
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+import jwt
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.models.db_models import TenantDB, UserDB
 from app.models.user import LoginRequest, LoginResponse
@@ -48,6 +51,32 @@ async def login(
         user={"email": user.email, "name": user.nome, "role": user.role.value},
         token=token,
     )
+
+
+@router.post("/refresh")
+async def refresh_token(authorization: Optional[str] = Header(default=None)):
+    """Renova o token JWT. Aceita tokens expirados há até 7 dias."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Token não fornecido")
+    token = authorization[7:] if authorization.startswith("Bearer ") else authorization
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            options={"verify_exp": False},
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    # Só renova se expirou há menos de 7 dias
+    exp = payload.get("exp", 0)
+    now = int(datetime.now(timezone.utc).timestamp())
+    if exp and (now - exp) > 7 * 24 * 3600:
+        raise HTTPException(status_code=401, detail="Sessão encerrada — faça login novamente")
+
+    new_token = create_token({k: v for k, v in payload.items() if k != "exp"})
+    return {"access_token": new_token, "token_type": "bearer"}
 
 
 @router.post("/super-admin/login")

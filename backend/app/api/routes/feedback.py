@@ -24,7 +24,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -74,7 +74,7 @@ async def get_current_user(
 
 
 async def require_admin(user: UserDB = Depends(get_current_user)) -> UserDB:
-    if user.role != UserRole.ADMIN:
+    if user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
     return user
 
@@ -190,18 +190,52 @@ async def create_feedback(
     return {"id": report.id, "status": report.status, "message": "Feedback recebido. IA está transcrevendo..."}
 
 
+# ─── GET /api/feedback/counts ─────────────────────────────────────────────────
+
+@router.get("/counts")
+async def feedback_counts(
+    db: AsyncSession = Depends(get_db),
+    admin: UserDB = Depends(require_admin),
+):
+    from sqlalchemy import func as _func
+    rows = await db.execute(
+        select(FeedbackReportDB.status, _func.count(FeedbackReportDB.id))
+        .group_by(FeedbackReportDB.status)
+    )
+    counts = {s.value: 0 for s in FeedbackStatus}
+    for status, count in rows.all():
+        counts[status.value if hasattr(status, "value") else status] = count
+    return counts
+
+
 # ─── GET /api/feedback ─────────────────────────────────────────────────────────
 
 @router.get("")
 async def list_feedback(
-    status_filter: Optional[str] = None,
+    status: Optional[str] = None,
+    status_filter: Optional[str] = None,  # legacy alias
+    q: Optional[str] = None,
+    page: int = 1,
+    limit: int = 100,
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
-    q = select(FeedbackReportDB).order_by(FeedbackReportDB.created_at.desc())
-    if status_filter:
-        q = q.where(FeedbackReportDB.status == status_filter)
-    result = await db.execute(q)
+    from sqlalchemy import or_
+    statuses = status or status_filter
+    query = select(FeedbackReportDB).order_by(FeedbackReportDB.created_at.desc())
+    if statuses:
+        status_list = [s.strip() for s in statuses.split(",") if s.strip()]
+        if status_list:
+            query = query.where(FeedbackReportDB.status.in_(status_list))
+    if q:
+        query = query.where(or_(
+            FeedbackReportDB.description.ilike(f"%{q}%"),
+            FeedbackReportDB.search_query.ilike(f"%{q}%"),
+            FeedbackReportDB.user_email.ilike(f"%{q}%"),
+        ))
+    offset = (page - 1) * limit
+    query = query.offset(offset).limit(limit)
+    result = await db.execute(query)
     return [_serialize(r) for r in result.scalars().all()]
 
 
@@ -525,7 +559,8 @@ async def mark_merged(
 @router.post("/{report_id}/reject")
 async def reject_feedback(
     report_id: int,
-    admin_notes: str = Form(default=""),
+    reason: Optional[str] = Body(default=None, embed=True),
+    admin_notes: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     admin: UserDB = Depends(require_admin),
 ):
@@ -534,8 +569,30 @@ async def reject_feedback(
         raise HTTPException(status_code=400, detail="Relatório já finalizado")
     report.status = FeedbackStatus.rejected
     report.admin_email = admin.email
-    report.admin_notes = admin_notes.strip() or None
+    report.admin_notes = (reason or admin_notes or "").strip() or None
     report.resolved_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"id": report.id, "status": report.status}
+
+
+# ─── PATCH /api/feedback/{id}/status ─────────────────────────────────────────
+# Drag-and-drop admin: move livre entre qualquer status (sem regras de negócio).
+
+@router.patch("/{report_id}/status")
+async def set_feedback_status(
+    report_id: int,
+    status: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    admin: UserDB = Depends(require_admin),
+):
+    valid = {s.value for s in FeedbackStatus}
+    if status not in valid:
+        raise HTTPException(status_code=400, detail=f"Status inválido: '{status}'. Válidos: {sorted(valid)}")
+    report = await _load_report(db, report_id)
+    try:
+        report.status = FeedbackStatus(status)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Status inválido: '{status}'")
     await db.commit()
     return {"id": report.id, "status": report.status}
 

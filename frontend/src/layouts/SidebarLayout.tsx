@@ -21,6 +21,8 @@ import {
   Database,
   Gem,
   LucideIcon,
+  Zap,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -28,7 +30,6 @@ import { useState, type ReactNode } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import CommandMenu from "../components/CommandMenu";
-import { RoleGuard } from "../components/auth/RoleGuard";
 import UpdateNotifications from "../components/Notifications";
 import AppTour from "../components/AppTour";
 import FeedbackButton from "../components/FeedbackButton";
@@ -105,6 +106,21 @@ const ROLE_LABEL: Record<string, string> = {
   funcionario: "Funcionário",
 };
 
+/* ── Logo icon ─────────────────────────────────────────────── */
+function LogoIcon({ size = 32 }: { size?: number }) {
+  return (
+    <div
+      className="shrink-0 flex items-center justify-center rounded-lg"
+      style={{ width: size, height: size, background: "#fa5d19" }}
+    >
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 16 16" fill="none">
+        <circle cx="6.5" cy="6.5" r="4.5" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
+        <line x1="10.2" y1="10.2" x2="13.8" y2="13.8" stroke="white" strokeWidth="1.9" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
 /* ── Tooltip for collapsed items ──────────────────────────── */
 function NavTooltip({ label }: { label: string }) {
   return (
@@ -119,32 +135,86 @@ function NavBadge({ badge }: { badge: string }) {
   if (badge === "PLUS") {
     return (
       <span
-        className="shrink-0 inline-flex items-center gap-[3px] rounded-md px-[7px] py-[3px] text-[9px] font-semibold leading-none"
-        style={{
-          background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-          color: "#fff",
-          boxShadow: "0 2px 8px rgba(109,40,217,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
-          letterSpacing: "0.05em",
-        }}
+        className="shrink-0 inline-flex items-center gap-[3px] rounded-md border border-emerald-200 bg-emerald-50 px-[7px] py-[3px] text-[9px] font-semibold leading-none text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-400"
+        style={{ letterSpacing: "0.04em" }}
       >
-        <Gem className="h-[7px] w-[7px] opacity-90" />
+        <Gem className="h-[7px] w-[7px] opacity-80" />
         Plus
       </span>
     );
   }
-
+  if (badge === "IA") {
+    return (
+      <span
+        className="shrink-0 inline-flex items-center gap-[3px] rounded-md px-[7px] py-[3px] text-[9px] font-bold leading-none"
+        style={{
+          background: "linear-gradient(135deg, #fa5d19 0%, #d44c14 100%)",
+          color: "#fff",
+          letterSpacing: "0.06em",
+          boxShadow: "0 1px 6px rgba(250,93,25,0.35)",
+        }}
+      >
+        <Zap className="h-[7px] w-[7px]" />
+        IA
+      </span>
+    );
+  }
   return (
     <span
       className="shrink-0 inline-flex items-center rounded-md px-[7px] py-[3px] text-[9px] font-bold leading-none"
       style={{
         background: `linear-gradient(135deg, ${ACC} 0%, ${ACC6} 100%)`,
         color: "#fff",
-        boxShadow: `0 2px 8px color-mix(in srgb, ${ACC} 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.15)`,
         letterSpacing: "0.06em",
       }}
     >
       {badge}
     </span>
+  );
+}
+
+/* ── System status widget ─────────────────────────────────── */
+function SystemStatus({ collapsed }: { collapsed: boolean }) {
+  if (collapsed) {
+    return (
+      <div className="flex justify-center py-1.5">
+        <div className="relative flex h-[7px] w-[7px]">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+          <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-500" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mx-2 mb-1 border-t border-slate-100 dark:border-neutral-800/50 pt-2 pb-1 px-2">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-neutral-600">
+          Status
+        </span>
+      </div>
+      {/* Online row */}
+      <div className="flex items-center justify-between py-[3px]">
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex h-[6px] w-[6px]">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+            <span className="relative inline-flex h-[6px] w-[6px] rounded-full bg-emerald-500" />
+          </div>
+          <span className="text-[11px] text-slate-500 dark:text-neutral-400">Plataforma</span>
+        </div>
+        <span className="text-[10px] text-emerald-600 dark:text-emerald-500">online</span>
+      </div>
+      {/* Scrapers row */}
+      <div className="flex items-center justify-between py-[3px]">
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex h-[6px] w-[6px]">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-50 animate-ping" style={{ animationDelay: "0.7s" }} />
+            <span className="relative inline-flex h-[6px] w-[6px] rounded-full bg-orange-500" />
+          </div>
+          <span className="text-[11px] text-slate-500 dark:text-neutral-400">Scrapers</span>
+        </div>
+        <span className="text-[10px] text-orange-500 dark:text-orange-400">2 / 4 ativos</span>
+      </div>
+    </div>
   );
 }
 
@@ -169,51 +239,34 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
   }
 
   const sidebarWidth = collapsed ? 68 : 240;
-  const currentPage = [...navItems, ...bottomItems].find((i) =>
-    isActive(i.href),
-  );
+  const currentPage = [...navItems, ...bottomItems].find((i) => isActive(i.href));
   const CurrentIcon = currentPage?.icon ?? Home;
   const userRole = (user as any)?.role as string | undefined;
 
   /* ── Sidebar content ──────────────────────────────────── */
   const sidebarContent = (
     <div className="flex h-full flex-col select-none">
-      {/* Logo */}
+
+      {/* ── Logo ──────────────────────────────────────────── */}
       <div
         className="flex h-[60px] shrink-0 items-center border-b border-slate-100/80 dark:border-neutral-800/50"
-        style={{ padding: collapsed ? "0 14px" : "0 16px" }}
+        style={{ padding: collapsed ? "0 18px" : "0 16px" }}
       >
         {collapsed ? (
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-[13px] font-black shadow-md"
-            style={{
-              background: `linear-gradient(140deg, ${ACC}, ${ACC6})`,
-              boxShadow: `0 3px 12px -2px color-mix(in srgb, ${ACC} 50%, transparent)`,
-            }}
-          >
-            C
-          </div>
+          <LogoIcon size={32} />
         ) : (
           <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-[13px] font-black shadow-md shrink-0"
-              style={{
-                background: `linear-gradient(140deg, ${ACC}, ${ACC6})`,
-                boxShadow: `0 3px 12px -2px color-mix(in srgb, ${ACC} 50%, transparent)`,
-              }}
-            >
-              C
-            </div>
+            <LogoIcon size={34} />
             <div className="min-w-0">
-              <p className="text-[13.5px] font-bold text-slate-900 dark:text-neutral-50 leading-tight tracking-tight">
+              <p className="text-[14px] font-black text-slate-900 dark:text-neutral-50 leading-tight tracking-tight">
                 ConstruPrice
               </p>
-              <div className="flex items-center gap-1 mt-[3px]">
+              <div className="flex items-center gap-1.5 mt-[3px]">
                 <span
-                  className="inline-flex items-center rounded px-1.5 py-px text-[9px] font-semibold"
+                  className="inline-flex items-center rounded-md px-1.5 py-px text-[9px] font-bold"
                   style={{
-                    background: `color-mix(in srgb, ${ACC} 10%, transparent)`,
-                    color: ACC,
+                    background: "rgba(250,93,25,0.12)",
+                    color: "#fa5d19",
                     letterSpacing: "0.04em",
                   }}
                 >
@@ -228,16 +281,16 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
         )}
       </div>
 
-      {/* Section label */}
+      {/* ── Nav section ───────────────────────────────────── */}
       {!collapsed && (
         <div className="px-3.5 pt-5 pb-1">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400/80 dark:text-neutral-600">
             Navegação
           </span>
         </div>
       )}
 
-      {/* Main nav */}
+      {/* ── Main nav ──────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto px-2 pt-1 pb-2 space-y-px">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -251,24 +304,20 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               id={item.id}
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl transition-all duration-150",
-                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
-                active
-                  ? ""
-                  : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
+                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-[9px]",
+                active ? "" : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
               )}
               style={
                 active
-                  ? {
-                      background: `color-mix(in srgb, ${ACC} 9%, transparent)`,
-                    }
+                  ? { background: "rgba(250,93,25,0.08)", boxShadow: "inset 0 0 0 1px rgba(250,93,25,0.12)" }
                   : {}
               }
             >
               {/* Active left pill */}
               {active && !collapsed && (
                 <span
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-full"
-                  style={{ background: ACC }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[20px] rounded-full"
+                  style={{ background: "#fa5d19" }}
                 />
               )}
 
@@ -279,9 +328,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                 )}
                 style={
                   active
-                    ? {
-                        background: `color-mix(in srgb, ${ACC} 14%, transparent)`,
-                      }
+                    ? { background: "rgba(250,93,25,0.14)" }
                     : {}
                 }
               >
@@ -290,7 +337,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                     "transition-colors duration-150",
                     collapsed ? "h-[16px] w-[16px]" : "h-[15px] w-[15px]",
                     active
-                      ? "text-[rgb(var(--primary-500))]"
+                      ? "text-orange-500"
                       : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300",
                   )}
                 />
@@ -302,7 +349,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                     className={cn(
                       "text-[13px] leading-tight truncate",
                       active
-                        ? "font-semibold text-[rgb(var(--primary-600))] dark:text-[rgb(var(--primary-400))]"
+                        ? "font-semibold text-orange-600 dark:text-orange-400"
                         : "font-medium text-slate-700 dark:text-neutral-300 group-hover:text-slate-900 dark:group-hover:text-neutral-100",
                     )}
                   >
@@ -317,101 +364,76 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               )}
 
               {!collapsed && item.badge && <NavBadge badge={item.badge} />}
-
               {collapsed && <NavTooltip label={item.label} />}
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom section */}
-      <div className="shrink-0 border-t border-slate-100/80 dark:border-neutral-800/50 px-2 py-2 space-y-px">
-        {!collapsed && (
-          <div className="px-2 pb-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/80 dark:text-neutral-600">
-              Sistema
-            </span>
-          </div>
-        )}
+      {/* ── System status ─────────────────────────────────── */}
+      <div className="px-0 pb-1">
+        <SystemStatus collapsed={collapsed} />
+      </div>
 
-        {bottomItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
+      {/* ── Bottom section ────────────────────────────────── */}
+      <div className="shrink-0 border-t border-slate-100/80 dark:border-neutral-800/50 px-2 pt-2 pb-2">
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              id={item.id}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-xl transition-all duration-150",
-                collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
-                active
-                  ? ""
-                  : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
-              )}
-              style={
-                active
-                  ? { background: `color-mix(in srgb, ${ACC} 9%, transparent)` }
-                  : {}
-              }
-            >
-              <Icon
-                className={cn(
-                  "shrink-0 h-[15px] w-[15px] transition-colors duration-150",
-                  active
-                    ? "text-[rgb(var(--primary-500))]"
-                    : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300",
-                )}
-              />
-              {!collapsed && (
-                <span
-                  className={cn(
-                    "text-[13px] font-medium",
-                    active
-                      ? "text-[rgb(var(--primary-600))] dark:text-[rgb(var(--primary-400))]"
-                      : "text-slate-600 dark:text-neutral-400 group-hover:text-slate-800 dark:group-hover:text-neutral-200",
-                  )}
+        {/* User card (collapsed: avatar only) */}
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-1">
+            <div className="group relative">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold text-white"
+                  style={{ background: "linear-gradient(140deg, #fa5d19, #d44c14)" }}
                 >
-                  {item.label}
-                </span>
+                  {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
+                </div>
               )}
-              {collapsed && <NavTooltip label={item.label} />}
-            </Link>
-          );
-        })}
-
-        <button
-          onClick={handleLogout}
-          className={cn(
-            "group relative flex w-full items-center gap-3 rounded-xl transition-all duration-150 text-[13px] font-medium",
-            collapsed ? "justify-center h-10 w-10 mx-auto" : "px-2.5 py-2",
-            "text-slate-400 dark:text-neutral-500 hover:bg-red-50/80 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400",
-          )}
-        >
-          <LogOut className="shrink-0 h-[15px] w-[15px]" />
-          {!collapsed && <span>Sair</span>}
-          {collapsed && <NavTooltip label="Sair" />}
-        </button>
-
-        {/* User card */}
-        {!collapsed && (
-          <div className="mt-1.5 pt-2 border-t border-slate-100/80 dark:border-neutral-800/50">
-            <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800/40 transition-colors cursor-default">
+              <div className="absolute -bottom-px -right-px h-2 w-2 rounded-full bg-emerald-400 ring-[1.5px] ring-white dark:ring-neutral-950" />
+            </div>
+            {bottomItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  id={item.id}
+                  className={cn(
+                    "group relative flex justify-center items-center h-10 w-10 mx-auto rounded-xl transition-all duration-150",
+                    active ? "" : "hover:bg-slate-50 dark:hover:bg-neutral-800/50",
+                  )}
+                  style={active ? { background: "rgba(250,93,25,0.08)" } : {}}
+                >
+                  <Icon className={cn("h-[15px] w-[15px]", active ? "text-orange-500" : "text-slate-400 dark:text-neutral-500 group-hover:text-slate-600 dark:group-hover:text-neutral-300")} />
+                  <NavTooltip label={item.label} />
+                </Link>
+              );
+            })}
+            <button
+              onClick={handleLogout}
+              className="group relative flex justify-center items-center h-10 w-10 mx-auto rounded-xl transition-all duration-150 text-slate-400 dark:text-neutral-500 hover:bg-red-50/80 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
+            >
+              <LogOut className="h-[15px] w-[15px]" />
+              <NavTooltip label="Sair" />
+            </button>
+          </div>
+        ) : (
+          /* Expanded: user card com configurações e sair integrados */
+          <div className="rounded-xl border border-slate-100 dark:border-neutral-800/60 overflow-hidden">
+            {/* User info */}
+            <div className="flex items-center gap-2.5 px-3 py-2.5 bg-slate-50/60 dark:bg-neutral-900/40">
               <div className="relative shrink-0">
                 {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt=""
-                    className="h-7 w-7 rounded-full object-cover"
-                  />
+                  <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
                 ) : (
                   <div
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                    style={{
-                      background: `linear-gradient(140deg, ${ACC}, ${ACC6})`,
-                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold text-white"
+                    style={{ background: "linear-gradient(140deg, #fa5d19, #d44c14)" }}
                   >
                     {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
                   </div>
@@ -422,16 +444,42 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                 <p className="text-[12px] font-semibold text-slate-800 dark:text-neutral-200 truncate leading-tight">
                   {user?.displayName ?? "Usuário"}
                 </p>
-                <span
-                  className="inline-flex items-center rounded px-1.5 py-px mt-0.5 text-[9px] font-medium"
-                  style={{
-                    background: `color-mix(in srgb, ${ACC} 8%, transparent)`,
-                    color: ACC,
-                  }}
-                >
+                <span className="text-[10px] text-orange-500" style={{ letterSpacing: "0.01em" }}>
                   {ROLE_LABEL[userRole ?? "funcionario"] ?? "Funcionário"}
                 </span>
               </div>
+            </div>
+            {/* Actions */}
+            <div className="border-t border-slate-100 dark:border-neutral-800/60 flex">
+              {bottomItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    id={item.id}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-medium transition-colors",
+                      active
+                        ? "text-orange-500 bg-orange-50/60 dark:bg-orange-500/10"
+                        : "text-slate-500 dark:text-neutral-500 hover:text-slate-700 dark:hover:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800/40",
+                    )}
+                  >
+                    <Icon className="h-[13px] w-[13px]" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+              <div className="w-px bg-slate-100 dark:bg-neutral-800/60" />
+              <button
+                onClick={handleLogout}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-medium text-slate-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50/60 dark:hover:bg-red-500/10 transition-colors"
+              >
+                <LogOut className="h-[13px] w-[13px]" />
+                <span>Sair</span>
+              </button>
             </div>
           </div>
         )}
@@ -441,23 +489,21 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-slate-50 dark:bg-neutral-950">
+
       {/* ── Desktop Sidebar ─────────────────────────────── */}
       <motion.aside
         initial={false}
         animate={{ width: sidebarWidth }}
         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
         className="fixed left-0 top-0 bottom-0 z-[45] hidden md:flex flex-col bg-white dark:bg-neutral-950 border-r border-slate-100/80 dark:border-neutral-800/60 overflow-hidden"
-        style={{
-          boxShadow:
-            "1px 0 0 0 rgba(0,0,0,0.03), 4px 0 20px -8px rgba(0,0,0,0.06)",
-        }}
+        style={{ boxShadow: "1px 0 0 0 rgba(0,0,0,0.03), 4px 0 20px -8px rgba(0,0,0,0.06)" }}
       >
         <div className="flex-1 overflow-hidden" style={{ width: sidebarWidth }}>
           {sidebarContent}
         </div>
       </motion.aside>
 
-      {/* Collapse toggle — outside aside so overflow-hidden doesn't clip it */}
+      {/* Collapse toggle */}
       <motion.button
         initial={false}
         animate={{ left: sidebarWidth - 11 }}
@@ -467,11 +513,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
         aria-expanded={!collapsed}
         className="fixed top-[72px] z-[55] hidden md:flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-700/80 text-slate-400 dark:text-neutral-500 shadow-sm transition-all hover:text-slate-700 dark:hover:text-neutral-200 hover:border-slate-300 dark:hover:border-neutral-600 hover:shadow-md"
       >
-        {collapsed ? (
-          <ChevronRight className="h-2.5 w-2.5" />
-        ) : (
-          <ChevronLeft className="h-2.5 w-2.5" />
-        )}
+        {collapsed ? <ChevronRight className="h-2.5 w-2.5" /> : <ChevronLeft className="h-2.5 w-2.5" />}
       </motion.button>
 
       {/* ── Mobile overlay ──────────────────────────────── */}
@@ -498,7 +540,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
         )}
       </AnimatePresence>
 
-      {/* ── Desktop: main area ──────────────────────────── */}
+      {/* ── Desktop main area ───────────────────────────── */}
       <motion.div
         initial={false}
         animate={{ marginLeft: sidebarWidth }}
@@ -508,24 +550,16 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
         {/* Header */}
         <header
           className="sticky top-0 z-[48] h-[60px] shrink-0 border-b border-slate-100/80 dark:border-neutral-800/60 bg-white dark:bg-neutral-950"
-          style={{
-            boxShadow:
-              "0 1px 0 0 rgba(0,0,0,0.03), 0 2px 8px -4px rgba(0,0,0,0.05)",
-          }}
+          style={{ boxShadow: "0 1px 0 0 rgba(0,0,0,0.03), 0 2px 8px -4px rgba(0,0,0,0.05)" }}
         >
           <div className="flex h-full items-center justify-between px-6 gap-4">
-            {/* Left: page breadcrumb */}
+            {/* Left: breadcrumb */}
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                style={{
-                  background: `color-mix(in srgb, ${ACC} 10%, transparent)`,
-                }}
+                style={{ background: "rgba(250,93,25,0.1)" }}
               >
-                <CurrentIcon
-                  className="h-[15px] w-[15px]"
-                  style={{ color: ACC }}
-                />
+                <CurrentIcon className="h-[15px] w-[15px] text-orange-500" />
               </div>
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-slate-900 dark:text-neutral-100 leading-tight truncate">
@@ -540,9 +574,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
             {/* Center: search */}
             <button
               id="tour-search-bar"
-              onClick={() =>
-                window.dispatchEvent(new CustomEvent("open-command-menu"))
-              }
+              onClick={() => window.dispatchEvent(new CustomEvent("open-command-menu"))}
               className="hidden lg:flex items-center gap-2.5 rounded-xl border border-slate-200/80 dark:border-neutral-700/60 bg-slate-50/80 dark:bg-neutral-900/80 px-3.5 py-2 w-64 xl:w-80 transition-all group hover:border-slate-300 dark:hover:border-neutral-600 hover:bg-white dark:hover:bg-neutral-800/80 hover:shadow-sm"
               title="Abrir menu de comandos"
             >
@@ -564,15 +596,12 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                   className={cn(
                     "relative flex h-8 w-8 items-center justify-center rounded-lg border transition-all",
                     showNotifications
-                      ? "border-[rgb(var(--primary-500))] bg-[color-mix(in_srgb,rgb(var(--primary-500))_10%,transparent)] text-[rgb(var(--primary-500))]"
+                      ? "border-orange-300 bg-orange-50 text-orange-500 dark:border-orange-700 dark:bg-orange-500/10"
                       : "border-slate-200/80 dark:border-neutral-700/60 bg-white/80 dark:bg-neutral-900/80 text-slate-500 dark:text-neutral-400 hover:border-slate-300 dark:hover:border-neutral-600 hover:text-slate-700 dark:hover:text-neutral-200 hover:shadow-sm",
                   )}
                 >
                   <Bell className="h-[14px] w-[14px]" />
-                  <span
-                    className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ring-[1.5px] ring-white dark:ring-neutral-950"
-                    style={{ background: ACC }}
-                  />
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-orange-500 ring-[1.5px] ring-white dark:ring-neutral-950" />
                 </button>
                 <UpdateNotifications
                   open={showNotifications}
@@ -586,26 +615,13 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
               {/* Tour / help */}
               <button
                 id="tour-help-button"
-                onClick={() =>
-                  window.dispatchEvent(new CustomEvent("start-app-tour"))
-                }
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200/80 dark:border-neutral-700/60 bg-white/80 dark:bg-neutral-900/80 text-slate-500 dark:text-neutral-400 transition-all hover:text-white hover:shadow-sm"
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  el.style.background = ACC;
-                  el.style.borderColor = ACC6;
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  el.style.background = "";
-                  el.style.borderColor = "";
-                }}
+                onClick={() => window.dispatchEvent(new CustomEvent("start-app-tour"))}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200/80 dark:border-neutral-700/60 bg-white/80 dark:bg-neutral-900/80 text-slate-500 dark:text-neutral-400 transition-all hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 dark:hover:border-orange-700 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
                 title="Iniciar Tour"
               >
                 <Sparkles className="h-[14px] w-[14px]" />
               </button>
 
-              {/* Divider */}
               <div className="h-5 w-px bg-slate-200 dark:bg-neutral-700/60 mx-1" />
 
               {/* User card */}
@@ -614,14 +630,12 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                   {user?.avatar ? (
                     <img src={user.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />
                   ) : (
-                  <div
-                    className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                    style={{
-                      background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-                    }}
-                  >
-                    {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
-                  </div>
+                    <div
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                      style={{ background: "linear-gradient(135deg, #fa5d19, #d44c14)" }}
+                    >
+                      {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
+                    </div>
                   )}
                   <div className="absolute -bottom-px -right-px h-2 w-2 rounded-full bg-emerald-400 ring-1 ring-white dark:ring-neutral-900" />
                 </div>
@@ -629,10 +643,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                   <p className="text-[12px] font-semibold text-slate-800 dark:text-neutral-200 leading-tight">
                     {user?.displayName ?? "Usuário"}
                   </p>
-                  <p
-                    className="text-[10px] leading-tight"
-                    style={{ color: ACC }}
-                  >
+                  <p className="text-[10px] leading-tight text-orange-500">
                     {ROLE_LABEL[userRole ?? "funcionario"] ?? "Funcionário"}
                   </p>
                 </div>
@@ -667,15 +678,8 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
             </button>
 
             <div className="flex items-center gap-2 flex-1 justify-center">
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-[11px] font-bold shadow-sm"
-                style={{
-                  background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-                }}
-              >
-                C
-              </div>
-              <span className="text-[14px] font-bold text-slate-900 dark:text-neutral-100 tracking-tight">
+              <LogoIcon size={28} />
+              <span className="text-[14px] font-black text-slate-900 dark:text-neutral-100 tracking-tight">
                 ConstruPrice
               </span>
             </div>
@@ -695,14 +699,12 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
                 {user?.avatar ? (
                   <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover shadow-sm" />
                 ) : (
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-sm"
-                  style={{
-                    background: `linear-gradient(135deg, ${ACC}, ${ACC6})`,
-                  }}
-                >
-                  {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
-                </div>
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-sm"
+                    style={{ background: "linear-gradient(135deg, #fa5d19, #d44c14)" }}
+                  >
+                    {user?.displayName?.charAt(0).toUpperCase() ?? "U"}
+                  </div>
                 )}
                 <div className="absolute -bottom-px -right-px h-2 w-2 rounded-full bg-emerald-400 ring-1 ring-white dark:ring-neutral-900" />
               </div>
@@ -711,9 +713,7 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
 
           <div className="px-4 pb-3">
             <button
-              onClick={() =>
-                window.dispatchEvent(new CustomEvent("open-command-menu"))
-              }
+              onClick={() => window.dispatchEvent(new CustomEvent("open-command-menu"))}
               className="flex w-full items-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-900 px-3 py-2 transition-colors active:bg-slate-100 shadow-sm"
             >
               <SearchIcon className="h-3.5 w-3.5 text-slate-400 dark:text-neutral-500 shrink-0" />

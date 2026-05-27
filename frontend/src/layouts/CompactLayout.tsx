@@ -14,6 +14,8 @@ const navItems = [
   { href: "/products", icon: Package, label: "Produtos" },
   { href: "/suppliers", icon: Store, label: "Fornecedores" },
   { href: "/results", icon: BarChart3, label: "Resultados" },
+  { href: "/settings", icon: Settings, label: "Configurações" },
+  { href: "/saves", icon: Package, label: "Salvos" },
 ];
 
 export default function CompactLayout({ children }: { children: ReactNode }) {

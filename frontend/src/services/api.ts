@@ -70,7 +70,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 export const suppliersApi = {
   async getAll(): Promise<ApiSupplier[]> {
-    const response = await fetch(`${API_BASE_URL}/api/suppliers`, { headers: baseHeaders() });
+    const response = await fetch(`${API_BASE_URL}/api/suppliers/me`, { headers: baseHeaders() });
     return parseResponse<ApiSupplier[]>(response);
   },
 
@@ -105,6 +105,15 @@ export const suppliersApi = {
     if (!response.ok && response.status !== 404) {
       throw new Error(`API error ${response.status}`);
     }
+  },
+
+  async testLogin(id: string, username: string, password: string): Promise<{ ok: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/suppliers/${id}/test-login`, {
+      method: "POST",
+      headers: baseHeaders(),
+      body: JSON.stringify({ username, password }),
+    });
+    return parseResponse<{ ok: boolean; message: string }>(response);
   },
 };
 
@@ -187,6 +196,20 @@ export const searchApi = {
 // ─── Auth API ─────────────────────────────────────────────────────────────────
 
 export const authApi = {
+  async refresh(token: string): Promise<string | null> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      if (!response.ok) return null;
+      const data = await response.json() as { access_token: string };
+      return data.access_token ?? null;
+    } catch {
+      return null;
+    }
+  },
+
   async login(
     email: string,
     password: string,
@@ -205,7 +228,7 @@ export const authApi = {
         throw new Error(`Erro ao conectar com servidor: ${response.status}`);
       }
       const data = await response.json();
-      return { success: true, user: data.user, token: data.token };
+      return { success: true, user: data.user, token: data.access_token || data.token };
     }
 
     // Tenant-scoped login
@@ -225,7 +248,7 @@ export const authApi = {
       return { success: false, message: data.message || "Credenciais inválidas" };
     }
 
-    return { success: true, message: data.message, user: data.user, token: data.token };
+    return { success: true, message: data.message, user: data.user, token: data.access_token || data.token };
   },
 };
 
@@ -311,6 +334,27 @@ export const tenantsApi = {
       body: JSON.stringify(data),
     });
     return parseResponse(response);
+  },
+
+  async getSuppliers(tenantId: string): Promise<ApiSupplier[]> {
+    const response = await fetch(`${API_BASE_URL}/api/tenants/${tenantId}/suppliers`, { headers: baseHeaders() });
+    return parseResponse<ApiSupplier[]>(response);
+  },
+
+  async addSupplier(tenantId: string, supplierId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/tenants/${tenantId}/suppliers/${supplierId}`, {
+      method: "POST",
+      headers: baseHeaders(),
+    });
+    if (!response.ok) throw new Error(`API error ${response.status}`);
+  },
+
+  async removeSupplier(tenantId: string, supplierId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/tenants/${tenantId}/suppliers/${supplierId}`, {
+      method: "DELETE",
+      headers: baseHeaders(),
+    });
+    if (!response.ok && response.status !== 404) throw new Error(`API error ${response.status}`);
   },
 
   async createAdmin(

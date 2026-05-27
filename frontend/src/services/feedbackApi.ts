@@ -118,9 +118,36 @@ export async function submitFeedback(data: {
   return res.json();
 }
 
-export async function listFeedback(statusFilter?: string): Promise<FeedbackReport[]> {
+export interface FeedbackCounts {
+  pending: number;
+  analyzed: number;
+  approved: number;
+  validated: number;
+  executing: number;
+  deployed: number;
+  merged: number;
+  rejected: number;
+}
+
+export async function getFeedbackCounts(): Promise<FeedbackCounts> {
+  const res = await fetch(`${BASE}/api/feedback/counts`, { headers: authHeader() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listFeedback(params?: {
+  status?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+  status_filter?: string; // legacy
+}): Promise<FeedbackReport[]> {
   const url = new URL(`${BASE}/api/feedback`);
-  if (statusFilter) url.searchParams.set("status_filter", statusFilter);
+  const status = params?.status ?? params?.status_filter;
+  if (status) url.searchParams.set("status", status);
+  if (params?.q) url.searchParams.set("q", params.q);
+  if (params?.page) url.searchParams.set("page", String(params.page));
+  if (params?.limit) url.searchParams.set("limit", String(params.limit));
   const res = await fetch(url.toString(), { headers: authHeader() });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

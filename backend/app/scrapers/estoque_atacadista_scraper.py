@@ -83,6 +83,15 @@ class EstoqueAtacadistaScraper(BaseScraper):
 
             if "route=account/login" in resp.url:
                 logger.error(f"❌ Login falhou — ainda na página de login")
+                self.login_error = "Usuário ou senha inválidos"
+                return False
+
+            # Confirma que está na área autenticada (conta ou dashboard)
+            soup_resp = BeautifulSoup(resp.text, "html.parser")
+            logout_link = soup_resp.find("a", href=lambda h: h and "route=account/logout" in str(h))
+            if not logout_link:
+                logger.error(f"❌ Login falhou — link de logout não encontrado na resposta")
+                self.login_error = "Usuário ou senha inválidos"
                 return False
 
             self.is_logged_in = True

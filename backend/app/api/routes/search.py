@@ -7,12 +7,12 @@ from datetime import datetime
 from typing import Dict, List, Type
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from app.database import async_session
-from app.models.db_models import ProductDB
+from app.models.db_models import ProductDB, TenantDB
 from app.models.product import (
     ProductOffer,
     ProductSearchBySupplierRequest,
@@ -34,6 +34,7 @@ from app.services.cache import (
 )
 from app.services.credentials_manager import get_credentials_manager
 from app.services.scraper_manager import get_scraper_manager
+from app.utils.tenant import get_current_tenant
 from app.services.synonyms import expand_query_for_scrape
 from app.utils.text_normalizer import (
     calculate_similarity,
@@ -47,6 +48,46 @@ router = APIRouter()
 # Configurações
 MAX_WORKERS = int(os.getenv("MAX_CONCURRENT_SCRAPERS", "5"))
 CACHE_TTL = int(os.getenv("SEARCH_CACHE_TTL", "1800"))  # 30 minutos padrão
+
+
+async def _build_dynamic_scrapers(suppliers) -> list[tuple]:
+    """Resolve scrapers from DB config for suppliers without hardcoded classes."""
+    if not suppliers:
+        return []
+    from app.models.db_models import ScraperConfigDB
+    from app.scrapers.dynamic_scraper import make_dynamic_class
+    from sqlalchemy import select as _select
+    supplier_ids = [s.id for s in suppliers]
+    async with async_session() as db:
+        result = await db.execute(
+            _select(ScraperConfigDB).where(ScraperConfigDB.supplier_id.in_(supplier_ids))
+        )
+        configs = {c.supplier_id: c for c in result.scalars().all()}
+    out = []
+    for supplier in suppliers:
+        cfg = configs.get(supplier.id)
+        if not cfg or not cfg.search_url or not cfg.container_selector:
+            continue
+        cache_key = f"dynamic_{supplier.id[:8]}"
+        config_dict = {
+            "store_name": supplier.name, "supplier_id": supplier.id, "cache_key": cache_key,
+            "base_url": cfg.base_url or "", "search_url": cfg.search_url,
+            "container_selector": cfg.container_selector or "", "name_selector": cfg.name_selector or "",
+            "price_selector": cfg.price_selector or "", "link_selector": cfg.link_selector or "a",
+            "image_selector": cfg.image_selector or "", "sku_selector": cfg.sku_selector or "",
+            "login_url": cfg.login_url or "", "login_username_field": cfg.login_username_field or "email",
+            "login_password_field": cfg.login_password_field or "password",
+            "login_csrf_selector": cfg.login_csrf_selector or "", "login_submit_url": cfg.login_submit_url or "",
+            "login_success_check": cfg.login_success_check or "url", "login_success_value": cfg.login_success_value or "login",
+            "requires_login": supplier.requires_login,
+        }
+        factory = make_dynamic_class(config_dict)
+        creds = {"url": supplier.url or "", "region": supplier.region or "sp"}
+        if supplier.requires_login and supplier.username and supplier.password:
+            creds["username"] = supplier.username
+            creds["password"] = supplier.password
+        out.append((factory, creds, cache_key))
+    return out
 
 
 async def get_db_variants(query: str) -> List[str]:
@@ -82,6 +123,7 @@ async def search_all_stores(
     query: str,
     force_refresh: bool = False,
     allowed_store_names: List[str] | None = None,
+    tenant_id: str | None = None,
 ) -> List[ProductOffer]:
     """
     Busca em todas as lojas em paralelo com:
@@ -114,8 +156,8 @@ async def search_all_stores(
         if store_name and store_name.strip()
     }
 
-    logger.info("Buscando fornecedores ativos do banco de dados...")
-    all_suppliers = await get_all_suppliers_from_db()
+    logger.info("Buscando fornecedores ativos do banco de dados... tenant_id=%s", tenant_id)
+    all_suppliers = await get_all_suppliers_from_db(tenant_id=tenant_id)
     active_suppliers = [s for s in all_suppliers if s.is_active]
 
     if allowed_normalized:
@@ -135,13 +177,14 @@ async def search_all_stores(
             scrapers_with_creds = [(MegalesteScraper, None, "megaleste")]
     else:
         seen_scrapers = set()
+        unmatched_suppliers = []
         for supplier in active_suppliers:
             scraper_class = resolve_scraper(supplier.name)
-            if not scraper_class or scraper_class in seen_scrapers:
-                if not scraper_class:
-                    logger.info(f"   ⚠️  {supplier.name}: sem scraper implementado")
+            if not scraper_class:
+                unmatched_suppliers.append(supplier)
                 continue
-
+            if scraper_class in seen_scrapers:
+                continue
             seen_scrapers.add(scraper_class)
             scraper_key = (
                 scraper_class.__name__.lower().replace("scraper", "").strip("_")
@@ -154,6 +197,10 @@ async def search_all_stores(
                 credentials["username"] = supplier.username
                 credentials["password"] = supplier.password
             scrapers_with_creds.append((scraper_class, credentials, scraper_key))
+
+        if unmatched_suppliers:
+            dynamic = await _build_dynamic_scrapers(unmatched_suppliers)
+            scrapers_with_creds.extend(dynamic)
 
         logger.info(f"✅ {len(scrapers_with_creds)} scrapers resolvidos")
 
@@ -184,16 +231,23 @@ async def search_all_stores(
 
 
 @router.post("/search", response_model=SearchResponse)
-async def search_products(request: SearchRequest):
-    return await _search_products_inner(request)
+async def search_products(
+    request: SearchRequest,
+    tenant: TenantDB = Depends(get_current_tenant),
+):
+    return await _search_products_inner(request, tenant_id=tenant.id)
 
 
 @router.post("/search/stream")
-async def search_stream(request: SearchRequest):
+async def search_stream(
+    request: SearchRequest,
+    tenant: TenantDB = Depends(get_current_tenant),
+):
     """
     Streaming SSE: envia resultados por fornecedor assim que cada um termina.
     Usa ScraperManager para execução com timeout 10s, cache e circuit breaker.
     """
+    _tenant_id = tenant.id
 
     async def generate():
         from app.api.routes.suppliers import get_all_suppliers_from_db
@@ -216,7 +270,7 @@ async def search_stream(request: SearchRequest):
             store_name.lower().strip() for store_name in allowed_store_names
         }
 
-        all_suppliers = await get_all_suppliers_from_db()
+        all_suppliers = await get_all_suppliers_from_db(tenant_id=_tenant_id)
         active_suppliers = [s for s in all_suppliers if s.is_active]
         if allowed_normalized:
             active_suppliers = [
@@ -232,13 +286,17 @@ async def search_stream(request: SearchRequest):
                 scrapers = [(MegalesteScraper, None, "Megaleste", "megaleste")]
         else:
             seen = set()
+            unmatched_stream = []
             for supplier in active_suppliers:
                 normalized = supplier.name.lower().strip()
                 scraper_class = next(
                     (cls for kw, cls in keyword_mapping.items() if kw in normalized),
                     None,
                 )
-                if not scraper_class or scraper_class in seen:
+                if not scraper_class:
+                    unmatched_stream.append(supplier)
+                    continue
+                if scraper_class in seen:
                     continue
                 seen.add(scraper_class)
                 scraper_key = (
@@ -249,6 +307,10 @@ async def search_stream(request: SearchRequest):
                     creds["username"] = supplier.username
                     creds["password"] = supplier.password
                 scrapers.append((scraper_class, creds, supplier.name, scraper_key))
+            if unmatched_stream:
+                dynamic = await _build_dynamic_scrapers(unmatched_stream)
+                for factory, creds, s_key in dynamic:
+                    scrapers.append((factory, creds, s_key, s_key))
 
         # Expandir sinônimos uma vez
         all_queries: list[str] = []
@@ -352,7 +414,7 @@ async def search_stream(request: SearchRequest):
     )
 
 
-async def _search_products_inner(request: SearchRequest) -> SearchResponse:
+async def _search_products_inner(request: SearchRequest, tenant_id: str | None = None) -> SearchResponse:
     try:
         t_total = time.time()
         results = []
@@ -400,6 +462,7 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                 normalized_query,
                 force_refresh=request.force_refresh,
                 allowed_store_names=allowed_store_names,
+                tenant_id=tenant_id,
             )
             _merge([filter_results_by_query(normalized_query, main_offers)])
 
@@ -414,6 +477,7 @@ async def _search_products_inner(request: SearchRequest) -> SearchResponse:
                         normalize_text(sq),
                         force_refresh=request.force_refresh,
                         allowed_store_names=allowed_store_names,
+                        tenant_id=tenant_id,
                     )
                     for sq in extra_queries
                 ]

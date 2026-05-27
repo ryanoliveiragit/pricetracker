@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { authApi } from "../services/api";
 import { usersApi } from "../services/usersApi";
 
@@ -53,8 +53,62 @@ function readStoredUser(): UserSession | null {
   }
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 min
+const REFRESH_THRESHOLD_S = 60 * 60; // refresh se restar < 1h
+
+function tokenExpiresInSeconds(token: string): number {
+  const payload = decodeJwtPayload(token);
+  const exp = payload?.exp as number | undefined;
+  if (!exp) return 0;
+  return exp - Math.floor(Date.now() / 1000);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserSession | null>(() => readStoredUser());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function tryRefresh(currentUser: UserSession): Promise<boolean> {
+    if (tokenExpiresInSeconds(currentUser.token) > REFRESH_THRESHOLD_S) return true;
+    const newToken = await authApi.refresh(currentUser.token);
+    if (!newToken) return false;
+    const updated = { ...currentUser, token: newToken };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
+    setUser(updated);
+    return true;
+  }
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Ao carregar: verifica se o token precisa ser renovado (inclui já expirados)
+    void tryRefresh(user).then(ok => {
+      if (!ok) {
+        // Refresh falhou (token expirado há mais de 7 dias) → força novo login
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        setUser(null);
+      }
+    });
+
+    intervalRef.current = setInterval(() => {
+      setUser(prev => {
+        if (prev) void tryRefresh(prev);
+        return prev;
+      });
+    }, REFRESH_INTERVAL_MS);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [user?.token]);
 
   async function login(email: string, password: string): Promise<void> {
     const validEmail = email.trim().length > 3;
@@ -69,11 +123,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Credenciais inválidas");
     }
 
+    const jwtPayload = decodeJwtPayload(authResult.token ?? "");
+
     const session: UserSession = {
       email: authResult.user.email,
       displayName: authResult.user.name ?? authResult.user.email.split("@")[0],
       role: authResult.user.role ?? "funcionario",
       token: authResult.token ?? "",
+      tenantSlug: (jwtPayload?.tenant_slug as string) ?? undefined,
+      tenantId: (jwtPayload?.tenant_id as string) ?? undefined,
     };
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));

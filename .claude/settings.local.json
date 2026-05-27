@@ -100,7 +100,12 @@
       "Bash(where git *)",
       "mcp__plugin_context-mode_context-mode__ctx_search",
       "mcp__playwright__browser_type",
-      "mcp__playwright__browser_wait_for"
+      "mcp__playwright__browser_wait_for",
+      "Bash(pip install *)",
+      "Bash(\"C:\\\\Users\\\\rodolfo linhares\\\\Documents\\\\pricetracker\\\\.venv\\\\Scripts\\\\pip.exe\" install aiosmtplib)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(& \"C:\\\\Users\\\\rodolfo linhares\\\\Documents\\\\pricetracker\\\\backend\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\rodolfo linhares\\\\Documents\\\\pricetracker\\\\backend\\\\debug_tenant.py\")",
+      "Bash(Remove-Item *)"
     ],
     "deny": [],
     "ask": []

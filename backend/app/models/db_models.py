@@ -309,6 +309,44 @@ class FeedbackReportDB(Base):
     resolved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class ScraperConfigDB(Base):
+    """Configuração de scraper dinâmico criado via painel admin (sem código Python)."""
+    __tablename__ = "scraper_configs"
+
+    supplier_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("suppliers.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    # Search
+    search_url: Mapped[str] = mapped_column(Text, default="")
+    base_url: Mapped[str] = mapped_column(String(512), default="")
+    container_selector: Mapped[str] = mapped_column(Text, default="")
+    name_selector: Mapped[str] = mapped_column(Text, default="")
+    price_selector: Mapped[str] = mapped_column(Text, default="")
+    link_selector: Mapped[str] = mapped_column(Text, default="a")
+    image_selector: Mapped[str] = mapped_column(Text, default="")
+    sku_selector: Mapped[str] = mapped_column(Text, default="")
+    availability_selector: Mapped[str] = mapped_column(Text, default="")
+
+    # Login (optional — only if supplier requires_login)
+    login_url: Mapped[str] = mapped_column(Text, default="")
+    login_username_field: Mapped[str] = mapped_column(String(128), default="email")
+    login_password_field: Mapped[str] = mapped_column(String(128), default="password")
+    login_csrf_selector: Mapped[str] = mapped_column(Text, default="")
+    login_submit_url: Mapped[str] = mapped_column(Text, default="")
+    login_success_check: Mapped[str] = mapped_column(String(32), default="url")
+    login_success_value: Mapped[str] = mapped_column(Text, default="login")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class DynamicAbbreviationDB(Base):
     """Abreviações adicionadas dinamicamente via aprovação de feedback."""
     __tablename__ = "dynamic_abbreviations"

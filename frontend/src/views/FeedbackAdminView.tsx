@@ -670,7 +670,7 @@ export default function FeedbackAdminView() {
     if (!silent) setLoading(true);
     if (!silent) setError(null);
     try {
-      setReports(await listFeedback(tab || undefined));
+      setReports(await listFeedback(tab ? { status: tab } : undefined));
     } catch (e) {
       if (!silent) setError(e instanceof Error ? e.message : "Erro ao carregar feedbacks");
     } finally {
