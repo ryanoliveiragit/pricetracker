@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 _CORS_ORIGINS_RE = (
     r"https://pricetracker[^.]*\.vercel\.app"
+    r"|https?://([a-z0-9-]+\.)?construprice\.com\.br(:\d+)?"
     r"|https?://[a-z0-9-]+\.pricetracker\.(com|com\.br|app)(:\d+)?"
     r"|http://[a-z0-9-]+\.localhost(:\d+)?"
 )
