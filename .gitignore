@@ -65,3 +65,4 @@ Desktop.ini
 *.html
 coverage/
 .nyc_output/
+nul

@@ -124,10 +124,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configurar CORS
+# Configurar CORS — allow_origin_regex reflects the Origin header back,
+# which is required when allow_credentials=True (spec forbids wildcard "*" with credentials).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
