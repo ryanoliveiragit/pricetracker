@@ -129,3 +129,35 @@ async def create_tables():
                 ))
     except Exception as e:
         logger.warning("Normalização status: %s", e)
+
+    # ── scraped_products: dedup_key + índice único (upsert atômico, anti-deadlock) ──
+    try:
+        async with engine.begin() as conn:
+            # 1) Coluna de deduplicação
+            await conn.execute(sa.text(
+                "ALTER TABLE scraped_products "
+                "ADD COLUMN IF NOT EXISTS dedup_key VARCHAR(700)"
+            ))
+            # 2) Backfill com a MESMA regra usada em Python (store_scraped_results)
+            await conn.execute(sa.text(
+                "UPDATE scraped_products SET dedup_key = CASE "
+                "  WHEN sku IS NOT NULL AND sku <> '' "
+                "    THEN scraper_key || '|sku|' || sku "
+                "  ELSE scraper_key || '|name|' || product_name_normalized "
+                "END "
+                "WHERE dedup_key IS NULL"
+            ))
+            # 3) Remove duplicatas existentes mantendo a linha mais recente (maior id)
+            await conn.execute(sa.text(
+                "DELETE FROM scraped_products a "
+                "USING scraped_products b "
+                "WHERE a.dedup_key = b.dedup_key AND a.id < b.id"
+            ))
+            # 4) Índice único — alvo do ON CONFLICT
+            await conn.execute(sa.text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_scraped_dedup "
+                "ON scraped_products (dedup_key)"
+            ))
+        logger.info("✅ scraped_products.dedup_key + índice único criados")
+    except Exception as e:
+        logger.warning("Migração scraped_products.dedup_key: %s", e)

@@ -1253,15 +1253,23 @@ async def catalog_items(
     """Lista produtos do catálogo local com paginação e filtros avançados."""
     from sqlalchemy import func, asc, desc
     from app.models.db_models import ScrapedProductDB
+    from app.utils.text_normalizer import normalize_text
 
     limit = min(limit, 200)
     offset = (page - 1) * limit
 
+    # Normaliza a query do mesmo modo que product_name_normalized foi gravado
+    # (remove acentos, lowercase, expande abreviações) e quebra em tokens.
+    # Cada token vira um LIKE separado com AND, então "cadeado 20" casa com
+    # "cadeado gold art 20" — não exige que os termos sejam contíguos.
+    q_tokens = [t for t in normalize_text(q).split() if t]
+
     try:
         async with async_session() as session:
             def build_where(stmt):
-                if q:
-                    stmt = stmt.where(ScrapedProductDB.product_name_normalized.like(f"%{q.lower()}%"))
+                if q_tokens:
+                    for tok in q_tokens:
+                        stmt = stmt.where(ScrapedProductDB.product_name_normalized.like(f"%{tok}%"))
                 if stores:
                     store_list = [s.strip() for s in stores.split(",") if s.strip()]
                     if store_list:

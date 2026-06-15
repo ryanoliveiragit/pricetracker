@@ -202,6 +202,10 @@ class ScrapedProductDB(Base):
     score: Mapped[float] = mapped_column(Float, default=0.0)
     source_query: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
     scraper_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # Chave de deduplicação determinística: scraper_key|sku|<sku> quando há SKU,
+    # senão scraper_key|name|<nome_normalizado>. Índice único criado em
+    # create_tables() — permite upsert atômico (ON CONFLICT) sem deadlock.
+    dedup_key: Mapped[str] = mapped_column(String(700), nullable=True)
     scraped_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

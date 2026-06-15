@@ -85,84 +85,121 @@ def _scrape_single(scraper_class, query: str, credentials: dict):
     return scrape_store(scraper_class, query, credentials)
 
 
+def _is_deadlock_error(exc: Exception) -> bool:
+    """Detecta deadlock/serialization do PostgreSQL (asyncpg) dentro do wrapper SQLAlchemy."""
+    orig = getattr(exc, "orig", exc)
+    name = type(orig).__name__
+    if name in ("DeadlockDetectedError", "SerializationError"):
+        return True
+    return "deadlock detected" in str(orig).lower()
+
+
+def _dedup_key(scraper_key: str, sku: str, name_norm: str) -> str:
+    """
+    Chave determinística para deduplicação. Precisa casar EXATAMENTE com o
+    backfill SQL em database.py (create_tables). SKU é a identidade autoritativa
+    quando presente; senão usa o nome normalizado.
+    """
+    if sku:
+        return f"{scraper_key}|sku|{sku}"
+    return f"{scraper_key}|name|{name_norm}"
+
+
 async def store_scraped_results(
     offers: List[ProductOffer],
     scraper_key: str,
     source_query: str,
+    max_retries: int = 4,
 ):
     """
-    Upsert scraped products into the local catalog.
-    Uses (store, sku OR product_name_normalized) as the unique key.
-    Updates price/availability if product already exists; inserts if new.
+    Upsert atômico dos produtos scraped no catálogo local via
+    INSERT ... ON CONFLICT (dedup_key) DO UPDATE.
+
+    Diferente do SELECT-depois-UPDATE anterior (que causava deadlock quando o
+    scrape agendado e as buscas ao vivo escreviam ao mesmo tempo), o upsert
+    adquire o lock da linha de forma atômica. Ainda assim: (1) os offers são
+    deduplicados e ordenados por dedup_key para que transações concorrentes
+    travem na mesma ordem, e (2) há retry com backoff como rede de segurança.
     """
     if not offers:
         return 0
 
-    from sqlalchemy import and_, or_
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    from sqlalchemy.exc import DBAPIError
 
     now = datetime.now(timezone.utc)
-    inserted = 0
 
-    async with async_session() as session:
-        for offer in offers:
-            name_norm = normalize_text(offer.product_name)
-            sku_val = offer.sku or ""
+    # Monta as linhas deduplicando por dedup_key dentro do próprio lote
+    # (ON CONFLICT não pode afetar a mesma linha duas vezes no mesmo INSERT).
+    rows_by_key = {}
+    for offer in offers:
+        name_norm = normalize_text(offer.product_name)
+        sku_val = offer.sku or ""
+        key = _dedup_key(scraper_key, sku_val, name_norm)
+        rows_by_key[key] = {
+            "dedup_key": key,
+            "store": offer.store,
+            "product_name": offer.product_name,
+            "product_name_normalized": name_norm,
+            "price": offer.price,
+            "currency": offer.currency,
+            "product_url": offer.product_url,
+            "add_to_cart_url": offer.add_to_cart_url,
+            "availability": offer.availability,
+            "sku": sku_val or None,
+            "image_url": offer.image_url,
+            "description": offer.description,
+            "brand": offer.brand,
+            "score": offer.score,
+            "source_query": source_query,
+            "scraper_key": scraper_key,
+            "scraped_at": now,
+        }
 
-            # Try to find existing row by store + (sku or normalized name)
-            conditions = [ScrapedProductDB.store == offer.store]
-            if sku_val:
-                conditions.append(
-                    or_(
-                        ScrapedProductDB.sku == sku_val,
-                        and_(
-                            ScrapedProductDB.product_name_normalized == name_norm,
-                            ScrapedProductDB.scraper_key == scraper_key,
-                        ),
+    # Ordem determinística + chunking (limite de parâmetros do asyncpg)
+    rows = [rows_by_key[k] for k in sorted(rows_by_key)]
+    CHUNK = 200
+
+    for attempt in range(max_retries):
+        try:
+            async with async_session() as session:
+                for i in range(0, len(rows), CHUNK):
+                    chunk = rows[i:i + CHUNK]
+                    stmt = pg_insert(ScrapedProductDB).values(chunk)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["dedup_key"],
+                        set_={
+                            "price": stmt.excluded.price,
+                            "availability": stmt.excluded.availability,
+                            "product_url": stmt.excluded.product_url,
+                            "add_to_cart_url": stmt.excluded.add_to_cart_url,
+                            "image_url": stmt.excluded.image_url,
+                            "description": stmt.excluded.description,
+                            "brand": stmt.excluded.brand,
+                            "score": stmt.excluded.score,
+                            "source_query": stmt.excluded.source_query,
+                            "product_name": stmt.excluded.product_name,
+                            "product_name_normalized": stmt.excluded.product_name_normalized,
+                            "scraped_at": stmt.excluded.scraped_at,
+                        },
                     )
+                    await session.execute(stmt)
+                await session.commit()
+
+            return len(rows)
+
+        except DBAPIError as e:
+            if _is_deadlock_error(e) and attempt < max_retries - 1:
+                wait = 0.25 * (2 ** attempt)
+                logger.warning(
+                    f"Deadlock em store_scraped_results [{scraper_key}] — "
+                    f"retry {attempt + 1}/{max_retries} em {wait:.2f}s"
                 )
-            else:
-                conditions.append(ScrapedProductDB.product_name_normalized == name_norm)
-                conditions.append(ScrapedProductDB.scraper_key == scraper_key)
+                await asyncio.sleep(wait)
+                continue
+            raise
 
-            stmt = select(ScrapedProductDB).where(*conditions).limit(1)
-            result = await session.execute(stmt)
-            existing = result.scalar_one_or_none()
-
-            if existing:
-                existing.price = offer.price
-                existing.availability = offer.availability
-                existing.product_url = offer.product_url
-                existing.add_to_cart_url = offer.add_to_cart_url
-                existing.image_url = offer.image_url
-                existing.description = offer.description
-                existing.brand = offer.brand
-                existing.score = offer.score
-                existing.source_query = source_query
-                existing.scraped_at = now
-            else:
-                session.add(ScrapedProductDB(
-                    store=offer.store,
-                    product_name=offer.product_name,
-                    product_name_normalized=name_norm,
-                    price=offer.price,
-                    currency=offer.currency,
-                    product_url=offer.product_url,
-                    add_to_cart_url=offer.add_to_cart_url,
-                    availability=offer.availability,
-                    sku=sku_val or None,
-                    image_url=offer.image_url,
-                    description=offer.description,
-                    brand=offer.brand,
-                    score=offer.score,
-                    source_query=source_query,
-                    scraper_key=scraper_key,
-                    scraped_at=now,
-                ))
-                inserted += 1
-
-        await session.commit()
-
-    return inserted
+    return 0
 
 
 async def _update_status(scraper_key: str, **kwargs):
