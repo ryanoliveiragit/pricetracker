@@ -115,7 +115,7 @@ O projeto possui histórico de mais de 180 deploys registrados na aba de Deploym
 
 ## Sobre o autor
 
-Sou **Ryan Oliveira (@ryanoliveiragit)**, desenvolvedor full‑stack baseado em São Paulo, focado em:
+Sou **Ryan Oliveira (@ryanoliveiragit)**, desenvolvedor full‑stack, focado em:
 
 - Frontend moderno (React/Next.js, TypeScript) e experiências web voltadas a produto.
 - Backend com Python, APIs e automação (scraping, pipelines de dados).
