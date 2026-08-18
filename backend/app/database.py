@@ -2,6 +2,7 @@
 Database module — async SQLAlchemy + PostgreSQL (asyncpg).
 """
 import logging
+import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
@@ -13,8 +14,12 @@ _connect_args = {"ssl": "require"} if "supabase." in settings.DATABASE_URL else 
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    pool_size=5,
-    max_overflow=10,
+    # Supabase session poolers commonly cap a project at 15 clients. Keep
+    # the application well below that ceiling so health checks, migrations,
+    # cookie persistence and concurrent requests can share the database.
+    pool_size=int(os.getenv("DB_POOL_SIZE", "3")),
+    max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "2")),
+    pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "15")),
     pool_pre_ping=True,
     connect_args=_connect_args,
 )

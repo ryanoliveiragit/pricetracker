@@ -4,7 +4,7 @@ echo  ConstruPrice - Iniciando Sistema Completo
 echo ========================================
 echo.
 echo Iniciando Backend Python (porta 8000)...
-start "ConstruPrice Backend" cmd /k "cd backend && call venv\Scripts\activate && python main.py"
+start "ConstruPrice Backend" /D "%~dp0backend" cmd /k "call start.bat"
 timeout /t 3 /nobreak >nul
 echo.
 echo Iniciando Frontend Next.js (porta 3000)...
