@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
-import time
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import List, Optional
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup, Tag
@@ -70,8 +72,36 @@ class GigavaleScraper(BaseScraper):
 
     @staticmethod
     def _is_authenticated_html(html: str) -> bool:
-        compact = html.replace(" ", "")
-        return '"perfil":"cliente"' in compact and '"usuario":""' not in compact
+        """Detect the logged-in marker emitted by the Gigavale layout."""
+        profile = re.search(r'"perfil"\s*:\s*"cliente"', html, re.IGNORECASE)
+        empty_user = re.search(r'"usuario"\s*:\s*""', html, re.IGNORECASE)
+        return profile is not None and empty_user is None
+
+    @staticmethod
+    def _parse_price(raw_price: object) -> float:
+        """Parse Brazilian or HTML numeric price values without locale mistakes."""
+        if raw_price is None:
+            return 0.0
+        text = str(raw_price).strip().replace("R$", "").replace(" ", "")
+        match = re.search(r"[-+]?\d[\d.,]*", text)
+        if not match:
+            return 0.0
+        token = match.group(0)
+        if "," in token and "." in token:
+            # The last separator is the decimal separator (1.234,56 / 1,234.56).
+            if token.rfind(",") > token.rfind("."):
+                token = token.replace(".", "").replace(",", ".")
+            else:
+                token = token.replace(",", "")
+        elif "," in token:
+            token = token.replace(",", ".")
+        elif token.count(".") > 1:
+            token = token.replace(".", "")
+        try:
+            value = Decimal(token)
+        except (InvalidOperation, ValueError):
+            return 0.0
+        return float(value) if value > 0 else 0.0
 
     def _session_is_authenticated(self) -> bool:
         try:
@@ -107,6 +137,7 @@ class GigavaleScraper(BaseScraper):
         try:
             from selenium import webdriver
             from selenium.webdriver.common.by import By
+            from selenium.common.exceptions import TimeoutException, WebDriverException
             from selenium.webdriver.support import expected_conditions as EC
             from selenium.webdriver.support.ui import WebDriverWait
         except ImportError:
@@ -134,16 +165,25 @@ class GigavaleScraper(BaseScraper):
             driver.set_page_load_timeout(30)
             driver.get(self.base_url + "/entrar")
 
-            wait = WebDriverWait(driver, 25)
+            # The cookie banner can cover the reCAPTCHA button on a fresh browser.
+            try:
+                WebDriverWait(driver, 4).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button.acceptcookies"))
+                ).click()
+            except TimeoutException:
+                pass
+
+            wait = WebDriverWait(driver, 30)
             wait.until(EC.visibility_of_element_located((By.NAME, "email"))).send_keys(username)
-            driver.find_element(By.NAME, "senha").send_keys(password)
-            driver.find_element(By.CSS_SELECTOR, "button.g-recaptcha").click()
+            wait.until(EC.visibility_of_element_located((By.NAME, "senha"))).send_keys(password)
+            submit = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.g-recaptcha"))
+            )
+            # JavaScript click avoids occasional overlay interception after reCAPTCHA loads.
+            driver.execute_script("arguments[0].click();", submit)
 
             wait.until(
-                lambda browser: (
-                    "/entrar" not in browser.current_url
-                    and self._is_authenticated_html(browser.page_source)
-                )
+                lambda browser: self._is_authenticated_html(browser.page_source)
             )
 
             authenticated = self._new_session()
@@ -166,7 +206,22 @@ class GigavaleScraper(BaseScraper):
 
             logger.info("Gigavale: autenticação concluída")
             return True
+        except TimeoutException:
+            self.is_logged_in = False
+            self.login_error = (
+                "A Gigavale não confirmou o login no tempo esperado. "
+                "O reCAPTCHA pode ter bloqueado a tentativa."
+            )
+            return False
+        except WebDriverException:
+            self.is_logged_in = False
+            self.login_error = (
+                "Não foi possível iniciar o Chrome para autenticar na Gigavale. "
+                "Verifique Chrome/ChromeDriver no backend."
+            )
+            return False
         except Exception as exc:
+            self.is_logged_in = False
             logger.warning("Gigavale: autenticação falhou (%s)", type(exc).__name__)
             self.login_error = (
                 "Não foi possível autenticar na Gigavale. "
@@ -219,23 +274,22 @@ class GigavaleScraper(BaseScraper):
             if not sku or not name:
                 continue
 
-            try:
-                price = float((info.get("data-preco") or "0").replace(",", "."))
-            except ValueError:
-                price = 0.0
+            price = self._parse_price(info.get("data-preco"))
             if price <= 0:
                 continue
 
             scope = self._scope_for(info)
             link = info.select_one(".product-card__name a[href]") or scope.select_one("a[href]")
             product_url = link.get("href", "") if link else ""
-            if product_url and not product_url.startswith("http"):
-                product_url = self.base_url.rstrip("/") + "/" + product_url.lstrip("/")
+            if product_url:
+                product_url = urljoin(self.base_url.rstrip("/") + "/", product_url)
 
             image = scope.select_one("img")
             image_url = ""
             if image:
                 image_url = image.get("data-src") or image.get("src") or ""
+                if image_url:
+                    image_url = urljoin(self.base_url.rstrip("/") + "/", image_url)
 
             legends = [
                 element.get_text(" ", strip=True)
@@ -280,6 +334,10 @@ class GigavaleScraper(BaseScraper):
         **_,
     ) -> List[ProductOffer]:
         self.login_error = None
+        query = " ".join((query or "").split())
+        if not query:
+            self.login_error = "Consulta de produto vazia"
+            return []
         if not username or not password:
             self.login_error = "Credenciais da Gigavale não configuradas"
             return []
@@ -287,10 +345,9 @@ class GigavaleScraper(BaseScraper):
             return []
 
         try:
-            time.sleep(0.5)
             response = self.session.get(
                 self.base_url + "/busca",
-                params={"s": query.strip()},
+                params={"s": query},
                 headers={"Referer": self.base_url + "/"},
                 timeout=self.timeout,
             )
@@ -304,6 +361,7 @@ class GigavaleScraper(BaseScraper):
             invalidate(CACHE_KEY)
             self.is_logged_in = False
             self.login_error = "Sessão da Gigavale expirou; tente a busca novamente"
+            self.record_failure()
             return []
 
         offers = self._parse_products(response.text)
