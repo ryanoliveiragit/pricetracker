@@ -127,6 +127,15 @@ class GigavaleScraper(BaseScraper):
         )
         return next((str(path) for path in candidates if path.is_file()), None)
 
+    @staticmethod
+    def _create_driver(webdriver, options):
+        """Create a local Chrome driver or use a configured Selenium Grid."""
+        remote_url = os.getenv("SELENIUM_REMOTE_URL")
+        if remote_url:
+            logger.info("Gigavale: usando WebDriver remoto configurado")
+            return webdriver.Remote(command_executor=remote_url, options=options)
+        return webdriver.Chrome(options=options)
+
     def login(self, username: str, password: str) -> bool:
         """Autentica em navegador real e transfere os cookies para requests."""
         self.login_error = None
@@ -153,6 +162,9 @@ class GigavaleScraper(BaseScraper):
             "--no-sandbox",
             "--disable-dev-shm-usage",
             "--disable-blink-features=AutomationControlled",
+            "--disable-extensions",
+            "--disable-gpu",
+            "--remote-debugging-pipe",
             "--window-size=1365,900",
             "--lang=pt-BR",
         ):
@@ -161,7 +173,7 @@ class GigavaleScraper(BaseScraper):
         driver = None
         try:
             logger.info("Gigavale: iniciando autenticação protegida")
-            driver = webdriver.Chrome(options=options)
+            driver = self._create_driver(webdriver, options)
             driver.set_page_load_timeout(30)
             driver.get(self.base_url + "/entrar")
 
@@ -213,12 +225,27 @@ class GigavaleScraper(BaseScraper):
                 "O reCAPTCHA pode ter bloqueado a tentativa."
             )
             return False
-        except WebDriverException:
+        except WebDriverException as exc:
             self.is_logged_in = False
-            self.login_error = (
-                "Não foi possível iniciar o Chrome para autenticar na Gigavale. "
-                "Verifique Chrome/ChromeDriver no backend."
+            logger.exception(
+                "Gigavale: Chrome/WebDriver não iniciou (%s)",
+                type(exc).__name__,
             )
+            if os.getenv("SELENIUM_REMOTE_URL"):
+                self.login_error = (
+                    "Não foi possível conectar ao navegador remoto da Gigavale. "
+                    "Verifique SELENIUM_REMOTE_URL."
+                )
+            elif not binary:
+                self.login_error = (
+                    "Chrome/Chromium não foi encontrado no backend. "
+                    "Use a imagem Docker do projeto ou configure SELENIUM_REMOTE_URL."
+                )
+            else:
+                self.login_error = (
+                    "O Chrome foi encontrado, mas o WebDriver não iniciou. "
+                    "Verifique a compatibilidade do ChromeDriver nos logs do backend."
+                )
             return False
         except Exception as exc:
             self.is_logged_in = False
