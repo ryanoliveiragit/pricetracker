@@ -27,12 +27,14 @@ def _get_scraper_map() -> dict:
     if _SCRAPER_MAP is None:
         from app.scrapers.cofema_scraper import CofemaScraper
         from app.scrapers.estoque_atacadista_scraper import EstoqueAtacadistaScraper
+        from app.scrapers.gigavale_scraper import GigavaleScraper
         from app.scrapers.megaleste_scraper import MegalesteScraper
         from app.scrapers.superabc_scraper import SuperABCScraper
         _SCRAPER_MAP = {
             "megaleste":   (MegalesteScraper,         "megaleste"),
             "cofema":      (CofemaScraper,             "cofema"),
             "atacadista":  (EstoqueAtacadistaScraper,  "estoqueAtacadista"),
+            "gigavale":    (GigavaleScraper,            "gigavale"),
             "super abc":   (SuperABCScraper,           "superabc"),
             "superabc":    (SuperABCScraper,           "superabc"),
         }

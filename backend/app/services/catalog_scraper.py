@@ -28,11 +28,13 @@ def _get_scraper_mapping():
     from app.scrapers.megaleste_scraper import MegalesteScraper
     from app.scrapers.cofema_scraper import CofemaScraper
     from app.scrapers.estoque_atacadista_scraper import EstoqueAtacadistaScraper
+    from app.scrapers.gigavale_scraper import GigavaleScraper
     from app.scrapers.superabc_scraper import SuperABCScraper
     return {
         "megaleste": MegalesteScraper,
         "cofema": CofemaScraper,
         "atacadista": EstoqueAtacadistaScraper,
+        "gigavale": GigavaleScraper,
         "super abc": SuperABCScraper,
         "superabc": SuperABCScraper,
     }

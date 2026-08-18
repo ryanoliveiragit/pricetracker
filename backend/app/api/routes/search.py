@@ -24,6 +24,7 @@ from app.models.product import (
 from app.scrapers.base_scraper import BaseScraper
 from app.scrapers.cofema_scraper import CofemaScraper
 from app.scrapers.estoque_atacadista_scraper import EstoqueAtacadistaScraper
+from app.scrapers.gigavale_scraper import GigavaleScraper
 from app.scrapers.megaleste_scraper import MegalesteScraper
 from app.scrapers.superabc_scraper import SuperABCScraper
 from app.services.cache import (
@@ -139,6 +140,7 @@ async def search_all_stores(
         "megaleste": MegalesteScraper,
         "cofema": CofemaScraper,
         "atacadista": EstoqueAtacadistaScraper,
+        "gigavale": GigavaleScraper,
         "super abc": SuperABCScraper,
         "superabc": SuperABCScraper,
     }
@@ -257,6 +259,7 @@ async def search_stream(
             "megaleste": MegalesteScraper,
             "cofema": CofemaScraper,
             "atacadista": EstoqueAtacadistaScraper,
+            "gigavale": GigavaleScraper,
             "super abc": SuperABCScraper,
             "superabc": SuperABCScraper,
         }
@@ -559,6 +562,8 @@ async def search_by_supplier(request: ProductSearchBySupplierRequest):
             "estoque_atacadista": EstoqueAtacadistaScraper,
             "Super ABC Distribuidora": SuperABCScraper,
             "superabc": SuperABCScraper,
+            "Gigavale Atacado": GigavaleScraper,
+            "gigavale": GigavaleScraper,
         }
 
         scraper_class = scraper_mapping.get(
