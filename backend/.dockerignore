@@ -4,14 +4,13 @@
 .env.*
 !.env.example
 .venv
-**/venv
+venv
 **/__pycache__
 **/*.py[cod]
-frontend
-.planning
-.playwright-mcp
+.claude
 uploads
 *.log
 *.png
 *.jpg
 *.jpeg
+*.md

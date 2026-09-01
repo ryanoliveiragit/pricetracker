@@ -62,5 +62,14 @@ cd frontend && npm run dev          # :3000
 npm run dev:all                     # ambos juntos
 ```
 
+## Deploy na Vercel (backend)
+O backend em produção roda como **container** na Vercel: `vercel.json` (raiz) define o serviço `api` com
+`root: backend/`, `runtime: container` e `entrypoint: Dockerfile.vercel`. A imagem instala Chromium +
+chromedriver (`CHROME_BIN=/usr/bin/chromium`), obrigatórios para o login Selenium da Gigavale.
+- No dashboard do projeto, **Framework Preset deve ser "Services"** (senão o preset FastAPI ignora o Dockerfile
+  e o backend sobe sem Chrome → "Chrome/Chromium não foi encontrado no backend").
+- O container escuta em `$PORT` (padrão 80, o que a Vercel espera). `main.py` e `api/` na raiz são legado do
+  preset FastAPI e não são usados no modo Services.
+
 ## Env vars críticas
 `DATABASE_URL`, `REDIS_URL`, `CREDENTIALS_ENCRYPTION_KEY`, `SUPPLIER_*_USERNAME/PASSWORD`
