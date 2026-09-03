@@ -19,6 +19,16 @@ from app.utils.text_normalizer import normalize_text
 logger = logging.getLogger(__name__)
 
 SCRAPER_TIMEOUT = 30  # Login + busca em lojas que exigem autenticação podem levar até 25s
+# Alguns fornecedores exigem login por navegador real (Selenium + reCAPTCHA), o
+# que passa dos 30s no primeiro acesso. Depois de logado a sessão fica em cache,
+# então esse tempo maior só afeta a primeira busca.
+SCRAPER_TIMEOUTS = {
+    "gigavale": 75,
+}
+
+
+def _timeout_for(scraper_key: str) -> int:
+    return SCRAPER_TIMEOUTS.get(scraper_key, SCRAPER_TIMEOUT)
 SEARCH_CACHE_TTL = 1800  # 30 minutos
 MAX_WORKERS = 5
 CIRCUIT_BREAKER_THRESHOLD = 5  # Após 5 falhas, pula a loja
@@ -111,7 +121,8 @@ class ScraperManager:
                 logger.info(f"💾 {scraper_key}:{query_norm} — cache hit")
                 return [ProductOffer(**item) for item in cached], 0, scraper_key, None
 
-        # Executar scraping com timeout de 10 segundos
+        # Executar scraping com timeout (maior para lojas com login via navegador)
+        scraper_timeout = _timeout_for(scraper_key)
         t0 = time.time()
         try:
             loop = asyncio.get_event_loop()
@@ -123,7 +134,7 @@ class ScraperManager:
                     query_norm,
                     credentials,
                 ),
-                timeout=SCRAPER_TIMEOUT
+                timeout=scraper_timeout
             )
 
             duration = time.time() - t0
@@ -155,7 +166,7 @@ class ScraperManager:
         except asyncio.TimeoutError:
             duration = time.time() - t0
             self._record_failure(scraper_key)
-            error_msg = f"Timeout após {SCRAPER_TIMEOUT}s"
+            error_msg = f"Timeout após {scraper_timeout}s"
             logger.error(f"⏱️ {scraper_key}:{query_norm} — {error_msg}")
             return [], duration, scraper_key, error_msg
 

@@ -109,6 +109,17 @@ DEFAULT_SUPPLIERS = [
         "region": "sp",
         "notes": "Distribuidora de materiais de construção",
     },
+    {
+        "id": "5",
+        "name": "Gigavale Atacado",
+        "url": "https://www.gigavaleatacado.com.br",
+        "requires_login": True,
+        "username": "",
+        "password": "",
+        "is_active": True,
+        "region": "sp",
+        "notes": "Atacado B2B (login via Selenium/reCAPTCHA) — preencha as credenciais nas configurações do fornecedor",
+    },
 ]
 
 

@@ -1,34 +1,65 @@
+"""Scraper da Cofema Atacadista.
+
+O site foi reconstruído em Next.js e a API antiga em ASP.NET MVC
+(``/Home/Logon``, ``__RequestVerificationToken``, ``/Produto/Listar/Busca``)
+deixou de existir. Hoje a aplicação conversa com uma API RPC própria:
+
+    POST /api/auth      {"action": "loginCliente", "codigoOuCnpj": ..., "pass": ...}
+    POST /api/produto   {"action": "searchProdutos", "searchTerm": ..., ...}
+
+Cada resposta é JSON. Após o login, o cookie de sessão fica na ``requests.Session``
+e os preços do cliente passam a vir preenchidos na busca.
+"""
+
 from typing import List, Optional
-import logging, re, urllib.parse, json, time
+import json
+import logging
+
 import requests
-from bs4 import BeautifulSoup
+import urllib3
+
 from app.scrapers.base_scraper import BaseScraper
 from app.models.product import ProductOffer
-from app.services.session_cache import get_session, store_session, invalidate, get_login_lock
+from app.services.session_cache import (
+    get_session,
+    store_session,
+    invalidate,
+    get_login_lock,
+)
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
+
 BASE_URL = "https://www.cofema.com.br"
+CACHE_KEY = "cofema"
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-    "Cache-Control": "max-age=0",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.7",
+    # Sem brotli ("br"): o backend pode não ter o decodificador, e a resposta
+    # voltaria como bytes ilegíveis.
+    "Accept-Encoding": "gzip, deflate",
+    "Content-Type": "application/json",
+    "Origin": BASE_URL,
+    "Referer": BASE_URL + "/",
 }
-# Máximo de cards por resposta HTML (uma página do grid)
-MAX_CARDS_PER_PAGE = 120
-MAX_GRID_PAGES = 10
-MAX_LOGIN_RETRIES = 3
-CACHE_KEY = "cofema"
+
+# Campos possíveis para nome e preço no objeto de produto (a API varia conforme
+# tabela de preço do cliente); usamos o primeiro que estiver preenchido.
+NAME_FIELDS = ("descricao", "descricaoProduto", "nome", "nomeProduto", "titulo")
+PRICE_FIELDS = (
+    "precoVendaCliente",
+    "precoFinal",
+    "precoAplicado",
+    "precoVenda",
+    "precoPromocional",
+    "preco",
+    "valorUnitario",
+)
+SKU_FIELDS = ("codigo", "codigoProduto", "produtoCodigo", "id", "idProduto")
+IMAGE_FIELDS = ("imagem", "imagemUrl", "urlImagem", "foto")
 
 
 class CofemaScraper(BaseScraper):
@@ -38,23 +69,74 @@ class CofemaScraper(BaseScraper):
         self.session.headers.update(HEADERS)
         self._logged_in = False
 
+    # ── Login ────────────────────────────────────────────────────────────────
     def login(self, username: str, password: str) -> bool:
         return self._do_login(username, password)
 
+    def _do_login(self, username: str, password: str) -> bool:
+        self.login_error = None
+        if not username or not password:
+            self.login_error = "Credenciais da Cofema não configuradas"
+            return False
+        try:
+            r = self.session.post(
+                f"{BASE_URL}/api/auth",
+                data=json.dumps(
+                    {"action": "loginCliente", "codigoOuCnpj": username, "pass": password}
+                ),
+                timeout=self.timeout,
+                verify=False,
+            )
+            if r.status_code == 429:
+                self.login_error = "Cofema bloqueou o IP (429) — muitas tentativas"
+                logger.warning("Cofema: 429 no login")
+                return False
+
+            try:
+                data = r.json()
+            except (json.JSONDecodeError, ValueError):
+                self.login_error = "Resposta inesperada da Cofema no login"
+                logger.error("Cofema: login sem JSON (HTTP %s)", r.status_code)
+                return False
+
+            if data.get("success"):
+                self._logged_in = True
+                logger.info("Cofema: login OK")
+                return True
+
+            if data.get("resetPasswordOnNextLogin"):
+                self.login_error = (
+                    "A Cofema exige troca de senha antes do próximo login"
+                )
+            else:
+                self.login_error = (
+                    data.get("error")
+                    or data.get("message")
+                    or "Login falhou — verifique as credenciais da Cofema"
+                )
+            logger.warning("Cofema: %s", self.login_error)
+            return False
+
+        except requests.RequestException as e:
+            self.login_error = "Não foi possível conectar à Cofema"
+            logger.error("Cofema login erro de rede: %s", type(e).__name__)
+            return False
+
     def search(self, query: str, username: str = "", password: str = "", **kwargs) -> List[ProductOffer]:
+        self.login_error = None
         try:
             if username and password:
                 cached = get_session(CACHE_KEY, username)
                 if cached:
                     self.session = cached
+                    self.session.headers.update(HEADERS)
                     self._logged_in = True
                 else:
-                    # Lock evita que múltiplas buscas simultâneas façam login ao mesmo tempo (429)
                     with get_login_lock(CACHE_KEY):
-                        # Re-check após adquirir o lock (outro thread pode ter logado)
                         cached = get_session(CACHE_KEY, username)
                         if cached:
                             self.session = cached
+                            self.session.headers.update(HEADERS)
                             self._logged_in = True
                         else:
                             self._do_login(username, password)
@@ -67,340 +149,111 @@ class CofemaScraper(BaseScraper):
 
             return self._search(query)
         except Exception as e:
-            logger.error(f"Cofema search error: {e}", exc_info=True)
+            logger.error("Cofema search error: %s", e, exc_info=True)
             invalidate(CACHE_KEY)
             return []
 
-    def _do_login(self, username: str, password: str) -> bool:
-        try:
-            r = self.session.get(f"{BASE_URL}/Home", timeout=15)
-            if r.status_code == 429:
-                logger.warning("Cofema: IP bloqueado pelo CDN (429) — pulando Cofema nesta busca")
-                return False
-            r.raise_for_status()
-
-            token = self.session.cookies.get("__RequestVerificationToken", "")
-            if not token:
-                from bs4 import BeautifulSoup as _BS
-                inp = _BS(r.text, "html.parser").find("input", {"name": "__RequestVerificationToken"})
-                token = inp.get("value", "") if inp else ""
-
-            if not token:
-                logger.warning("Cofema: token CSRF não encontrado — pulando login")
-                return False
-
-            time.sleep(1)
-
-            r3 = self.session.post(
-                f"{BASE_URL}/Home/Logon",
-                data={"User": username, "Password": password, "RememberMe": "true", "ReturnUrl": "", "__RequestVerificationToken": token},
-                headers={
-                    **self.session.headers,
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": f"{BASE_URL}/Home",
-                    "Origin": BASE_URL,
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                    "Accept": "application/json, text/javascript, */*; q=0.01",
-                },
-                timeout=15,
-            )
-
-            if r3.status_code == 429:
-                logger.warning("Cofema: IP bloqueado no Logon (429) — pulando Cofema. O CDN bloqueou o IP do servidor.")
-                return False
-
-            if not r3.ok:
-                logger.warning("Cofema: login retornou HTTP %d", r3.status_code)
-                return False
-
-            try:
-                data = r3.json()
-                if data.get("success") or data.get("Success"):
-                    self._logged_in = True
-                    logger.info("Cofema: login OK")
-                    return True
-                logger.warning("Cofema: login falhou — resposta: %s", data.get("message", r3.text[:100]))
-            except Exception:
-                logger.warning("Cofema: resposta não é JSON — %s", r3.text[:100])
-
-        except Exception as e:
-            logger.error("Cofema login error: %s", e)
-
-        return False
-
+    # ── Busca ────────────────────────────────────────────────────────────────
     def _search(self, query: str) -> List[ProductOffer]:
-        encoded = urllib.parse.quote(query)
         try:
-            time.sleep(1)
-            r = self.session.get(f"{BASE_URL}/Produto/Listar/Busca/?q={encoded}", timeout=15)
+            r = self.session.post(
+                f"{BASE_URL}/api/produto",
+                data=json.dumps(
+                    {
+                        "action": "searchProdutos",
+                        "searchTerm": query,
+                        "limit": 100,
+                        "top": 100,
+                        "page": 1,
+                    }
+                ),
+                timeout=self.timeout,
+                verify=False,
+            )
+            if r.status_code == 401:
+                # sessão expirou
+                invalidate(CACHE_KEY)
+                self._logged_in = False
+                self.login_error = "Sessão da Cofema expirou; refaça a busca"
+                return []
             r.raise_for_status()
-        except Exception as e:
-            logger.error("Cofema search page error: %s", e)
-            return []
-
-        soup = BeautifulSoup(r.text, "html.parser")
-        inp = soup.find("input", {"name": "__RequestVerificationToken"})
-        page_token = inp.get("value", "") if inp else self.session.cookies.get("__RequestVerificationToken", "")
-
-        grid_el = soup.find(attrs={"data-grid": True})
-        gd = {k[5:]: v for k, v in grid_el.attrs.items() if k.startswith("data-")} if grid_el else {}
-
-        rows_per_page = int(gd.get("rows", 24) or 24)
-        all_offers: List[ProductOffer] = []
-        missing_price_ids: dict = {}
-        seen_urls: set[str] = set()
-
-        for page in range(1, MAX_GRID_PAGES + 1):
-            time.sleep(0.35)
-            html = self._fetch_grid(query, page_token, gd, page=page)
-            if not html:
-                break
-            page_offers, page_missing = self._parse_grid_html(html)
-            if not page_offers:
-                break
-            for offer in page_offers:
-                if offer.product_url in seen_urls:
-                    continue
-                seen_urls.add(offer.product_url)
-                all_offers.append(offer)
-                if offer.price == 0 and offer.sku:
-                    missing_price_ids[offer.sku] = True
-            if len(page_offers) < rows_per_page:
-                break
-
-        offers = all_offers
-
-        if not offers:
-            logger.info("Cofema: nenhum produto encontrado para '%s'", query)
-            return []
-
-        # Buscar preços via GetStock para produtos sem preço
-        if missing_price_ids and self._logged_in:
-            logger.info("Cofema: buscando preços via GetStock para %d produtos", len(missing_price_ids))
-            time.sleep(1)
-            prices = self._fetch_stock_prices(list(missing_price_ids.keys()), page_token)
-            for offer in offers:
-                if offer.price == 0 and offer.sku in prices:
-                    offer.price = prices[offer.sku]
-                    offer.availability = "em_estoque" if offer.price > 0 else "indisponivel"
-
-        # Fallback: buscar preço na página de detalhe para os que ainda estão sem preço
-        still_missing = [o for o in offers if o.price == 0]
-        if still_missing:
-            logger.info("Cofema: buscando preço na página de detalhe para %d produtos", len(still_missing))
-            for offer in still_missing[:10]:  # limita para não demorar demais
-                try:
-                    time.sleep(0.5)
-                    rd = self.session.get(offer.product_url, timeout=10)
-                    if rd.ok:
-                        price = self._extract_price_from_detail(rd.text)
-                        if price > 0:
-                            offer.price = price
-                            offer.availability = "em_estoque"
-                except Exception:
-                    pass
-
-        logger.info("Cofema: %d produtos encontrados (%d com preço)",
-                    len(offers), sum(1 for o in offers if o.price > 0))
-        return self._rank_results(query, offers, limit=None)
-
-    def _fetch_grid(self, query: str, token: str, gd: dict, page: int = 1) -> str:
-        encoded = urllib.parse.quote(query)
-        try:
-            r = self.session.post(
-                f"{BASE_URL}/Item/GridItens",
-                data={
-                    "getPage": str(page),
-                    "rows": gd.get("rows", "24"),
-                    "grid": gd.get("grid", "GridItens"),
-                    "header": gd.get("header", "false"),
-                    "showInfo": gd.get("showinfo", "true"),
-                    "paramFilter": query,
-                    "layout": gd.get("layout", "VitrineProdutos"),
-                    "id": gd.get("id", "0"),
-                    "order": gd.get("order", ""),
-                    "parentId": gd.get("param-parentid", "0"),
-                    "filtercolumn": gd.get("filtercolumn", "busca"),
-                    "filter": query,
-                    "paramParentid": gd.get("param-parentid", "0"),
-                    "paramMarcaid": gd.get("param-marcaid", "0"),
-                    "paramIsrelampago": gd.get("param-isrelampago", ""),
-                    "paramTabela": gd.get("param-tabela", ""),
-                    "__RequestVerificationToken": token,
-                },
-                headers={
-                    **self.session.headers,
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": f"{BASE_URL}/Produto/Listar/Busca/?q={encoded}",
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                },
-                timeout=20,
-            )
-            if r.ok:
-                try:
-                    return r.json().get("data", "")
-                except Exception:
-                    return r.text
-        except Exception as e:
-            logger.error("Cofema GridItens error: %s", e)
-        return ""
-
-    def _fetch_stock_prices(self, item_ids: List[str], token: str) -> dict:
-        """Busca preços via /Item/GetStock. Retorna dict {sku: price}."""
-        try:
-            r = self.session.post(
-                f"{BASE_URL}/Item/GetStock",
-                data={"list": json.dumps([int(i) for i in item_ids]), "__RequestVerificationToken": token},
-                headers={
-                    **self.session.headers,
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": f"{BASE_URL}/Produto/Listar/Busca/",
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                },
-                timeout=20,
-            )
-            if not r.ok or not r.text:
-                return {}
             data = r.json()
-            if not data.get("success"):
-                logger.warning("Cofema GetStock falhou: %s", data.get("message", ""))
-                return {}
+        except (requests.RequestException, json.JSONDecodeError, ValueError) as e:
+            logger.error("Cofema: erro na busca: %s", type(e).__name__)
+            return []
 
-            soup = BeautifulSoup(data.get("data", ""), "html.parser")
-            prices = {}
-            for item_el in soup.select("[data-item]"):
-                sku = item_el.get("data-item")
-                if not sku:
-                    continue
-                # Preço em radio inputs: valor como "317.900" = R$317,90
-                for radio in item_el.select("input[type=radio][value]"):
-                    try:
-                        p = float(radio.get("value", "0"))
-                        if p > 0:
-                            prices[sku] = p
-                            break
-                    except ValueError:
-                        continue
-                # Fallback: data-itempreco no botão
-                if sku not in prices:
-                    btn = item_el.select_one("button[data-itempreco]")
-                    if btn:
-                        try:
-                            p = float(btn.get("data-itempreco", "0"))
-                            if p > 0:
-                                prices[sku] = p
-                        except ValueError:
-                            pass
-            logger.info("Cofema GetStock: %d preços recebidos", len(prices))
-            return prices
-        except Exception as e:
-            logger.error("Cofema GetStock error: %s", e)
-            return {}
+        produtos = data.get("produtos") if isinstance(data, dict) else data
+        if not isinstance(produtos, list):
+            return []
 
-    def _parse_grid_html(self, html: str):
-        """Retorna (offers, missing_price_ids) onde missing é {sku: True} para offers sem preço."""
-        soup = BeautifulSoup(html, "html.parser")
         offers: List[ProductOffer] = []
-        missing: dict = {}
-        seen: set = set()
+        seen = set()
+        for p in produtos:
+            offer = self._to_offer(p)
+            if offer is None:
+                continue
+            key = offer.sku or offer.product_name[:40].lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            offers.append(offer)
 
-        cards = soup.select("div.main-data-add")
-        if not cards:
-            return offers, missing
+        offers = self._rank_results(query, offers, limit=None)
+        logger.info("Cofema: %s produtos retornados", len(offers))
+        return offers
 
-        for card in cards[:MAX_CARDS_PER_PAGE]:
+    @staticmethod
+    def _first(product: dict, fields) -> object:
+        for f in fields:
+            if f in product and product[f] not in (None, "", 0):
+                return product[f]
+        return None
+
+    def _to_offer(self, product: dict) -> Optional[ProductOffer]:
+        if not isinstance(product, dict):
+            return None
+        name = self._first(product, NAME_FIELDS)
+        if not name:
+            return None
+        name = str(name).strip()
+
+        sku = self._first(product, SKU_FIELDS)
+        sku = str(sku).strip() if sku is not None else None
+
+        price = 0.0
+        raw_price = self._first(product, PRICE_FIELDS)
+        if raw_price is not None:
             try:
-                name_tag = card.select_one("a.item-title")
-                if not name_tag:
-                    continue
-                name = name_tag.get_text(strip=True)
-                if len(name) < 3:
-                    continue
-                href = name_tag.get("href", "")
-                url = href if href.startswith("http") else f"{BASE_URL}{href}"
-                sku = name_tag.get("data-itemid") or self._sku_from_url(href)
-
-                if url in seen:
-                    continue
-                seen.add(url)
-
-                img = card.select_one("img.item-photo")
-                image_url = img.get("src") if img else None
-
-                # Preço: radio inputs têm valor "317.900" = R$317,90
+                price = float(str(raw_price).replace("R$", "").replace(".", "").replace(",", ".").strip()) \
+                    if isinstance(raw_price, str) else float(raw_price)
+            except (ValueError, TypeError):
                 price = 0.0
-                for radio in card.select("input[type=radio][value]"):
-                    try:
-                        p = float(radio.get("value", "0"))
-                        if p > 0:
-                            price = p
-                            break
-                    except ValueError:
-                        continue
 
-                if price == 0:
-                    btn = card.select_one("button[data-itempreco]")
-                    if btn:
-                        try:
-                            price = float(btn.get("data-itempreco", "0"))
-                        except ValueError:
-                            pass
+        image = self._first(product, IMAGE_FIELDS)
+        image_url = str(image).strip() if image else None
+        if image_url and not image_url.startswith("http"):
+            image_url = BASE_URL + "/" + image_url.lstrip("/")
 
-                offer = ProductOffer(
-                    store=self.store_name,
-                    product_name=name,
-                    price=price,
-                    product_url=url,
-                    add_to_cart_url=url,
-                    availability="em_estoque" if price > 0 else "indisponivel",
-                    sku=sku,
-                    image_url=image_url,
-                    description=None,
-                    brand=None,
-                )
-                offers.append(offer)
+        product_url = f"{BASE_URL}/page/produto/{sku}" if sku else BASE_URL
 
-                if price == 0 and sku:
-                    missing[sku] = True
+        unidade = product.get("unidade")
+        description = f"Unidade: {unidade}" if unidade else None
 
-            except Exception as e:
-                logger.debug("Card error: %s", e)
-                continue
+        # Disponibilidade: alguns retornos trazem estoque/saldo/disponivel.
+        estoque = product.get("estoque", product.get("saldo"))
+        disponivel = product.get("disponivel")
+        unavailable = (disponivel is False) or (isinstance(estoque, (int, float)) and estoque <= 0)
 
-        return offers, missing
-
-    @staticmethod
-    def _extract_price_from_detail(html: str) -> float:
-        soup = BeautifulSoup(html, "html.parser")
-        # Radio inputs na página de detalhe
-        for radio in soup.select("input[type=radio].radio-value[value], .box-values input[type=radio][value]"):
-            try:
-                p = float(radio.get("value", "0"))
-                if p > 0:
-                    return p
-            except ValueError:
-                continue
-        # data-itempreco em botão
-        btn = soup.select_one("button[data-itempreco]")
-        if btn:
-            try:
-                p = float(btn.get("data-itempreco", "0"))
-                if p > 0:
-                    return p
-            except ValueError:
-                pass
-        # Regex em texto da página
-        prices = []
-        for m in re.findall(r"R\$\s*([\d.]+,\d{2})", soup.get_text()):
-            try:
-                p = float(m.replace(".", "").replace(",", "."))
-                if 0.01 < p < 1_000_000:
-                    prices.append(p)
-            except ValueError:
-                continue
-        return min(prices) if prices else 0.0
-
-    @staticmethod
-    def _sku_from_url(url: str) -> Optional[str]:
-        m = re.search(r"/Item/Detalhes/(\d+)", url)
-        return m.group(1) if m else None
+        return ProductOffer(
+            store=self.store_name,
+            product_name=name,
+            price=price,
+            currency="BRL",
+            product_url=product_url,
+            add_to_cart_url=product_url,
+            availability="indisponivel" if unavailable else "em_estoque",
+            sku=sku,
+            image_url=image_url,
+            description=description,
+            brand=(str(product.get("marca")).strip() if product.get("marca") else None),
+        )
