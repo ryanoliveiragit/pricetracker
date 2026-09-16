@@ -320,6 +320,10 @@ class EstoqueAtacadistaScraper(BaseScraper):
                     login_ok = self.login(username, password)
                     if not login_ok:
                         logger.warning("⚠️  Login falhou — buscando como visitante")
+                        # Decidimos seguir como visitante e RETORNAR dados: limpa
+                        # login_error para o ScraperManager não descartar as
+                        # ofertas de visitante como se a busca tivesse falhado.
+                        self.login_error = None
                     else:
                         store_session(CACHE_KEY, username, self.session)
             else:

@@ -66,3 +66,9 @@ Desktop.ini
 coverage/
 .nyc_output/
 nul
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# Never commit captured Gigavale session cookies (contains a live token)
+gigavale_cookies.json

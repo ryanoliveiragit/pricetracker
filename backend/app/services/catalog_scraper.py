@@ -7,11 +7,11 @@ User searches become instant PostgreSQL queries instead of live scraping.
 import asyncio
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import List
 
 from app.database import async_session
+from app.services.scraper_manager import get_scraper_manager
 from app.models.db_models import (
     ProductDB, SupplierDB, ScrapedProductDB, CatalogScrapeStatusDB,
 )
@@ -81,10 +81,9 @@ async def _get_active_scrapers():
     return scrapers
 
 
-def _scrape_single(scraper_class, query: str, credentials: dict):
-    """Run a single scraper for a single query (blocking)."""
-    from app.api.routes.search import scrape_store
-    return scrape_store(scraper_class, query, credentials)
+def _scraper_key_for(scraper_class) -> str:
+    """Chave curta do scraper (mesma convenção usada em search.py e no manager)."""
+    return scraper_class.__name__.lower().replace("scraper", "").strip("_")
 
 
 def _is_deadlock_error(exc: Exception) -> bool:
@@ -238,12 +237,13 @@ async def run_catalog_scrape(specific_queries: List[str] = None):
             f"Starting catalog scrape: {len(queries)} queries x {len(scrapers)} stores"
         )
 
-        loop = asyncio.get_event_loop()
+        manager = get_scraper_manager()
 
         for scraper_class, credentials, store_name in scrapers:
-            scraper_key = scraper_class.__name__.lower().replace("scraper", "").strip("_")
+            scraper_key = _scraper_key_for(scraper_class)
             t0 = time.time()
             total_products = 0
+            last_error = None
 
             await _update_status(
                 scraper_key,
@@ -255,32 +255,39 @@ async def run_catalog_scrape(specific_queries: List[str] = None):
             for query in queries:
                 try:
                     normalized = normalize_text(query)
-                    raw = await loop.run_in_executor(
-                        None, _scrape_single, scraper_class, normalized, credentials,
+                    # Via ScraperManager: ganha timeout, cache e circuit breaker.
+                    offers, duration, _, error_msg = await manager.scrape_store_async(
+                        scraper_class, normalized, scraper_key, credentials,
                     )
-                    if isinstance(raw, tuple) and len(raw) == 4:
-                        offers, duration, _, error_msg = raw
-                        if error_msg:
-                            logger.warning(
-                                f"Catalog scrape [{store_name}] '{query}': {error_msg}"
-                            )
+                    if error_msg:
+                        last_error = error_msg
+                        logger.warning(
+                            f"Catalog scrape [{store_name}] '{query}': {error_msg}"
+                        )
+                        # Erros de login/credencial afetam TODAS as queries desta
+                        # loja — aborta cedo. Erros transitórios seguem para a
+                        # próxima query (o circuit breaker do manager evita loop).
+                        if "login" in error_msg.lower() or "credenc" in error_msg.lower():
                             break
-                        if offers:
-                            await store_scraped_results(offers, scraper_key, normalized)
-                            total_products += len(offers)
+                        continue
+                    if offers:
+                        await store_scraped_results(offers, scraper_key, normalized)
+                        total_products += len(offers)
                 except Exception as e:
+                    last_error = str(e)
                     logger.error(f"Catalog scrape error [{store_name}] '{query}': {e}")
                     continue
-
-                await asyncio.sleep(0.5)
+                finally:
+                    await asyncio.sleep(0.5)
 
             duration = time.time() - t0
             await _update_status(
                 scraper_key,
-                status="done",
+                status="done" if total_products or not last_error else "error",
                 total_products=total_products,
                 total_queries=len(queries),
                 duration_seconds=duration,
+                error_message=last_error,
                 finished_at=datetime.now(timezone.utc),
             )
             logger.info(
@@ -301,35 +308,32 @@ async def refresh_products(queries: List[str]):
     """
     results = []
     scrapers = await _get_active_scrapers()
-    loop = asyncio.get_event_loop()
+    manager = get_scraper_manager()
 
     for query in queries:
         normalized = normalize_text(query)
         query_offers = []
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [
-                loop.run_in_executor(
-                    executor, _scrape_single, sc, normalized, creds,
-                )
-                for sc, creds, _ in scrapers
-            ]
-            try:
-                raw_results = await asyncio.wait_for(
-                    asyncio.gather(*futures, return_exceptions=True),
-                    timeout=60,
-                )
-            except asyncio.TimeoutError:
-                raw_results = []
+        # Cada loja tem seu próprio timeout/circuit breaker no manager. Usamos
+        # gather(return_exceptions=True) para que uma loja com erro não derrube
+        # as demais, sem bloquear o event loop (o antigo ThreadPoolExecutor
+        # chamava shutdown(wait=True) na saída do `with`, travando o loop).
+        tasks = [
+            manager.scrape_store_async(
+                sc, normalized, _scraper_key_for(sc), creds, force_refresh=True,
+            )
+            for sc, creds, _ in scrapers
+        ]
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for raw in raw_results:
-            if isinstance(raw, Exception):
+            if isinstance(raw, BaseException):
+                logger.error(f"refresh_products erro '{normalized}': {type(raw).__name__}: {raw}")
                 continue
-            if isinstance(raw, tuple) and len(raw) == 4:
-                offers, _, scraper_key, error_msg = raw
-                if offers and not error_msg:
-                    await store_scraped_results(offers, scraper_key, normalized)
-                    query_offers.extend(offers)
+            offers, _, scraper_key, error_msg = raw
+            if offers and not error_msg:
+                await store_scraped_results(offers, scraper_key, normalized)
+                query_offers.extend(offers)
 
         results.extend(query_offers)
 

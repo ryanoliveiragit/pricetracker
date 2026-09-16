@@ -92,57 +92,13 @@ class MegalesteScraper(BaseScraper):
             return True
 
         except Exception as e:
-            logger.error(f"❌ Erro no login via requests: {e}")
-            # Fallback: tentar login com Selenium
-            return self._login_selenium(username, password)
-
-    def _login_selenium(self, username: str, password: str) -> bool:
-        """Fallback: login via Selenium, depois transfere cookies para a session requests."""
-        try:
-            from selenium.webdriver.common.by import By
-            from selenium.webdriver.support.ui import WebDriverWait
-            from selenium.webdriver.support import expected_conditions as EC
-            from selenium.common.exceptions import NoSuchElementException
-
-            logger.info("🔄 Usando Selenium como fallback para login...")
-            self.driver = self._init_driver(headless=True)
-            self.driver.get(BASE_URL)
-
-            # Abrir menu de login
-            user_menu_btn = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "a[role='button']"))
-            )
-            user_menu_btn.click()
-            time.sleep(1)
-
-            # Preencher credenciais
-            email_input = WebDriverWait(self.driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='login']"))
-            )
-            pass_input = self.driver.find_element(By.CSS_SELECTOR, "input[placeholder='senha']")
-            email_input.send_keys(username)
-            pass_input.send_keys(password)
-
-            # Submeter
-            try:
-                btn = self.driver.find_element(By.XPATH, "//button[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'entrar')]")
-                btn.click()
-            except NoSuchElementException:
-                from selenium.webdriver.common.keys import Keys
-                pass_input.send_keys(Keys.RETURN)
-
-            time.sleep(4)
-
-            # Transferir cookies do Selenium para a session requests
-            for cookie in self.driver.get_cookies():
-                self.session.cookies.set(cookie['name'], cookie['value'])
-
-            self.is_logged_in = True
-            logger.info("✅ Login Selenium OK — cookies transferidos para requests")
-            return True
-
-        except Exception as e:
-            logger.error(f"❌ Erro no login Selenium fallback: {e}")
+            # O login por requests é o único caminho suportado. O antigo fallback
+            # Selenium (`_login_selenium`) chamava `self._init_driver`, método que
+            # nunca existiu — sempre levantava AttributeError e ainda vazava o
+            # processo do Chrome. Removido: em caso de erro de rede, retornamos
+            # False e a próxima busca tentará de novo.
+            logger.error(f"❌ Erro no login via requests em {self.store_name}: {e}")
+            self.login_error = "Não foi possível conectar ao Estoque Megaleste"
             return False
 
     def _fetch_page(self, query: str, page: int = 1) -> Optional[BeautifulSoup]:

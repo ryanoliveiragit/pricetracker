@@ -118,8 +118,19 @@ class ScraperManager:
         if not force_refresh:
             cached = await db_cache_get(scraper_key, query_norm, ttl_seconds=SEARCH_CACHE_TTL)
             if cached is not None:
-                logger.info(f"💾 {scraper_key}:{query_norm} — cache hit")
-                return [ProductOffer(**item) for item in cached], 0, scraper_key, None
+                # Desserialização defensiva: uma linha de cache antiga com schema
+                # incompatível (ex.: campo novo/renomeado após deploy) NÃO pode
+                # derrubar a busca inteira — se falhar, ignora o cache e segue
+                # para o scrape ao vivo em vez de propagar ValidationError.
+                try:
+                    offers = [ProductOffer(**item) for item in cached]
+                    logger.info(f"💾 {scraper_key}:{query_norm} — cache hit")
+                    return offers, 0, scraper_key, None
+                except Exception as _cache_err:
+                    logger.warning(
+                        f"⚠️ {scraper_key}:{query_norm} — cache incompatível, "
+                        f"ignorando e re-scrapeando ({type(_cache_err).__name__})"
+                    )
 
         # Executar scraping com timeout (maior para lojas com login via navegador)
         scraper_timeout = _timeout_for(scraper_key)
@@ -246,12 +257,18 @@ class ScraperManager:
             for scraper_class, creds, key in scrapers_with_creds
         ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+        # return_exceptions=True: uma loja que estoura exceção não pode descartar
+        # os resultados de TODAS as outras lojas já concluídas com sucesso.
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         all_offers: List[ProductOffer] = []
         seen_keys: set = set()
 
-        for offers, duration, scraper_key, error in results:
+        for result in results:
+            if isinstance(result, BaseException):
+                logger.error(f"Scraper task falhou: {type(result).__name__}: {result}")
+                continue
+            offers, duration, scraper_key, error = result
             for offer in offers:
                 key = f"{offer.store}:{offer.sku or offer.product_name[:30].lower()}"
                 if key not in seen_keys:

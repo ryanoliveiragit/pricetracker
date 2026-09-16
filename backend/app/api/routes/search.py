@@ -216,17 +216,23 @@ async def search_all_stores(
         scrapers_with_creds, query, force_refresh=force_refresh
     )
 
-    # Salvar no catálogo local
+    # Salvar no catálogo local — agrupa pela CHAVE CURTA do scraper (mesma
+    # convenção de /search/stream, /search-by-supplier e do catalog_scraper).
+    # Antes usava offer.store (nome de exibição), gerando linhas duplicadas no
+    # catálogo ("Estoque Megaleste" e "megaleste" para o mesmo produto).
     if offers:
-        store_offers_by_key = {}
-        for offer in offers:
-            key = offer.store
-            if key not in store_offers_by_key:
-                store_offers_by_key[key] = []
-            store_offers_by_key[key].append(offer)
+        def _key_for_store(store_name: str) -> str:
+            cls = resolve_scraper(store_name)
+            if cls is not None:
+                return cls.__name__.lower().replace("scraper", "").strip("_")
+            return normalize_text(store_name).replace(" ", "_")
 
-        for store_key, store_offers_list in store_offers_by_key.items():
-            await store_scraped_results(store_offers_list, store_key, query)
+        store_offers_by_key: dict[str, list] = {}
+        for offer in offers:
+            store_offers_by_key.setdefault(_key_for_store(offer.store), []).append(offer)
+
+        for scraper_key, store_offers_list in store_offers_by_key.items():
+            await store_scraped_results(store_offers_list, scraper_key, query)
 
     logger.info(f"Total de ofertas encontradas: {len(offers)}")
     return offers

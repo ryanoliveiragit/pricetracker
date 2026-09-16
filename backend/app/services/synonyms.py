@@ -4,9 +4,25 @@ Cada entrada mapeia um termo canônico para seus sinônimos.
 A expansão é bidirecional: buscar "cola" também busca "adesivo" e vice-versa.
 """
 from __future__ import annotations
+
+import re
+from functools import lru_cache
 from typing import Optional
 
 from app.utils.text_normalizer import QUERY_STOP_WORDS, normalize_text
+
+
+@lru_cache(maxsize=512)
+def _word_boundary_pattern(term: str) -> re.Pattern:
+    """Compila um padrão que casa ``term`` apenas como palavra(s) inteira(s).
+
+    Evita que abreviações curtas (ex.: "ac" de "argamassa colante") sejam
+    substituídas DENTRO de outra palavra ("acrilica" → "argamassa colante" +
+    "rilica"), o que corrompia a query enviada aos scrapers.
+    """
+    return re.compile(
+        r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])"
+    )
 
 # Grupos de sinônimos — todos os termos do grupo são equivalentes
 SYNONYM_GROUPS: list[list[str]] = [  # <dynamic-synonyms-start>
@@ -138,21 +154,24 @@ def _abbrev_variants(query_normalized: str) -> list[str]:
     if query_normalized in _ABBREV_INDEX:
         add(_ABBREV_INDEX[query_normalized])
 
-    # Substituições parciais: forma longa → formas curtas
+    # Substituições por PALAVRA INTEIRA: forma longa → formas curtas.
+    # (Usar limites de palavra evita corromper termos que apenas CONTÊM a
+    #  forma como substring, ex.: "ac" dentro de "acrilica".)
     for long_form, shorts in ABBREVIATION_PAIRS:
         long_n = normalize_text(long_form)
-        if long_n in query_normalized:
+        long_pat = _word_boundary_pattern(long_n)
+        if long_pat.search(query_normalized):
             for short in shorts:
                 short_n = normalize_text(short)
-                add(query_normalized.replace(long_n, short_n))
+                add(long_pat.sub(short_n, query_normalized))
 
-    # Substituições parciais: forma curta → forma longa (reverso)
+    # Substituições por PALAVRA INTEIRA: forma curta → forma longa (reverso)
     for long_form, shorts in ABBREVIATION_PAIRS:
         long_n = normalize_text(long_form)
         for short in shorts:
             short_n = normalize_text(short)
-            if short_n in query_normalized:
-                add(query_normalized.replace(short_n, long_n))
+            if _word_boundary_pattern(short_n).search(query_normalized):
+                add(_word_boundary_pattern(short_n).sub(long_n, query_normalized))
 
     return variants
 

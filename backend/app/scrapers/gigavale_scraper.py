@@ -48,6 +48,13 @@ HEADERS = {
 }
 
 
+def _manual_session_only() -> bool:
+    """Quando ativo, a Gigavale só usa cookies semeados manualmente
+    (seed_gigavale_session.py) e NUNCA tenta o login por Selenium — que não
+    passa no reCAPTCHA v2 invisível. Ativar com GIGAVALE_MANUAL_SESSION_ONLY=1."""
+    return os.getenv("GIGAVALE_MANUAL_SESSION_ONLY", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 class GigavaleScraper(BaseScraper):
     """Busca produtos e preços autenticados na Gigavale Atacado."""
 
@@ -433,6 +440,19 @@ class GigavaleScraper(BaseScraper):
                     self.is_logged_in = True
                     return True
                 invalidate(CACHE_KEY)
+
+            # Modo "sessão manual": os cookies são semeados por login manual
+            # (seed_gigavale_session.py) porque o reCAPTCHA v2 invisível não
+            # passa via Selenium. Sem uma sessão válida em cache, NÃO tentamos o
+            # login por navegador (gastaria ~60s e falharia no reCAPTCHA) —
+            # falhamos rápido com uma instrução clara para re-semear.
+            if _manual_session_only():
+                self.login_error = (
+                    "Sessão manual da Gigavale ausente ou expirada. Rode "
+                    "`python seed_gigavale_session.py --interactive` para logar de novo."
+                )
+                logger.warning("Gigavale: sem sessão manual válida (GIGAVALE_MANUAL_SESSION_ONLY)")
+                return False
 
             if not self.login(username, password):
                 return False
