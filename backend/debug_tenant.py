@@ -1,9 +1,17 @@
 import asyncio
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
-DATABASE_URL = "postgresql+asyncpg://postgres.nepwcsxyasvlftsjmzku:maeteamo123%40A_@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
+# Credenciais NUNCA hardcoded — lê do ambiente / backend/.env (mesma var do app).
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise SystemExit("Defina DATABASE_URL no ambiente (ou em backend/.env) antes de rodar.")
+
 
 async def main():
     engine = create_async_engine(DATABASE_URL)
@@ -24,5 +32,6 @@ async def main():
             r3 = await s.execute(text("SELECT id, slug, name FROM tenants LIMIT 20"))
             for row in r3.fetchall():
                 print(" ", row)
+
 
 asyncio.run(main())
